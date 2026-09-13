@@ -92,6 +92,7 @@ assert.equal((await upgradeMessaging({ path })).format, 'semaphile-messaging/1.1
 assert.deepEqual(snapshot(), before);
 client = await openMessaging({ path });
 try {
+  assert((await client.history()).every((message) => message.trace === undefined));
   assert.equal(
     (await client.send({ to: 'worker', body: 'pending', dedupeKey: 'stable' })).id,
     pending.id,

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { contentBytes } from '../../packages/messaging/dist/src/storage.js';
+import { resolve, join } from 'node:path';
 import { openMessaging } from '../../packages/messaging/dist/src/index.js';
 await mkdir('.tmp/messaging', { recursive: true });
 const path = await mkdtemp(resolve('.tmp/messaging/trace-store-'));
@@ -40,7 +42,57 @@ try {
   console.log(
     'PASS trace is separate from content, first context wins dedupe, and redelivery/history preserve it',
   );
+  await client.createMailbox('second');
+  const a = await client.register('worker'),
+    b = await client.register('second');
+  const broadcast = await client.send({
+    to: '*',
+    body: 'broadcast',
+    dedupeKey: 'broadcast',
+    trace: first,
+  });
+  const left = (await client.receive('worker'))[0],
+    right = (await client.receive('second'))[0];
+  assert.equal(left.messageId, broadcast.id);
+  assert.equal(right.messageId, broadcast.id);
+  assert.notEqual(left.receipt.deliveryId, right.receipt.deliveryId);
+  assert.deepEqual(left.trace, first);
+  assert.deepEqual(right.trace, first);
+  await client.ack(left.receipt);
+  await client.ack(right.receipt);
+  await client.unregister(a.id);
+  await client.unregister(b.id);
+  console.log(
+    'PASS broadcast recipients retain independent receipts with the same committed sender context',
+  );
 } finally {
   await client.close();
 }
-console.log('RESULT 1/1 passed');
+// All clients are closed before this independent inspection of retained bytes.
+const db = new DatabaseSync(join(path, 'state.sqlite'));
+try {
+  const size = contentBytes({ db });
+  const traceBytes = db
+    .prepare('SELECT SUM(length(CAST(trace AS BLOB))) AS bytes FROM messages')
+    .get().bytes;
+  db.exec('BEGIN; UPDATE messages SET trace=NULL;');
+  assert.equal(size - contentBytes({ db }), traceBytes);
+  db.exec('ROLLBACK;');
+  db.prepare('UPDATE messages SET terminal_at=?').run(Date.now() - 604800001);
+} finally {
+  db.close();
+}
+const cleanup = await openMessaging({ path, onWarning: () => {} });
+await cleanup.send({ to: 'worker', body: 'trigger retention' });
+await cleanup.close();
+const retained = new DatabaseSync(join(path, 'state.sqlite'));
+try {
+  assert.equal(
+    retained.prepare('SELECT COUNT(*) AS n FROM messages WHERE trace IS NOT NULL').get().n,
+    0,
+  );
+} finally {
+  retained.close();
+}
+console.log('PASS trace bytes count toward retention and expire with terminal message content');
+console.log('RESULT 3/3 passed');

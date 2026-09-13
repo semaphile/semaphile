@@ -598,7 +598,7 @@ Consumer events support topic labels without topic subscriptions.
 
 ### Implementation and verification (ENGINEERING)
 
-Messaging format is distinct from pool formats. Section 12 advances the
+Messaging format is distinct from pool formats. Section 17 advances the
 initial 1.0 format to 1.1 through an explicit offline upgrade: add a nullable
 messages.trace column in the same FULL transaction as the format update.
 Trace bytes count toward content retention and expire with the envelope. Reuse private
@@ -638,7 +638,7 @@ another process durably accepts a manual delivery; no expired claim is revived.
 CLI termination signals request active-child cancellation with five-second
 SIGTERM-to-SIGKILL escalation; library close remains graceful by default.
 
-## 12. Observability (DECIDED)
+## 17. Observability (DECIDED)
 
 Instrumentation is optional and client-local: it never changes normalized pool
 policy, admission, callback results, or cleanup guarantees. SQLite, Redis and
