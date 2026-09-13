@@ -1,8 +1,7 @@
 # @semaphile/redis — experimental Redis backend
 
 Version **0.1.0**. Install with the matching `@semaphile/core` peer package.
-See the [release guide](../../docs/releases.md) for verified GitHub archives;
-these packages are not published to npm.
+See the [release guide](../../docs/releases.md) for installation and verified GitHub archives.
 
 ```ts
 import { openLimiter } from '@semaphile/redis';

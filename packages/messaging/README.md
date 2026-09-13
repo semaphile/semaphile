@@ -5,8 +5,8 @@ TypeScript library and `semaphile message` CLI; no resident daemon or periodic
 inbox polling. Supports Node 22.18+ and the modern Bun version verified by the
 conformance suite. Native artifacts currently target macOS arm64 and Linux x64.
 
-This experimental package is distributed through GitHub release archives and is
-not published to npm. Build from the repository or install a verified release archive. Installation does not compile native code.
+This package is experimental. See the [release guide](../../docs/releases.md)
+for installation and verified GitHub archives. Installation does not compile native code.
 
 ## Library
 

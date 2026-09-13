@@ -76,11 +76,11 @@ From the repository root, the maintainer publishes the verified archives in
 peer dependency order:
 
 ```sh
-npm login --registry=https://registry.npmjs.org
-(cd releases/0.1.0-npm && shasum -a 256 -c SHA256SUMS)
-npm publish ./releases/0.1.0-npm/semaphile-core-0.1.0.tgz --access public --ignore-scripts
-npm publish ./releases/0.1.0-npm/semaphile-redis-0.1.0.tgz --access public --ignore-scripts
-npm publish ./releases/0.1.0-npm/semaphile-messaging-0.1.0.tgz --access public --ignore-scripts
+npm login --registry=https://registry.npmjs.org &&
+  (cd releases/0.1.0-npm && shasum -a 256 -c SHA256SUMS) &&
+  npm publish ./releases/0.1.0-npm/semaphile-core-0.1.0.tgz --access public --ignore-scripts &&
+  npm publish ./releases/0.1.0-npm/semaphile-redis-0.1.0.tgz --access public --ignore-scripts &&
+  npm publish ./releases/0.1.0-npm/semaphile-messaging-0.1.0.tgz --access public --ignore-scripts
 ```
 
 These commands upload packages; add `--dry-run` to inspect publication without
