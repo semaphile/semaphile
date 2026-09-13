@@ -19,7 +19,7 @@ const limiter = await openLimiter({
   telemetry: {
     pool: 'notion',
     instrumentation: createInstrumentation(),
-    onEvent: event => console.log(event.kind, event.elapsedMs),
+    onEvent: (event) => console.log(event.kind, event.elapsedMs),
   },
 });
 ```
@@ -222,7 +222,9 @@ explicitly. `processDelivery(delivery, callback)` provides the same processing
 scope for manual receivers; callers remain responsible for settling their claim.
 
 CLI export is opt-in with `--otel` or `telemetry.enabled: true` in the nearest
-`semaphile.json`; `--no-otel` overrides that default. Install `@semaphile/otel`
+`semaphile.json`; `--no-otel` overrides that default. For message commands,
+`--store` bypasses project discovery, including telemetry defaults; use `--otel`
+and environment configuration with an explicit store. Install `@semaphile/otel`
 alongside messaging. `telemetry.serviceName` and `telemetry.baggageAllowlist`
 configure the standalone SDK. Standard OTLP environment variables select the
 HTTP/protobuf endpoint. Incoming uppercase context variables are extracted at

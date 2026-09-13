@@ -22,11 +22,16 @@ const server = createServer((req, res) => {
 });
 server.listen(0, '127.0.0.1');
 await once(server, 'listening');
-async function run(args, endpoint = `http://127.0.0.1:${server.address().port}`) {
+async function run(
+  args,
+  endpoint = `http://127.0.0.1:${server.address().port}`,
+  telemetryFlag = '--otel',
+) {
   const child = spawn(
     process.execPath,
     [resolve('packages/messaging/dist/src/cli.js'), 'message', ...args, '--store', path, '--otel'],
     {
+      cwd: root,
       env: {
         ...process.env,
         OTEL_EXPORTER_OTLP_ENDPOINT: endpoint,
@@ -75,8 +80,14 @@ try {
   assert(result.id);
   assert(performance.now() - start < 5000);
   console.log('PASS unreachable exporter cannot change message results or exceed bounded shutdown');
+  await writeFile(join(root, 'semaphile.json'), '{broken');
+  assert((await run(['send', '--to', 'worker', '--body', 'explicit'], undefined, '--no-otel')).id);
+  assert((await run(['send', '--to', 'worker', '--body', 'explicit with export'])).id);
+  console.log(
+    'PASS explicit store bypasses malformed nearby project config with telemetry on or off',
+  );
 } finally {
   server.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 }
-console.log('RESULT 2/2 passed');
+console.log('RESULT 3/3 passed');

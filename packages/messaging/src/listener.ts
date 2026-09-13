@@ -1,4 +1,4 @@
-import { markMessageFailure } from './telemetry.js';
+import { markMessageFailure, markMessageCancelled } from './telemetry.js';
 import { listenerDefaults } from './validation.js';
 import { MessagingError, integer, mode } from './config.js';
 import type { MessagingClient } from './client.js';
@@ -12,6 +12,7 @@ export class MessageListener {
   private readonly waiting = new AbortController();
   private readonly active = new Set<AbortController>();
   private stopping = false;
+  private cancellationRequested = false;
   private closing?: Promise<void>;
   private readonly options: ListenerOptions;
   private constructor(
@@ -116,6 +117,13 @@ export class MessageListener {
     }
   }
   private async handle(delivery: Delivery): Promise<void> {
+    // A processing-start hook can cancel the listener before a handler has a
+    // controller. Preserve that cancellation and release the undispatched claim.
+    if (this.cancellationRequested) {
+      markMessageCancelled();
+      await this.client.release(delivery.receipt);
+      return;
+    }
     if (Date.now() >= delivery.claimExpiresAt) {
       this.report(new MessagingError('STALE', 'Claim expired before handler dispatch'), delivery);
       return;
@@ -224,6 +232,9 @@ export class MessageListener {
       markMessageFailure();
       failure = error;
     } finally {
+      if (controller.signal.aborted) {
+        markMessageCancelled();
+      }
       finished = true;
       if (watchdog) {
         clearTimeout(watchdog);
@@ -249,6 +260,7 @@ export class MessageListener {
   }
   close(options: { cancel?: boolean } = {}): Promise<void> {
     if (options.cancel) {
+      this.cancellationRequested = true;
       for (const controller of this.active) {
         controller.abort();
       }

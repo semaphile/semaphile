@@ -80,4 +80,77 @@ await assert.rejects(waiting, /cancel/i);
 await client.close();
 await assert.rejects(client.wait('worker'), /closed|closing|Coordinator exited/i);
 console.log('PASS cancellation and close settle observed waits without stranded registrations');
-console.log('RESULT 2/2 passed');
+let observed;
+const protectedClient = await openMessaging({
+  path: join(root, 'protected'),
+  telemetry: {
+    instrumentation: {
+      start(event) {
+        if (event.operation === 'ack') {
+          observed = event.trace;
+          if (event.trace) {
+            event.trace.traceparent = () => {};
+          }
+        }
+        return {
+          received(messages) {
+            if (messages[0]?.trace) {
+              messages[0].trace.traceparent = 'mutated';
+            }
+          },
+        };
+      },
+    },
+  },
+});
+await protectedClient.createMailbox('worker');
+const traceparent = '00-' + 'a'.repeat(32) + '-' + 'b'.repeat(16) + '-01';
+await protectedClient.send({ to: 'worker', body: 'protected', trace: { traceparent } });
+const [protectedDelivery] = await protectedClient.receive('worker');
+assert.equal(protectedDelivery.trace.traceparent, traceparent);
+protectedDelivery.receipt.trace.baggage = 'secret=private';
+assert.equal((await protectedClient.ack(protectedDelivery.receipt)).status, 'acked');
+assert.equal(observed.baggage, undefined);
+assert.equal(protectedDelivery.receipt.trace.traceparent, traceparent);
+await protectedClient.close();
+console.log('PASS hooks receive frozen filtered metadata and cannot mutate authoritative receipts');
+let cancelling,
+  handlerStarted = false,
+  dispatched;
+const started = new Promise((resolve) => {
+  dispatched = resolve;
+});
+const cancelClient = await openMessaging({
+  path: join(root, 'process-cancel'),
+  telemetry: {
+    instrumentation: {
+      start(event) {
+        if (event.operation === 'process') {
+          cancelling = cancelClient.close({ cancel: true });
+          dispatched();
+        }
+        return {};
+      },
+    },
+  },
+});
+await cancelClient.createMailbox('worker');
+await cancelClient.send({ to: 'worker', body: 'never dispatch' });
+cancelClient.listen(
+  'worker',
+  async () => {
+    handlerStarted = true;
+  },
+  { acceptedAckModes: ['manual'], ackMode: 'manual' },
+);
+await started;
+await cancelling;
+assert.equal(handlerStarted, false);
+const remaining = await openMessaging({ path: join(root, 'process-cancel') });
+try {
+  assert.equal((await remaining.history())[0].deliveries[0].state, 'pending');
+} finally {
+  await remaining.close();
+}
+console.log('PASS reentrant processing-start cancellation releases claim without starting handler');
+console.log('RESULT 4/4 passed');

@@ -37,6 +37,7 @@ export interface MessageTelemetryOptions {
 const active = new AsyncLocalStorage<{
   inject: () => TraceCarrier | undefined;
   fail: () => void;
+  cancel: () => void;
 }>();
 /** Current processing span carrier for an explicitly launched handler process. */
 export function currentMessageTrace(): TraceCarrier | undefined {
@@ -44,6 +45,9 @@ export function currentMessageTrace(): TraceCarrier | undefined {
 }
 export function markMessageFailure(): void {
   active.getStore()?.fail();
+}
+export function markMessageCancelled(): void {
+  active.getStore()?.cancel();
 }
 export class MessageTelemetry {
   private disabled = false;
@@ -97,12 +101,33 @@ export class MessageTelemetry {
       return undefined;
     }
   }
+  private metadata(input: MessageMetadata): MessageMetadata {
+    let carrier: TraceCarrier | undefined;
+    try {
+      carrier = filterTrace(input.trace, this.baggageAllowlist);
+    } catch {
+      this.diagnostic('trace-dropped');
+    }
+    return Object.freeze({
+      messageId: input.messageId,
+      deliveryId: input.deliveryId,
+      correlationId: input.correlationId,
+      attempt: input.attempt,
+      ...(carrier ? { trace: Object.freeze(carrier) } : {}),
+    });
+  }
   begin(operation: MessageOperation, metadata: MessageMetadata = {}, at = Date.now()) {
-    const event: MessageEvent = Object.freeze({ ...metadata, id: randomUUID(), operation, at });
+    const event: MessageEvent = Object.freeze({
+      ...this.metadata(metadata),
+      id: randomUUID(),
+      operation,
+      at,
+    });
     const scope = this.hook(() => this.options.instrumentation?.start(event));
     const start = performance.now();
     let ended = false,
-      failed = false;
+      failed = false,
+      cancelled = false;
     const inject = (): TraceCarrier | undefined => {
       const value = this.hook(() => scope?.inject?.());
       try {
@@ -115,7 +140,9 @@ export class MessageTelemetry {
     return {
       inject,
       received: (messages: readonly MessageMetadata[]) => {
-        this.hook(() => scope?.received?.(messages));
+        this.hook(() =>
+          scope?.received?.(Object.freeze(messages.map((message) => this.metadata(message)))),
+        );
       },
       run: <T>(callback: () => T): T => {
         let called = false,
@@ -128,6 +155,9 @@ export class MessageTelemetry {
               result = active.run(
                 {
                   inject,
+                  cancel: () => {
+                    cancelled = true;
+                  },
                   fail: () => {
                     failed = true;
                   },
@@ -166,7 +196,7 @@ export class MessageTelemetry {
           scope?.end?.(
             Object.freeze({
               ...event,
-              status: failed ? 'rejected' : status,
+              status: cancelled ? 'cancelled' : failed ? 'rejected' : status,
               durationMs: performance.now() - start,
             }),
           ),

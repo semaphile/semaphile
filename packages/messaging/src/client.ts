@@ -4,7 +4,7 @@ import {
   type MessageMetadata,
   type MessageTelemetryOptions,
 } from './telemetry.js';
-import { filterTrace } from './trace.js';
+import { filterTrace, validateTrace } from './trace.js';
 import { Worker } from 'node:worker_threads';
 import { realpath, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -291,37 +291,44 @@ export class MessagingClient {
     return work;
   }
 
-  ack(receipt: Receipt): Promise<ClaimResult> {
+  private settleClaim(
+    action: 'ack' | 'release' | 'renew' | 'fail',
+    receipt: Receipt,
+    value?: number | string,
+  ): Promise<ClaimResult> {
+    // Trace is observational only. Pass just the two fencing identifiers to
+    // the coordinator; hooks cannot mutate the claim or make it uncloneable.
+    const claim = { deliveryId: receipt.deliveryId, claimId: receipt.claimId };
+    let carrier: Receipt['trace'];
+    let invalidTrace = false;
+    try {
+      carrier = validateTrace(receipt.trace);
+    } catch {
+      invalidTrace = true;
+    }
     return this.observe(
-      'ack',
-      () => this.call('ack', { receipt }),
-      { deliveryId: receipt.deliveryId, trace: receipt.trace },
+      action,
+      () => {
+        if (invalidTrace) {
+          this.telemetry.diagnostic('trace-dropped');
+        }
+        return this.call(action, { receipt: claim, value });
+      },
+      { deliveryId: claim.deliveryId, trace: carrier },
       true,
     );
+  }
+  ack(receipt: Receipt): Promise<ClaimResult> {
+    return this.settleClaim('ack', receipt);
   }
   release(receipt: Receipt): Promise<ClaimResult> {
-    return this.observe(
-      'release',
-      () => this.call('release', { receipt }),
-      { deliveryId: receipt.deliveryId, trace: receipt.trace },
-      true,
-    );
+    return this.settleClaim('release', receipt);
   }
   renew(receipt: Receipt, claimTtlMs?: number): Promise<ClaimResult> {
-    return this.observe(
-      'renew',
-      () => this.call('renew', { receipt, value: claimTtlMs }),
-      { deliveryId: receipt.deliveryId, trace: receipt.trace },
-      true,
-    );
+    return this.settleClaim('renew', receipt, claimTtlMs);
   }
   fail(receipt: Receipt, error: unknown): Promise<ClaimResult> {
-    return this.observe(
-      'fail',
-      () => this.call('fail', { receipt, value: String(error) }),
-      { deliveryId: receipt.deliveryId, trace: receipt.trace },
-      true,
-    );
+    return this.settleClaim('fail', receipt, String(error));
   }
   retry(deliveryId: string): Promise<void> {
     return this.call('retry', { deliveryId });

@@ -83,7 +83,7 @@ async function main(): Promise<void> {
     controller.abort();
     process.exitCode = 3;
   };
-  const telemetryProject = resolved.project ?? (await findConfig());
+  const telemetryProject = resolved.project;
   const sdk = await commandTelemetry(args, telemetryProject);
   const run = async () => {
     const client = await openClient({
