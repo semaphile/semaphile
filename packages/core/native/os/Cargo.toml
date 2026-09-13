@@ -1,0 +1,19 @@
+[package]
+name = "semaphile-os"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.93"
+publish = false
+license = "MIT"
+autotests = false
+
+[dependencies]
+libc = "=0.2.182"
+
+[[bin]]
+name = "coordination-probe"
+path = "tests/probe.rs"
+
+[[test]]
+name = "coordination"
+path = "tests/coordination.rs"

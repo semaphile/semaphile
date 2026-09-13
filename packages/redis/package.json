@@ -1,0 +1,38 @@
+{
+  "name": "@semaphile/redis",
+  "version": "2026.9.2-dev.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "cd ../.. && packages/redis/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings packages/redis/src/*.ts packages/redis/build.mjs conformance/redis/*.mjs conformance/redis/*.ts",
+    "lint:types": "oxlint --config ../../.oxlintrc.json --type-aware --deny-warnings src/*.ts"
+  },
+  "dependencies": {
+    "@redis/client": "6.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.11",
+    "typescript": "5.9.3",
+    "oxlint": "1.82.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "@semaphile/core": "file:../core"
+  },
+  "peerDependencies": {
+    "@semaphile/core": "2026.9.2-dev.0"
+  },
+  "license": "MIT"
+}
