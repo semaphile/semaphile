@@ -1,0 +1,151 @@
+import { readFile } from 'node:fs/promises';
+import type { MessagingClient } from './client.js';
+import type { messagingOptions } from './settings.js';
+import { MessagingError, mode, text } from './config.js';
+import { help } from './cli-options.js';
+import { record } from './validation.js';
+import type { Arguments } from './cli-options.js';
+import type { ReceiveOptions, SendOptions } from './types.js';
+export const output = (value: unknown) =>
+  process.stdout.write(JSON.stringify(value ?? null) + '\n');
+export interface Context {
+  client: MessagingClient;
+  args: Arguments;
+  action: string;
+  resolved: Awaited<ReturnType<typeof messagingOptions>>;
+  receiveOptions: ReceiveOptions;
+  controller: AbortController;
+}
+import { register, waitForMessage, listen } from './cli-lifecycle.js';
+async function sendMessage(context: Context): Promise<void> {
+  const {
+    client,
+    args: { get, required, numeric },
+  } = context;
+
+  if ((get('body') === undefined) === (get('body-file') === undefined)) {
+    throw new MessagingError('INPUT', 'Supply exactly one of --body and --body-file');
+  }
+  const message: SendOptions = {
+    to: required('to'),
+    body: get('body') ?? (await readFile(required('body-file'), 'utf8')),
+    sender: get('sender'),
+    dedupeKey: get('dedupe-key'),
+    correlationId: get('correlation'),
+    replyTo: get('reply-to'),
+    topic: get('topic'),
+    kind: get('kind'),
+    expiresInMs: numeric('expires-in'),
+    ackMode: get('ack-mode') ? mode(get('ack-mode')) : undefined,
+  };
+  output(await client.send(message));
+}
+async function settleClaim(context: Context, action: 'ack' | 'release' | 'renew'): Promise<void> {
+  const {
+    client,
+    args: { get, required, numeric },
+  } = context;
+
+  let raw: unknown;
+  if (get('receipt-file') === undefined) {
+    raw = { deliveryId: required('delivery-id'), claimId: required('claim-id') };
+  } else {
+    const contents = await readFile(required('receipt-file'), 'utf8');
+    try {
+      raw = JSON.parse(contents);
+    } catch {
+      // Parser messages can contain receipt contents; report only the category.
+      throw new MessagingError('INPUT', 'Receipt file must contain valid JSON');
+    }
+  }
+  const envelope = record(raw, 'receipt');
+  const value = record('receipt' in envelope ? envelope.receipt : envelope, 'receipt');
+  const receipt = {
+    deliveryId: text(value.deliveryId, 'deliveryId'),
+    claimId: text(value.claimId, 'claimId'),
+  };
+  const result =
+    action === 'renew'
+      ? await client.renew(receipt, numeric('claim-ttl'))
+      : await client[action](receipt);
+  output(result);
+  if (result.status === 'stale') {
+    process.exitCode = 5;
+  }
+}
+export async function execute(context: Context): Promise<void> {
+  const {
+    action,
+    client,
+    args: { get, required, numeric },
+    receiveOptions,
+  } = context;
+  switch (action) {
+    case 'create':
+      await client.createMailbox(required('name'));
+      output({ created: required('name') });
+      break;
+    case 'agents':
+      output(await client.agents());
+      break;
+    case 'register':
+      await register(context);
+      break;
+    case 'send':
+      await sendMessage(context);
+      break;
+    case 'receive':
+      output(await client.receive(required('as'), receiveOptions));
+      break;
+    case 'wait':
+      await waitForMessage(context);
+      break;
+    case 'listen':
+      await listen(context);
+      break;
+    case 'ack':
+    case 'release':
+    case 'renew':
+      await settleClaim(context, action);
+      break;
+    case 'retry':
+      await client.retry(required('delivery-id'));
+      output({ retried: required('delivery-id') });
+      break;
+    case 'events':
+      output(
+        await client.events({
+          after: numeric('after'),
+          limit: numeric('limit'),
+          topic: get('topic'),
+          since: numeric('since'),
+        }),
+      );
+      break;
+    case 'history':
+      output(
+        await client[action]({
+          after: numeric('after'),
+          limit: numeric('limit'),
+          recipient: get('to'),
+          sender: get('sender'),
+          correlationId: get('correlation'),
+          topic: get('topic'),
+          since: numeric('since'),
+        }),
+      );
+      break;
+    case 'append':
+      await client.append({
+        kind: required('kind'),
+        agent: get('as'),
+        subject: get('delivery-id'),
+        topic: get('topic'),
+        payload: get('payload'),
+      });
+      output({ appended: true });
+      break;
+    default:
+      throw new MessagingError('INPUT', help);
+  }
+}

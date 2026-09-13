@@ -1,0 +1,49 @@
+{
+  "name": "@semaphile/messaging",
+  "version": "2026.9.2-dev.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings src/*.ts *.mjs",
+    "lint:types": "oxlint --config ../../.oxlintrc.json --type-aware --deny-warnings src/*.ts"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.11",
+    "c8": "12.0.0",
+    "oxlint": "1.82.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "typescript": "5.9.3",
+    "@semaphile/core": "file:../core",
+    "@semaphile/redis": "file:../redis"
+  },
+  "bin": {
+    "semaphile": "dist/src/cli.js"
+  },
+  "peerDependencies": {
+    "@semaphile/core": "2026.9.2-dev.0",
+    "@semaphile/redis": "2026.9.2-dev.0"
+  },
+  "peerDependenciesMeta": {
+    "@semaphile/core": {
+      "optional": true
+    },
+    "@semaphile/redis": {
+      "optional": true
+    }
+  },
+  "license": "MIT"
+}

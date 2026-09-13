@@ -1,0 +1,41 @@
+{
+  "name": "@semaphile/core",
+  "version": "2026.9.2-dev.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./client": {
+      "types": "./dist/src/client.d.ts",
+      "import": "./dist/src/client.js"
+    },
+    "./memory": {
+      "types": "./dist/src/memory.d.ts",
+      "import": "./dist/src/memory.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "lint": "cd ../.. && packages/core/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings packages/core/src/*.ts packages/core/*.mjs conformance/typescript/*.mjs",
+    "lint:types": "oxlint --config ../../.oxlintrc.json --type-aware --deny-warnings src/*.ts",
+    "coverage": "cd ../.. && node conformance/typescript/coverage.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.11",
+    "c8": "12.0.0",
+    "oxlint": "1.82.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "typescript": "5.9.3"
+  },
+  "license": "MIT"
+}
