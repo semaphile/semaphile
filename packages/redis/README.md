@@ -1,7 +1,7 @@
 # @semaphile/redis — experimental Redis backend
 
 Version **0.1.0**. Install with the matching `@semaphile/core` peer package.
-See the [release guide](../../docs/releases.md) for installation and verified GitHub archives.
+See the [release guide](https://github.com/semaphile/semaphile/blob/main/docs/releases.md) for installation and verified GitHub archives.
 
 ```ts
 import { openLimiter } from '@semaphile/redis';
@@ -67,7 +67,7 @@ Sentinel are outside the verified guarantees. Existing clients fail on missing
 state. Stop all users before deliberately replacing a pool or changing policy.
 Redis state version 2 and SQLite limiter format 1.4 include recovery and
 maintenance records. Existing older stores are rejected; no automatic migration
-is provided. See [execution, HTTP and maintenance](../../docs/resilience.md) for
+is provided. See [execution, HTTP and maintenance](https://github.com/semaphile/semaphile/blob/main/docs/resilience.md) for
 the shared APIs and replacement procedure. `create: false` on open atomically
 refuses absent state; the administrative CLI always uses this mode.
 
@@ -86,4 +86,4 @@ node conformance/run.mjs redis
 The test harness starts an isolated local `redis-server` on macOS or a
 `redis:8.4.0-alpine` Docker container on Linux. It uses random loopback ports
 and repo-local `.tmp` stores. Cross-host evidence is recorded separately in
-[the testing guide](../../docs/testing.md).
+[the testing guide](https://github.com/semaphile/semaphile/blob/main/docs/testing.md).

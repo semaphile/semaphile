@@ -11,12 +11,10 @@ and verify them against `SHA256SUMS`. The repository and release assets are publ
 The original GitHub archives are distinct from the npm publication archives.
 
 ```sh
-# macOS
-shasum -a 256 -c SHA256SUMS
-# Linux: sha256sum -c SHA256SUMS
-
-npm install --ignore-scripts ./semaphile-core-0.1.0.tgz \
-  ./semaphile-redis-0.1.0.tgz ./semaphile-messaging-0.1.0.tgz
+# macOS; on Linux replace shasum -a 256 with sha256sum.
+shasum -a 256 -c SHA256SUMS &&
+  npm install --ignore-scripts ./semaphile-core-0.1.0.tgz \
+    ./semaphile-redis-0.1.0.tgz ./semaphile-messaging-0.1.0.tgz
 ```
 
 Install only the packages you need: core is standalone; Redis requires core;

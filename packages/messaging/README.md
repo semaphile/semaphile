@@ -5,7 +5,7 @@ TypeScript library and `semaphile message` CLI; no resident daemon or periodic
 inbox polling. Supports Node 22.18+ and the modern Bun version verified by the
 conformance suite. Native artifacts currently target macOS arm64 and Linux x64.
 
-This package is experimental. See the [release guide](../../docs/releases.md)
+This package is experimental. See the [release guide](https://github.com/semaphile/semaphile/blob/main/docs/releases.md)
 for installation and verified GitHub archives. Installation does not compile native code.
 
 ## Library
@@ -252,5 +252,5 @@ During startup, SIGINT/SIGTERM retain normal OS termination behavior so a blocke
 native gate wait cannot swallow shutdown. After opening, signals cancel waits
 and close the administrative client. No command kills producer processes.
 
-See [execution and maintenance](../../docs/resilience.md) for the library API,
+See [execution and maintenance](https://github.com/semaphile/semaphile/blob/main/docs/resilience.md) for the library API,
 recovery behavior and experimental-format replacement procedure.

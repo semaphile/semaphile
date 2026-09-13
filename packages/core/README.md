@@ -1,7 +1,7 @@
 # @semaphile/core — experimental TypeScript client
 
 Version **0.1.0**. Install verified GitHub release archives as described in the
-[release guide](../../docs/releases.md). The native-free shared lifecycle at
+[release guide](https://github.com/semaphile/semaphile/blob/main/docs/releases.md). The native-free shared lifecycle at
 `@semaphile/core/client`, used by the optional `@semaphile/redis` package.
 The explicit `@semaphile/core/memory` entry point provides in-process limiting
 without loading SQLite or a native addon. The main export remains the SQLite entry point. Current limiter storage is
@@ -19,36 +19,29 @@ commands below, then run the resulting JavaScript with Node or Bun on the
 matching native platform. No global runtime upgrade is performed by this
 package. Evidence for a specific Bun version does not verify future versions.
 
-## Build and use
+## Use an installed package
 
-From the repository root:
-
-```sh
-npm ci --prefix packages/core --ignore-scripts
-cargo +1.93.1 fetch --locked --manifest-path packages/core/native/Cargo.toml
-node --no-warnings packages/core/build.mjs
-```
-
-Requires Node >=22.18, Rust 1.93.1 and a platform linker. Fetch the pinned
-Cargo dependencies once while online; explicit builds use the lockfile offline. The build emits
-JavaScript, declarations and an own-source native module under dist. Strict
-TypeScript checking covers all source files, without skipLibCheck; a type
-error fails the build before replacing previous output. Declarations are
-generated from the implementation. npm ci installs the locked build tools;
-the build itself downloads nothing and runs no dependency install hooks.
-Use npm run typecheck --prefix packages/core to check without emitting.
+Install a verified release archive as described in the release guide above, or
+use `npm install @semaphile/core@0.1.0` once the version is available on npm.
+Published archives include native addons; consumers do not need Rust or a linker.
 
 ```js
-import { openLimiter } from './packages/core/dist/src/index.js';
+import { openLimiter } from '@semaphile/core';
 
 const limiter = await openLimiter({
-  path: './.tmp/hindsight.pool',
+  path: './.tmp/service.pool',
   config: { maxConcurrent: 5, minTime: 100, expirationMs: 30_000 },
 });
 
-const result = await limiter.schedule(() => callYourService());
-await limiter.close({ drain: true });
+try {
+  const result = await limiter.schedule(() => callYourService());
+} finally {
+  await limiter.close({ drain: true });
+}
 ```
+
+For contributors building from a source checkout, see
+[Validation and contributor setup](#validation-and-contributor-setup) below.
 
 The caller chooses a local, private pool directory. All users of that pool
 must supply identical normalized configuration. maxConcurrent is a positive
@@ -145,10 +138,27 @@ All backends also provide `execute`, `http.request`, `http.fetch` and
 `maintenance.status/drain/wait/acknowledge/resume`. These add bounded retries,
 shared cooldown, optional circuit breaking and a persistent pool drain boundary.
 `schedule` remains single-attempt. Automatic retries require explicit replay
-safety and transient classification. See [the full API guide](../../docs/resilience.md)
+safety and transient classification. See [the full API guide](https://github.com/semaphile/semaphile/blob/main/docs/resilience.md)
 for defaults, examples, body lifetime, timeout semantics and format replacement.
 
 ## Validation and contributor setup
+
+Source builds require Node >=22.18, Rust 1.93.1 and a platform linker. From the
+repository root:
+
+```sh
+npm ci --prefix packages/core --ignore-scripts
+cargo +1.93.1 fetch --locked --manifest-path packages/core/native/Cargo.toml
+node --no-warnings packages/core/build.mjs
+```
+
+Fetch the pinned Cargo dependencies once while online; explicit builds use the
+lockfile offline. The build emits JavaScript, generated declarations and an
+own-source native module under `dist`. Strict TypeScript errors fail the build
+before replacing previous output. The build downloads nothing and runs no
+dependency install hooks. Use `npm run typecheck --prefix packages/core` to check
+without emitting. Source-checkout examples can import from
+`./packages/core/dist/src/index.js` instead of the installed package name.
 
 After building, run the complete core suites with:
 
@@ -160,7 +170,7 @@ bun conformance/run.mjs core
 
 The suites cover native ownership, admission and budgets, recovery and maintenance,
 queue deadlines, execution, HTTP on memory and SQLite, lifecycle and installed
-package consumers. See the current counts in [testing](../../docs/testing.md).
+package consumers. See the current counts in [testing](https://github.com/semaphile/semaphile/blob/main/docs/testing.md).
 Native header tests use synthetic structures; package tests load the actual
 native binary on the current host. Supplied portable archives additionally
 verify real headers on both targets.
@@ -174,7 +184,7 @@ npm run --prefix packages/core coverage
 
 This builds and runs the suites, writing `.tmp/coverage/lcov.info`. It measures
 Node JavaScript/TypeScript execution, not Rust native code or Bun/JSC coverage. See
-[testing](../../docs/testing.md) for the platform matrix and archive workflow.
+[testing](https://github.com/semaphile/semaphile/blob/main/docs/testing.md) for the platform matrix and archive workflow.
 
 ## Remaining boundaries
 
@@ -207,5 +217,5 @@ not signatures proving an untrusted binary safe. Use trusted builds. Installatio
 runs no compiler or install hook; missing targets fail explicitly. This is an
 experimental artifact workflow, not package publication.
 
-See [contributing](../../CONTRIBUTING.md) for formatting, lint and type checks,
-and [architecture](../../docs/architecture.md) for callback/worker ownership.
+See [contributing](https://github.com/semaphile/semaphile/blob/main/CONTRIBUTING.md) for formatting, lint and type checks,
+and [architecture](https://github.com/semaphile/semaphile/blob/main/docs/architecture.md) for callback/worker ownership.
