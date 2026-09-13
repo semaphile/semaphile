@@ -185,6 +185,7 @@ for (const name of [
   'package.json',
   'tsconfig.json',
   'build.mjs',
+  'package-build.mjs',
   'native-artifact.mjs',
   'native-build.mjs',
   'src',

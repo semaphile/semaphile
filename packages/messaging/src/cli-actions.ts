@@ -47,7 +47,9 @@ async function settleClaim(context: Context, action: 'ack' | 'release' | 'renew'
   } = context;
 
   let raw: unknown;
-  if (get('receipt-file') !== undefined) {
+  if (get('receipt-file') === undefined) {
+    raw = { deliveryId: required('delivery-id'), claimId: required('claim-id') };
+  } else {
     const contents = await readFile(required('receipt-file'), 'utf8');
     try {
       raw = JSON.parse(contents);
@@ -55,8 +57,6 @@ async function settleClaim(context: Context, action: 'ack' | 'release' | 'renew'
       // Parser messages can contain receipt contents; report only the category.
       throw new MessagingError('INPUT', 'Receipt file must contain valid JSON');
     }
-  } else {
-    raw = { deliveryId: required('delivery-id'), claimId: required('claim-id') };
   }
   const envelope = record(raw, 'receipt');
   const value = record('receipt' in envelope ? envelope.receipt : envelope, 'receipt');

@@ -16,7 +16,7 @@ This is experimental software. The current development version is
 builds. Runtime verification covers Node 22.23/Linux, Node 26.7/macOS and
 Bun 1.4.2 on macOS arm64 and Linux x64.
 The current Rust, recovery, HTTP and maintenance implementation passes the same
-472 scenarios under Node and Bun on both platforms, plus two cross-host Redis
+483 scenarios under Node and Bun on both platforms, plus two cross-host Redis
 pairings. See [testing](docs/testing.md) for scope and limitations.
 
 ## Start from source
