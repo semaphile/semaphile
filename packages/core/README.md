@@ -1,8 +1,7 @@
 # @semaphile/core — experimental TypeScript client
 
-Current development version: 2026.9.2-dev.0. The immutable local CalVer
-release 2026.9.1 (first September release, dated 2026-09-09) contains SQLite.
-The development build also exports the native-free shared lifecycle at
+Version **0.1.0**. Install verified GitHub release archives as described in the
+[release guide](../../docs/releases.md). The native-free shared lifecycle at
 `@semaphile/core/client`, used by the optional `@semaphile/redis` package.
 The explicit `@semaphile/core/memory` entry point provides in-process limiting
 without loading SQLite or a native addon. The main export remains the SQLite entry point. Current limiter storage is

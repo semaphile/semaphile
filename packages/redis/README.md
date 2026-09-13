@@ -1,8 +1,8 @@
 # @semaphile/redis — experimental Redis backend
 
-Development version **2026.9.2-dev.0**. Install with the matching
-`@semaphile/core` peer package. The private SQLite release **2026.9.1** is
-unchanged; these development packages have not been published.
+Version **0.1.0**. Install with the matching `@semaphile/core` peer package.
+See the [release guide](../../docs/releases.md) for verified GitHub archives;
+these packages are not published to npm.
 
 ```ts
 import { openLimiter } from '@semaphile/redis';

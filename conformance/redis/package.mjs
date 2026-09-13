@@ -84,7 +84,8 @@ await run(
 const installed = join(consumer, 'node_modules/@semaphile');
 const manifest = JSON.parse(await readFile(join(installed, 'redis/package.json'), 'utf8'));
 assert.equal(manifest.dependencies['@semaphile/core'], undefined);
-assert.equal(manifest.peerDependencies['@semaphile/core'], '2026.9.2-dev.0');
+const coreManifest = JSON.parse(await readFile(join(installed, 'core/package.json'), 'utf8'));
+assert.equal(manifest.peerDependencies['@semaphile/core'], coreManifest.version);
 assert.equal(manifest.scripts.install, undefined);
 assert.equal(
   await readFile(join(installed, 'redis/dist/protocol.lua'), 'utf8'),

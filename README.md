@@ -11,8 +11,9 @@ Choose **SQLite** for processes on the same machine with a daemonless local
 pool, **Redis** for processes on different machines sharing one Redis endpoint,
 or **memory** for callers sharing one JavaScript runtime.
 
-This is experimental software. The current development version is
-`2026.9.2-dev.0`; packages are not published. Node >=22.18 is required for source
+This is experimental software. Version `0.1.0` is distributed as installable
+archives on [GitHub Releases](https://github.com/semaphile/semaphile/releases/tag/v0.1.0);
+the packages are not published to npm. See the [release guide](docs/releases.md). Node >=22.18 is required for source
 builds. Runtime verification covers Node 22.23/Linux, Node 26.7/macOS and
 Bun 1.4.2 on macOS arm64 and Linux x64.
 The current Rust, recovery, HTTP and maintenance implementation passes the same
@@ -107,6 +108,7 @@ This implements a scheduling API, not the complete Bottleneck facade.
 
 ## Find your way around
 
+- [Changelog](CHANGELOG.md)
 - [Documentation index](docs/README.md)
 - [Contributing and coding conventions](CONTRIBUTING.md)
 - [Architecture and one request's lifecycle](docs/architecture.md)

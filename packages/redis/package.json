@@ -1,6 +1,6 @@
 {
   "name": "@semaphile/redis",
-  "version": "2026.9.2-dev.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -32,7 +32,7 @@
     "@semaphile/core": "file:../core"
   },
   "peerDependencies": {
-    "@semaphile/core": "2026.9.2-dev.0"
+    "@semaphile/core": "0.1.0"
   },
   "license": "MIT"
 }

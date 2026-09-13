@@ -17,3 +17,5 @@ for readers who have no access to development conversations or private records.
 Package references: [SQLite](../packages/core/README.md) and
 [Redis](../packages/redis/README.md), plus the
 [messaging library and CLI](../packages/messaging/README.md).
+
+See [releases](releases.md) for installing verified archives and the maintainer release process.

@@ -3,6 +3,7 @@ import { readdir, readFile, access } from 'node:fs/promises';
 import { resolve, dirname, relative } from 'node:path';
 const files = [
   'README.md',
+  'CHANGELOG.md',
   'CONTRIBUTING.md',
   'SPEC.md',
   'packages/core/README.md',
