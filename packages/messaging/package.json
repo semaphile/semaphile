@@ -1,7 +1,6 @@
 {
   "name": "@semaphile/messaging",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -45,5 +44,25 @@
       "optional": true
     }
   },
-  "license": "MIT"
+  "license": "MIT",
+  "description": "Durable local agent messaging with SQLite mailboxes and the semaphile CLI.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/semaphile/semaphile.git",
+    "directory": "packages/messaging"
+  },
+  "homepage": "https://github.com/semaphile/semaphile/tree/main/packages/messaging#readme",
+  "bugs": {
+    "url": "https://github.com/semaphile/semaphile/issues"
+  },
+  "keywords": [
+    "agents",
+    "coordination",
+    "typescript",
+    "messaging"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }

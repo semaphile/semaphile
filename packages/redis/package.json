@@ -1,7 +1,6 @@
 {
   "name": "@semaphile/redis",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -34,5 +33,25 @@
   "peerDependencies": {
     "@semaphile/core": "0.1.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "description": "Redis-backed shared rate limiting for agents across processes and machines.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/semaphile/semaphile.git",
+    "directory": "packages/redis"
+  },
+  "homepage": "https://github.com/semaphile/semaphile/tree/main/packages/redis#readme",
+  "bugs": {
+    "url": "https://github.com/semaphile/semaphile/issues"
+  },
+  "keywords": [
+    "agents",
+    "coordination",
+    "typescript",
+    "rate-limiting"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
 }

@@ -9,7 +9,7 @@ format 1.4; older experimental stores are rejected.
 
 Reusable TypeScript client built on the validated SQLite coordination
 backend. It is an integration increment, not a production-ready release.
-The package is private, has no install hook and has no runtime dependencies.
+The package has no install hook and has no runtime dependencies.
 The compiler and Node type definitions are pinned development dependencies.
 
 Runtime verification targets Node >=22.18 and modern Bun, starting with
