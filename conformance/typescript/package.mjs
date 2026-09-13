@@ -235,7 +235,7 @@ console.log('PASS type errors fail build before native compilation and preserve 
 await rm(join(installed, 'dist/native'), { recursive: true, force: true });
 for (const file of await readdir(join(installed, 'dist/src'))) {
   if (
-    !/^(memory|memory-backend|memory-control|control-state|maintenance-state|recovery-state|client|client-errors|deadline|execution|administration|http|http-policy|response-lifetime|config|recovery-policy)\./.test(
+    !/^(memory|memory-backend|memory-control|control-state|maintenance-state|recovery-state|client|client-errors|deadline|execution|administration|http|http-policy|response-lifetime|config|recovery-policy|telemetry)\./.test(
       file,
     )
   ) {

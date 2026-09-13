@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile, cp } from 'node:fs/promises';
-import { resolve, join } from 'node:path';
+import { mkdir, mkdtemp, writeFile, cp, readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { resolve, join, dirname } from 'node:path';
 await mkdir('.tmp/otel', { recursive: true });
 const root = await mkdtemp(resolve('.tmp/otel/package-'));
 const env = {
@@ -38,6 +39,42 @@ for (const name of ['core', 'redis', 'otel', 'messaging']) {
       assert(pack.files.some((file) => file.path === path));
     }
   }
+}
+// Supply every dependency archive explicitly: npm ci caches tarballs without
+// necessarily caching registry metadata needed by a fresh offline consumer.
+const dependencies = new Map();
+async function gather(directory) {
+  const manifest = JSON.parse(await readFile(join(directory, 'package.json'), 'utf8'));
+  const require = createRequire(join(directory, 'package.json'));
+  for (const name of Object.keys({
+    ...manifest.dependencies,
+    ...(manifest.name === '@semaphile/otel' ? { '@opentelemetry/api': '*' } : {}),
+  })) {
+    if (name.startsWith('@semaphile/') || dependencies.has(name)) {
+      continue;
+    }
+    let target = dirname(require.resolve(name));
+    for (;;) {
+      try {
+        if (JSON.parse(await readFile(join(target, 'package.json'), 'utf8')).name === name) {
+          break;
+        }
+      } catch {}
+      const parent = dirname(target);
+      assert.notEqual(parent, target, `Cannot locate installed dependency ${name}`);
+      target = parent;
+    }
+    dependencies.set(name, target);
+    await gather(target);
+  }
+}
+await gather(resolve('packages/otel'));
+await gather(resolve('packages/redis'));
+for (const directory of dependencies.values()) {
+  const [pack] = JSON.parse(
+    run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', root], directory),
+  );
+  archives.push(join(root, pack.filename));
 }
 await writeFile(join(root, 'package.json'), JSON.stringify({ private: true, type: 'module' }));
 run('npm', ['install', '--offline', '--omit=dev', '--ignore-scripts', ...archives]);
