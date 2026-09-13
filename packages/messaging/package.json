@@ -27,20 +27,25 @@
     "oxlint-tsgolint": "7.0.2001",
     "typescript": "5.9.3",
     "@semaphile/core": "file:../core",
-    "@semaphile/redis": "file:../redis"
+    "@semaphile/redis": "file:../redis",
+    "@semaphile/otel": "file:../otel"
   },
   "bin": {
     "semaphile": "dist/src/cli.js"
   },
   "peerDependencies": {
     "@semaphile/core": "0.1.0",
-    "@semaphile/redis": "0.1.0"
+    "@semaphile/redis": "0.1.0",
+    "@semaphile/otel": "0.1.0"
   },
   "peerDependenciesMeta": {
     "@semaphile/core": {
       "optional": true
     },
     "@semaphile/redis": {
+      "optional": true
+    },
+    "@semaphile/otel": {
       "optional": true
     }
   },

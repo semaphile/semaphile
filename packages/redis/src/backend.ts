@@ -1,3 +1,4 @@
+import type { TelemetryOptions } from '@semaphile/core/client';
 // Local FIFO requests share Redis admission state; callbacks stay in the caller.
 import { createHash, randomUUID } from 'node:crypto';
 import {
@@ -22,6 +23,7 @@ export type OpenOptions = {
   create?: boolean;
   url: string;
   pool: string;
+  telemetry?: TelemetryOptions;
   namespace?: string;
   config: PoolConfig;
   ownerTimeoutMs?: number;
@@ -94,6 +96,7 @@ export class RedisBackend implements ClientBackend {
       JSON.stringify({ ...config, ownerTimeoutMs }),
       ownerTimeoutMs,
       options.create ?? true,
+      { namespace, pool: options.pool },
     );
   }
   async open(): Promise<void> {

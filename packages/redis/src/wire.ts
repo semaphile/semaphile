@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 // Own command/subscription connections and renewable owner validity. A failed
 // transport is terminal: never replay an uncertain mutation or revive an owner.
 import { createClient, ErrorReply } from '@redis/client';
@@ -55,6 +56,7 @@ export class Wire {
     readonly config: string,
     readonly ownerTimeoutMs: number,
     private readonly create = true,
+    private readonly discovery?: { namespace: string; pool: string },
   ) {
     const timeout = (this.responseTimeoutMs = Math.min(10000, Math.floor(ownerTimeoutMs / 3)));
     const options = {
@@ -90,7 +92,9 @@ export class Wire {
         (async () => {
           await Promise.all([this.command.connect(), this.subscriber.connect()]);
           await this.subscriber.subscribe(this.key + ':notify', () => this.notifyWaiters());
-          this.acceptRenewal(await this.invoke('open', { create: this.create }));
+          this.acceptRenewal(
+            await this.invoke('open', { create: this.create, discovery: this.discovery }),
+          );
         })(),
       );
     } catch (error) {
@@ -229,9 +233,12 @@ export class Wire {
         this.command.sendCommand<string>([
           'EVAL',
           script,
-          '2',
+          '3',
           this.key,
           this.key + ':notify',
+          `semaphile:discovery:${createHash('sha256')
+            .update(this.discovery?.namespace ?? '')
+            .digest('hex')}:${this.key.match(/\{[^}]+\}/)![0]}`,
           action,
           this.owner,
           String(sequence),

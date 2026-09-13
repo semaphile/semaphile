@@ -1,13 +1,52 @@
 #!/usr/bin/env node
 // Parse before opening workers; every command then shares signal and close cleanup.
+import { dirname, resolve, join } from 'node:path';
 import { poolCommand } from './pool-cli.js';
 import { openClient } from './client.js';
-import { messagingOptions } from './settings.js';
+import { loadConfig, messagingOptions } from './settings.js';
 import { init, info } from './admin.js';
 import { MessagingError } from './config.js';
 import { help, readArguments, validateAction, receivingOptions } from './cli-options.js';
 import { execute, output } from './cli-actions.js';
 async function main(): Promise<void> {
+  if (process.argv[2] === 'telemetry' && process.argv[3] === 'collect') {
+    const moduleName = '@semaphile/otel/cli';
+    let implementation: { collectorCommand: (args: string[], defaults: unknown) => Promise<void> };
+    try {
+      implementation = (await import(moduleName)) as typeof implementation;
+    } catch {
+      throw new MessagingError(
+        'CONFIG',
+        'Install @semaphile/otel alongside messaging to collect telemetry',
+      );
+    }
+    const argv = process.argv.slice(4);
+    let defaults: unknown = {};
+    if (
+      !argv.some(
+        (arg) =>
+          arg === '--root' ||
+          arg.startsWith('--root=') ||
+          arg === '--redis-url-env' ||
+          arg.startsWith('--redis-url-env=') ||
+          arg === '--help',
+      )
+    ) {
+      const project = await loadConfig();
+      const collector = project.value.telemetry?.collector;
+      defaults = {
+        ...collector,
+        otel: project.value.telemetry?.enabled ?? false,
+        sources: collector?.sources?.map((source) =>
+          source.backend === 'sqlite'
+            ? { ...source, directory: resolve(dirname(project.file), source.directory) }
+            : source,
+        ) ?? [{ name: 'local', backend: 'sqlite', directory: join(project.directory, 'pools') }],
+      };
+    }
+    await implementation.collectorCommand(argv, defaults);
+    return;
+  }
   const args = readArguments();
   const { group, action, get } = args;
   if (args.help || !group) {

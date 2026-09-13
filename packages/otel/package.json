@@ -1,0 +1,64 @@
+{
+  "name": "@semaphile/otel",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "Optional OpenTelemetry instrumentation and shared-pool monitoring for Semaphile.",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
+    },
+    "./collector": {
+      "types": "./dist/collector.d.ts",
+      "import": "./dist/collector.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings src/*.ts",
+    "lint:types": "oxlint --config ../../.oxlintrc.json --type-aware --deny-warnings src/*.ts"
+  },
+  "peerDependencies": {
+    "@opentelemetry/api": "^1.9.0"
+  },
+  "dependencies": {
+    "@opentelemetry/sdk-trace-node": "2.11.0",
+    "@opentelemetry/sdk-metrics": "2.11.0",
+    "@opentelemetry/resources": "2.11.0",
+    "@opentelemetry/exporter-trace-otlp-proto": "0.222.0",
+    "@opentelemetry/exporter-metrics-otlp-proto": "0.222.0"
+  },
+  "devDependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@semaphile/core": "file:../core",
+    "@types/node": "22.19.11",
+    "typescript": "5.9.3",
+    "oxlint": "1.82.0",
+    "oxlint-tsgolint": "7.0.2001"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/semaphile/semaphile.git",
+    "directory": "packages/otel"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

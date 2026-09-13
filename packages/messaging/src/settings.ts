@@ -5,6 +5,31 @@ import { record, listenerDefaults } from './validation.js';
 import { MessagingError, normalize } from './config.js';
 import type { ListenerOptions, OpenOptions, StoreConfig } from './types.js';
 export interface ProjectConfig {
+  telemetry?: {
+    enabled?: boolean;
+    serviceName?: string;
+    baggageAllowlist?: string[];
+    collector?: {
+      sources?: Array<
+        | { name: string; backend: 'sqlite'; directory: string }
+        | {
+            name: string;
+            backend: 'redis';
+            urlEnv?: string;
+            rootUrlsEnv?: string[];
+            namespace?: string;
+          }
+      >;
+      pools?: string[];
+      include?: string[];
+      exclude?: string[];
+      watchPools?: boolean;
+      allowOverlap?: boolean;
+      host?: string;
+      port?: number;
+      intervalMs?: number;
+    };
+  };
   version: 1;
   directory: string;
   pools?: Record<string, Record<string, unknown>>;
@@ -48,7 +73,80 @@ async function validateProject(value: ProjectConfig): Promise<void> {
   if (value?.version !== 1 || typeof value.directory !== 'string' || !value.directory) {
     throw new MessagingError('CONFIG', 'Config requires version: 1 and a directory');
   }
-  record(value, 'config', ['version', 'directory', 'pools', 'messaging']);
+  record(value, 'config', ['version', 'directory', 'pools', 'messaging', 'telemetry']);
+  if (value.telemetry !== undefined) {
+    const telemetry = record(value.telemetry, 'telemetry', [
+      'enabled',
+      'serviceName',
+      'baggageAllowlist',
+      'collector',
+    ]);
+    if (telemetry.enabled !== undefined && typeof telemetry.enabled !== 'boolean') {
+      throw new MessagingError('CONFIG', 'Invalid telemetry enabled');
+    }
+    if (telemetry.serviceName !== undefined && typeof telemetry.serviceName !== 'string') {
+      throw new MessagingError('CONFIG', 'Invalid telemetry serviceName');
+    }
+    if (
+      telemetry.baggageAllowlist !== undefined &&
+      (!Array.isArray(telemetry.baggageAllowlist) ||
+        telemetry.baggageAllowlist.some((v) => typeof v !== 'string'))
+    ) {
+      throw new MessagingError('CONFIG', 'Invalid baggage allowlist');
+    }
+    if (telemetry.collector !== undefined) {
+      const collector = record(telemetry.collector, 'collector', [
+        'sources',
+        'pools',
+        'include',
+        'exclude',
+        'watchPools',
+        'allowOverlap',
+        'host',
+        'port',
+        'intervalMs',
+      ]);
+      for (const key of ['watchPools', 'allowOverlap']) {
+        if (collector[key] !== undefined && typeof collector[key] !== 'boolean') {
+          throw new MessagingError('CONFIG', 'Collector switches must be booleans');
+        }
+      }
+      for (const key of ['pools', 'include', 'exclude']) {
+        const items = collector[key];
+        if (
+          items !== undefined &&
+          (!Array.isArray(items) || items.some((item) => typeof item !== 'string' || !item))
+        ) {
+          throw new MessagingError('CONFIG', 'Invalid collector selectors');
+        }
+      }
+      if (collector.sources !== undefined) {
+        if (!Array.isArray(collector.sources)) {
+          throw new MessagingError('CONFIG', 'Collector sources must be an array');
+        }
+        for (const input of collector.sources) {
+          const source = record(input, 'source', [
+            'name',
+            'backend',
+            'directory',
+            'urlEnv',
+            'rootUrlsEnv',
+            'namespace',
+          ]);
+          if (
+            typeof source.name !== 'string' ||
+            !source.name ||
+            !['sqlite', 'redis'].includes(String(source.backend))
+          ) {
+            throw new MessagingError('CONFIG', 'Invalid collector source');
+          }
+          if (source.backend === 'sqlite' && typeof source.directory !== 'string') {
+            throw new MessagingError('CONFIG', 'Local source requires directory');
+          }
+        }
+      }
+    }
+  }
   if (value.pools !== undefined) {
     for (const [name, config] of Object.entries(record(value.pools, 'pools'))) {
       if (!/^[a-zA-Z0-9_-]+$/.test(name)) {

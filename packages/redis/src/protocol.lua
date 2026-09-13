@@ -93,7 +93,12 @@ local function commit(reply, notify)
   if notify then
     redis.call('PUBLISH', KEYS[2], 'changed')
   end
-  redis.call('SET', KEYS[1], updated)
+  if action == 'open' and input.discovery ~= nil and input.discovery ~= null then
+    local metadata = cjson.encode({format=1,namespace=input.discovery.namespace,pool=input.discovery.pool,key=KEYS[1]})
+    redis.call('MSET', KEYS[1], updated, KEYS[3], metadata)
+  else
+    redis.call('SET', KEYS[1], updated)
+  end
   return encodedReply
 end
 if action == 'renew' then

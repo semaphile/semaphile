@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import { MessagingError, mode } from './config.js';
 import type { ReceiveOptions } from './types.js';
 export const help = `Usage: semaphile init [--directory PATH]
+       semaphile telemetry collect [--help]
        semaphile info [--store PATH]
        semaphile pool <status|drain|wait|acknowledge|resume> [--name NAME | --store PATH]
        semaphile message <command> [--store PATH] [options]

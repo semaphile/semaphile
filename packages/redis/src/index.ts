@@ -19,7 +19,7 @@ export class Limiter extends ScheduledLimiter {
   static async open(options: OpenOptions): Promise<Limiter> {
     const backend = new RedisBackend(options);
     await backend.open();
-    return new Limiter(backend);
+    return new Limiter(backend, options.telemetry, 'redis');
   }
 }
 export const openLimiter = (options: OpenOptions): Promise<Limiter> => Limiter.open(options);
