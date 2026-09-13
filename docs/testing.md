@@ -73,7 +73,7 @@ bun conformance/run.mjs administration
 ```
 
 Repeat on macOS arm64 and Linux x64. Tested Node versions are 26.7 on macOS
-and 22.23/26.3 on Linux; the declared minimum is 22.18. A verified version does not
+and 22.23 on Linux; the declared minimum is 22.18. A verified version does not
 establish compatibility with every future version. To alternate Node/Bun
 participants in SQLite's backend suite:
 
