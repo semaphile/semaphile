@@ -100,7 +100,9 @@ export function attemptAdmission(
           context.db.prepare('DELETE FROM owners WHERE id=?').run(owner);
         }
         if (budget.refreshed) {
-          writeBudget(context.db, budget);
+          if (!allowed) {
+            writeBudget(context.db, budget);
+          }
           context.trace('refreshed', '', context.owner);
         }
         if (allowed) {

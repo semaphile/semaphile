@@ -26,8 +26,8 @@ export class AttemptTimeoutError extends Error {
     this.name = 'AttemptTimeoutError';
   }
 }
-export const abortError = () =>
-  Object.assign(new Error('Operation aborted'), { name: 'AbortError' });
+export const abortError = (message = 'Operation aborted') =>
+  Object.assign(new Error(message), { name: 'AbortError' });
 export function validateAdmission(backend: ClientBackend, admission: Admission): void {
   // Redis timestamps belong to its server; use the backend's monotonic bound.
   const expired =

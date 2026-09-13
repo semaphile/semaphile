@@ -121,8 +121,7 @@ export function controlEligibility(
       ? state.maintenance.operations[id]
       : undefined;
     if (
-      !ticket ||
-      ticket.owner !== owner ||
+      ticket?.owner !== owner ||
       ticket.generation !== generation ||
       ticket.activeAttempts !== 0
     ) {
@@ -185,7 +184,7 @@ export function completeControlAttempt(
   now: number,
 ): boolean {
   const binding = Object.hasOwn(state.bindings, lease) ? state.bindings[lease] : undefined;
-  if (!binding || binding.owner !== owner) {
+  if (binding?.owner !== owner) {
     return false;
   }
   requestTransition(() => completeRecoveryAttempt(state.recovery, policy, lease, outcome, now));

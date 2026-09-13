@@ -4,7 +4,7 @@ import { Presence } from './presence.js';
 import { normalize, MessagingError, integer } from './config.js';
 import { send } from './send.js';
 import { receive, nextDeadline, claim, retry } from './delivery.js';
-import { event, events, history, validateEvent, trimEvents } from './storage.js';
+import { event, events, history, validateEvent } from './storage.js';
 import type { NativeSubscription } from './native.js';
 import type { EventInput, HistoryOptions, Receipt, ReceiveOptions, SendOptions } from './types.js';
 interface Command {
@@ -124,14 +124,15 @@ function execute(action: string, args: Record<string, unknown>): unknown {
     case 'events':
       return events(store, args as HistoryOptions);
     case 'append':
-      return store.mutate([], () => {
-        const id = event(store, validateEvent(args as unknown as EventInput));
-        trimEvents(store);
-        if (!store.db.prepare('SELECT 1 FROM events WHERE seq=?').get(id)) {
-          throw new MessagingError('REFUSED', 'Event cannot fit within maxContentBytes');
-        }
-        return id;
-      });
+      return store.mutate(
+        [],
+        () => event(store, validateEvent(args as unknown as EventInput)),
+        (id) => {
+          if (!store.db.prepare('SELECT 1 FROM events WHERE seq=?').get(id)) {
+            throw new MessagingError('REFUSED', 'Event cannot fit within maxContentBytes');
+          }
+        },
+      );
     case 'info':
       return {
         format: FORMAT,

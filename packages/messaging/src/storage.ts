@@ -11,15 +11,17 @@ import { historyOptions } from './validation.js';
 import { integer, text } from './config.js';
 export function event(store: Database, input: EventInput): number {
   const { db } = store;
-  db.prepare('INSERT INTO events(at,kind,agent,subject,topic,payload) VALUES(?,?,?,?,?,?)').run(
-    Date.now(),
-    input.kind,
-    input.agent ?? null,
-    input.subject ?? null,
-    input.topic ?? null,
-    input.payload ?? null,
-  );
-  return Number(db.prepare('SELECT last_insert_rowid() AS id').get()!.id);
+  const result = db
+    .prepare('INSERT INTO events(at,kind,agent,subject,topic,payload) VALUES(?,?,?,?,?,?)')
+    .run(
+      Date.now(),
+      input.kind,
+      input.agent ?? null,
+      input.subject ?? null,
+      input.topic ?? null,
+      input.payload ?? null,
+    );
+  return Number(result.lastInsertRowid);
 }
 export function trimEvents(store: Database): void {
   const { db, config } = store;

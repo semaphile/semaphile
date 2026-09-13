@@ -1,7 +1,7 @@
 // Backend-neutral callback and shutdown lifecycle. No filesystem/native imports.
 import type { Admission, Operations } from './protocol.js';
 import { normalizeExpiration, validateWeight } from './config.js';
-import { QueueTimeoutError, validateAdmission } from './client-errors.js';
+import { abortError, QueueTimeoutError, validateAdmission } from './client-errors.js';
 import {
   startExecution,
   type ExecuteOptions,
@@ -77,8 +77,6 @@ export interface ClientBackend {
   detach(): Promise<void>;
   isExpired?(admission: Admission): boolean;
 }
-const abortError = () =>
-  Object.assign(new Error('Scheduled job aborted before starting'), { name: 'AbortError' });
 const closedError = () => new Error('Limiter is closing or closed');
 
 type Failure = { failed: boolean; error?: unknown };
@@ -135,7 +133,7 @@ export class ScheduledLimiter {
       return Promise.reject(error);
     }
     if (options.signal?.aborted) {
-      return Promise.reject(abortError());
+      return Promise.reject(abortError('Scheduled job aborted before starting'));
     }
     let resolveResult!: (value: T | PromiseLike<T>) => void,
       rejectResult!: (error: unknown) => void;
@@ -154,7 +152,7 @@ export class ScheduledLimiter {
       queueTimer = undefined;
     };
     const controller = new AbortController();
-    const abort = () => job.cancel(abortError());
+    const abort = () => job.cancel(abortError('Scheduled job aborted before starting'));
     const job: Job = {
       running: false,
       controller,

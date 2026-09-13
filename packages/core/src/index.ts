@@ -1,3 +1,4 @@
+import { abortError } from './client-errors.js';
 // Public scheduling/lifecycle API. Clients in one JS runtime share a coordinator
 // for each canonical pool; separate processes coordinate through the same files.
 import { mkdir, realpath, stat } from 'node:fs/promises';
@@ -24,8 +25,6 @@ export type { ScheduleOptions, CloseOptions, Snapshot } from './client.js';
 const registryKey = Symbol.for('semaphile.node.coordinators.v5');
 const runtime = globalThis as typeof globalThis & { [registryKey]?: Map<string, Coordinator> };
 const registry = (runtime[registryKey] ??= new Map());
-const abortError = () =>
-  Object.assign(new Error('Scheduled job aborted before starting'), { name: 'AbortError' });
 
 class Coordinator {
   readonly key: string;
@@ -93,7 +92,7 @@ class Coordinator {
       request.cleanup();
       if (message.error) {
         const error = message.aborted
-          ? abortError()
+          ? abortError('Scheduled job aborted before starting')
           : message.errorName === 'PoolDrainingError'
             ? new PoolDrainingError(message.generation!)
             : message.errorName === 'CircuitOpenError'

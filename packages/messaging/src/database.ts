@@ -113,7 +113,7 @@ export class Database {
     const fd = this.native.open(path, 'notification');
     fd.close();
   }
-  mutate<T>(recipients: string[], operation: () => T): T {
+  mutate<T>(recipients: string[], operation: () => T, validate?: (result: T) => void): T {
     for (const recipient of new Set(recipients)) {
       this.ensureNotify(recipient);
       const fd = this.native.open(this.notifyPath(recipient), 'notification');
@@ -127,6 +127,8 @@ export class Database {
     try {
       const result = operation();
       trimEvents(this);
+      // Validate retention-sensitive results before commit, after the single trim.
+      validate?.(result);
       if (contentBytes(this) > this.config.maxContentBytes) {
         throw new MessagingError('REFUSED', 'maxContentBytes reached');
       }
