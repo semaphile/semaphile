@@ -55,7 +55,7 @@ The caller chooses a local, private pool directory. All users of that pool
 must supply identical normalized configuration. maxConcurrent is a positive
 integer or null for unlimited capacity; expirationMs is null/omitted for
 no expiry or a positive integer.
-minTime is an integer interval in milliseconds (default0) between shared
+minTime is an integer interval in milliseconds (default 0) between shared
 admissions. All participants must agree on it. Release, expiration and
 owner death do not refund this interval. It spaces lease admission; it
 cannot control network dispatch after a caller is suspended.
@@ -64,7 +64,7 @@ are rejected; use a fresh directory after stopping old clients. Existing
 pool files are never deleted or migrated automatically.
 
 schedule(task, { weight: 2 }) reserves two concurrency units and spends two
-reservoir tokens. Weight defaults1; weights exceeding a finite concurrency
+reservoir tokens. Weight defaults 1; weights exceeding a finite concurrency
 cap reject immediately. reservoir defaults to null (unlimited), or supplies
 an initial nonnegative integer balance. Optional reservoirRefreshAmount and
 reservoirRefreshInterval must appear together; the interval is milliseconds.

@@ -17,8 +17,11 @@ for (const name of await readdir('docs', { recursive: true })) {
 const errors = [];
 for (const file of files) {
   const text = await readFile(file, 'utf8');
-  if (/\/(?:Users|home)\/[^/\s]+\/|\b(?!127\.0\.0\.1\b)(?:\d{1,3}\.){3}\d{1,3}\b/.test(text)) {
-    errors.push(`${file}: private machine detail`);
+  if (/\/(?:Users|home)\/[^/\s]+\/|\/root\//.test(text)) {
+    errors.push(`${file}: private home path`);
+  }
+  if (/\b(?!127\.0\.0\.1\b)(?:\d{1,3}\.){3}\d{1,3}\b/.test(text)) {
+    errors.push(`${file}: non-loopback IPv4 address`);
   }
   for (const match of text.matchAll(/\]\(([^()\r\n]*)\)/g)) {
     const target = match[1].split('#')[0];

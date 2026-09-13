@@ -17,15 +17,15 @@ npm run test:administration
 
 | Suite            | Scenarios | What it exercises                                                                      |
 | ---------------- | --------- | -------------------------------------------------------------------------------------- |
-| Core             | 274       | Native/SQLite/memory baseline182, execution36, HTTP28 each on memory and SQLite        |
-| Redis            | 108       | Atomic protocol/recovery/client/fault/package baseline60, execution20, HTTP28          |
-| Messaging        | 76        | Durable claims, retention, crash/claim fencing, listeners, CLI and installed consumers |
+| Core             | 276       | Native/SQLite/memory baseline 184, execution 36, HTTP 28 each on memory and SQLite     |
+| Redis            | 111       | Atomic protocol/recovery/client/fault/package baseline 63, execution 20, HTTP 28       |
+| Messaging        | 82        | Durable claims, retention, crash/claim fencing, listeners, CLI and installed consumers |
 | Administration   | 14        | SQLite/Redis CLI drain, uncertainty, signal cleanup, config drift and input refusal    |
 | Redis cross-host | 2         | Node/Bun host pairings sharing one Redis endpoint                                      |
 
-The same 472 default scenarios pass on macOS arm64 and Linux x64 under Node and
-Bun. The Rust OS crate separately passes12 tests on each platform; formatting
-and Clippy use Rust1.93.1. Cross-host checks are additional to the local totals.
+The same 483 default scenarios pass on macOS arm64 and Linux x64 under Node and
+Bun. The Rust OS crate separately passes 12 tests on each platform; formatting
+and Clippy use Rust 1.93.1. Cross-host checks are additional to the local totals.
 
 The Redis recovery increment has additional local model checks:
 
@@ -34,7 +34,7 @@ node conformance/redis/backend-order.mjs
 node conformance/redis/control-model.mjs
 ```
 
-The first runs five queue/lifecycle cases with controlled command replies. The
+The first runs seven protocol/queue/lifecycle cases with controlled command replies. The
 second requires Lua 5.4 (`SEMAPHILE_LUA_BIN` overrides its executable) and runs 14
 cases against the actual composed Lua source using deterministic Redis-command
 substitutes. Neither opens a network connection or proves live Redis atomicity,
@@ -73,7 +73,7 @@ bun conformance/run.mjs administration
 ```
 
 Repeat on macOS arm64 and Linux x64. Tested Node versions are 26.7 on macOS
-and 22.23 on Linux; the declared minimum is 22.18. A verified version does not
+and 22.23/26.3 on Linux; the declared minimum is 22.18. A verified version does not
 establish compatibility with every future version. To alternate Node/Bun
 participants in SQLite's backend suite:
 
@@ -123,8 +123,8 @@ SEMAPHILE_TEST_REMOTE_BUN=/absolute/path/to/bun \
 ```
 
 The driver opens SSH reverse forwards bound to loopback for its isolated Redis
-and HTTP fixture. Each pairing submits20 requests; the test requires both hosts
-to participate simultaneously and a shared peak of5. A fixture barrier holds
+and HTTP fixture. Each pairing submits 20 requests; the test requires both hosts
+to participate simultaneously and a shared peak of 5. A fixture barrier holds
 the first batch until all five capacity slots are occupied; saturation does
 not depend on a fixed network-response delay. It closes its tunnel and
 fixtures afterwards. No deployment address is embedded in the test.
