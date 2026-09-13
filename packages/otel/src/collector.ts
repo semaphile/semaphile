@@ -293,9 +293,13 @@ export async function startCollector(options: CollectorOptions) {
       const found = new Map<string, Candidate>();
       const successful = new Set<string>();
       for (const source of sources) {
+        if (performance.now() >= deadline) {
+          sourceFailure = true;
+          break;
+        }
         try {
           for (const candidate of await source.discover(deadline)) {
-            if (selected(candidate)) {
+            if (selected(candidate) && !found.has(candidate.id)) {
               found.set(candidate.id, candidate);
             }
           }
@@ -317,6 +321,13 @@ export async function startCollector(options: CollectorOptions) {
       if (entries.size + additions.length > 1024) {
         sourceFailure = true;
         throw new Error('Collector exceeds retained pool bound');
+      }
+      for (const candidate of found.values()) {
+        const existing = entries.get(candidate.id);
+        if (existing && existing.candidate.source !== candidate.source) {
+          warnings.delete(`${existing.candidate.source}/${existing.candidate.pool}`);
+          existing.candidate = candidate;
+        }
       }
       for (const candidate of additions) {
         entries.set(candidate.id, { candidate, owners: [] });

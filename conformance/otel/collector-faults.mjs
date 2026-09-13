@@ -4,11 +4,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { EventEmitter } from 'node:events';
 const built = await readFile('packages/otel/dist/collector.js', 'utf8');
-for (const mode of ['startup', 'growth']) {
+for (const mode of ['startup', 'growth', 'deadline', 'alias']) {
   let now = 0,
     generation = 0,
     next = 0,
-    active = 0;
+    active = 0,
+    scans = 0;
   const ids = new Map();
   const server = Object.assign(new EventEmitter(), {
     setTimeout() {},
@@ -28,12 +29,23 @@ for (const mode of ['startup', 'growth']) {
     createServer: () => server,
     realpath: async (p) => p,
     stat: async (p) => {
+      if (mode === 'alias') {
+        p = p.replace('/alias/', '/root/');
+      }
       if (!ids.has(p)) {
         ids.set(p, ++next);
       }
       return { dev: 1n, ino: BigInt(ids.get(p)) };
     },
     opendir: async (root) => {
+      scans++;
+      if (mode === 'deadline') {
+        now = 6000;
+        throw Error('late source');
+      }
+      if (mode === 'alias' && generation && root === '/root') {
+        throw Error('source unavailable');
+      }
       if (root === '/broken' && generation) {
         throw Error('unavailable');
       }
@@ -43,7 +55,9 @@ for (const mode of ['startup', 'growth']) {
             ? ['a', 'b']
             : root === '/broken'
               ? ['fixed']
-              : [String(generation)]) {
+              : mode === 'alias'
+                ? ['fixed']
+                : [String(generation)]) {
             yield { name, isDirectory: () => true };
           }
         },
@@ -56,8 +70,11 @@ for (const mode of ['startup', 'growth']) {
         }
         active++;
         return {
-          valid: () => true,
+          valid: () => !(mode === 'alias' && generation && path.startsWith('/root/')),
           owners: async () => {
+            if (mode === 'alias' && generation && path.startsWith('/root/')) {
+              throw Error('retired source');
+            }
             if (mode === 'startup') {
               now = 6000;
             }
@@ -93,9 +110,36 @@ for (const mode of ['startup', 'growth']) {
     sources: [
       { name: 'local', backend: 'sqlite', directory: '/root' },
       ...(mode === 'growth' ? [{ name: 'broken', backend: 'sqlite', directory: '/broken' }] : []),
+      ...(mode === 'alias' ? [{ name: 'alias', backend: 'sqlite', directory: '/alias' }] : []),
+      ...(mode === 'deadline'
+        ? Array.from({ length: 63 }, (_, i) => ({
+            name: `source${i}`,
+            backend: 'sqlite',
+            directory: `/source${i}`,
+          }))
+        : []),
     ],
   };
-  if (mode === 'startup') {
+  if (mode === 'deadline') {
+    await assert.rejects(startCollector(options), /discovery failed/);
+    assert.equal(scans, 1);
+    console.log('PASS exhausted discovery budget prevents starting more source operations');
+  } else if (mode === 'alias') {
+    const collector = await startCollector(options);
+    try {
+      assert.equal(collector.health().pools.length, 1);
+      generation = 1;
+      await collector.refresh();
+      await collector.refresh();
+      const [pool] = collector.health().pools;
+      assert.equal(pool.source, 'alias');
+      assert.equal(pool.error, undefined);
+      assert.equal(active, 1);
+    } finally {
+      await collector.close();
+    }
+    console.log('PASS canonical pool acquisition can move to a healthy source alias');
+  } else if (mode === 'startup') {
     await assert.rejects(startCollector(options), /verify every selected pool/);
     assert.equal(active, 0);
     console.log(
@@ -118,4 +162,4 @@ for (const mode of ['startup', 'growth']) {
   }
 }
 delete globalThis.__collectorFixture;
-console.log('RESULT 2/2 passed');
+console.log('RESULT 4/4 passed');
