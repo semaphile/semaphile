@@ -717,3 +717,7 @@ Prometheus receivers, message context/dedupe/redelivery and interrupted upgrades
 Retain conformance, private raw receipts, fresh reviews and handoffs per milestone.
 No publication, Evie source edits, dashboard, durable ledger, proxy, automatic
 collector election/restart or OTLP logs are included in this increment.
+
+Collector engineering: add a nonblocking native gate acquisition for observation
+and collector registration. Busy gates produce a failed sample, not a blocking
+wait or an admission retry loop. Keep all SQLite/native work on a worker thread.

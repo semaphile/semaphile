@@ -111,6 +111,17 @@ impl File {
         Ok(Gate { guard })
     }
 
+    /// Observation may refuse a busy gate instead of waiting on admission work.
+    /// This performs one nonblocking kernel acquisition, never a retry timer.
+    pub fn try_gate(&self) -> io::Result<Option<Gate<'_>>> {
+        let guard = self.access()?;
+        match flock(guard.as_ref().unwrap(), libc::LOCK_EX | libc::LOCK_NB) {
+            Ok(()) => Ok(Some(Gate { guard })),
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => Ok(None),
+            Err(error) => Err(error),
+        }
+    }
+
     pub fn pulse(&self) -> io::Result<()> {
         let guard = self.access()?;
         loop {

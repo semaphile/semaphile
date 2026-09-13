@@ -1,3 +1,4 @@
+import type { Telemetry } from './telemetry.js';
 // An execution owns one accepted operation across all attempts. Caller deadlines
 // settle promptly; finished still tracks actual callback and storage cleanup.
 import { randomUUID } from 'node:crypto';
@@ -84,6 +85,7 @@ export function startExecution<T>(
   task: (context: AttemptContext) => T | PromiseLike<T>,
   input: ExecuteOptions<T>,
   cleanupFailure: (error: unknown) => void,
+  telemetry?: Telemetry,
 ): ExecutionHandle<T> {
   const submitted = performance.now();
   if (typeof task !== 'function') {
@@ -110,6 +112,7 @@ export function startExecution<T>(
   ) {
     throw new RangeError('Invalid queueTimeoutMs');
   }
+  const observation = telemetry?.begin('execute');
   const controller = new AbortController();
   let running = false,
     settling = false,
@@ -124,6 +127,7 @@ export function startExecution<T>(
       return;
     }
     controller.abort(error);
+    observation?.settle('cancelled');
     rejectResult(error);
   };
   const abort = () => cancel(abortError());
@@ -153,6 +157,9 @@ export function startExecution<T>(
       operation = await backend.call('accept', { operationId: randomUUID() });
       for (let attempt = 1; attempt <= policy.retry.maxAttempts; attempt++) {
         checkCancelled();
+        if (attempt > 1) {
+          observation?.emit('queued', { attempt });
+        }
         const queueAt = attempt === 1 ? submitted : performance.now();
         queueTimer?.stop();
         queueTimer = deadline(queueTimeoutMs === undefined ? null : queueAt + queueTimeoutMs, () =>
@@ -174,6 +181,7 @@ export function startExecution<T>(
               controller.signal,
             ),
           );
+          observation?.emit('leaseGranted', { weight, attempt });
           queueTimer.check();
           checkCancelled();
           if (backend.failure) {
@@ -186,21 +194,30 @@ export function startExecution<T>(
             policy.attemptTimeoutMs === null ? null : performance.now() + policy.attemptTimeoutMs,
             () => cancel(new AttemptTimeoutError(policy.attemptTimeoutMs!)),
           );
+          observation?.emit('attemptStarted', { attempt });
+          const started = performance.now();
           try {
-            completion = {
-              status: 'fulfilled',
-              value: await task(
+            const invoke = () =>
+              task(
                 Object.freeze({
-                  admission,
-                  operationId: operation.id,
+                  admission: admission!,
+                  operationId: operation!.id,
                   attempt,
                   signal: attemptController.signal,
                 }),
-              ),
+              );
+            completion = {
+              status: 'fulfilled',
+              value: await (observation ? observation.run(invoke) : invoke()),
             };
           } catch (error) {
             completion = { status: 'rejected', error };
           }
+          observation?.emit('attemptCompleted', {
+            attempt,
+            status: completion.status,
+            durationMs: performance.now() - started,
+          });
           attemptTimer.check();
           attemptTimer.stop();
           checkCancelled();
@@ -228,6 +245,11 @@ export function startExecution<T>(
           if (admission) {
             try {
               await backend.call('release', { lease: admission.leaseId, outcome });
+              observation?.emit('leaseReleased', {
+                attempt,
+                status: 'fulfilled',
+                state: outcome.kind,
+              });
             } catch (error) {
               cleanupFailure(error);
               failure = {
@@ -257,11 +279,9 @@ export function startExecution<T>(
           break;
         }
         // Provider cooldown is also enforced atomically by the shared backend.
-        await delayUntil(
-          performance.now() +
-            Math.max(retryDelay(policy.retry, attempt), outcome.retryAfterMs ?? 0),
-          controller.signal,
-        );
+        const delayMs = Math.max(retryDelay(policy.retry, attempt), outcome.retryAfterMs ?? 0);
+        observation?.emit('retryScheduled', { attempt, delayMs });
+        await delayUntil(performance.now() + delayMs, controller.signal);
       }
     } catch (error) {
       completion = { status: 'rejected', error };
@@ -281,6 +301,8 @@ export function startExecution<T>(
       overall.stop();
       options.signal?.removeEventListener('abort', abort);
     }
+    observation?.settle(completion?.status ?? 'rejected');
+    observation?.end();
     if (completion?.status === 'fulfilled') {
       resolveResult(completion.value);
     } else if (completion?.status === 'rejected') {

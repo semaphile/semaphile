@@ -1,3 +1,10 @@
+import { Telemetry, type TelemetryOptions } from './telemetry.js';
+export type {
+  TelemetryOptions,
+  LifecycleEvent,
+  Instrumentation,
+  InstrumentationScope,
+} from './telemetry.js';
 // Backend-neutral callback and shutdown lifecycle. No filesystem/native imports.
 import type { Admission, Operations } from './protocol.js';
 import { normalizeExpiration, validateWeight } from './config.js';
@@ -96,7 +103,13 @@ export class ScheduledLimiter {
   private closing: Promise<void> | undefined;
   private isClosing = false;
   private readonly cleanupErrors: unknown[] = [];
-  protected constructor(backend: ClientBackend) {
+  private readonly telemetry: Telemetry;
+  protected constructor(
+    backend: ClientBackend,
+    telemetry?: TelemetryOptions,
+    backendName = 'custom',
+  ) {
+    this.telemetry = new Telemetry(backendName, telemetry);
     this.backend = backend;
     this.administration = createAdministration(backend);
     this.maintenance = this.administration.api;
@@ -135,6 +148,7 @@ export class ScheduledLimiter {
     if (options.signal?.aborted) {
       return Promise.reject(abortError('Scheduled job aborted before starting'));
     }
+    const observation = this.telemetry.begin('schedule');
     let resolveResult!: (value: T | PromiseLike<T>) => void,
       rejectResult!: (error: unknown) => void;
     const result = new Promise<T>((yes, no) => {
@@ -164,6 +178,7 @@ export class ScheduledLimiter {
         cancelled = true;
         clearQueueTimer();
         controller.abort();
+        observation.settle('cancelled');
         rejectResult(error);
         options.signal?.removeEventListener('abort', abort);
       },
@@ -194,6 +209,7 @@ export class ScheduledLimiter {
         // Save the identity before checking cancellation: even a late grant owns
         // capacity until this client explicitly releases it.
         lease = admission.leaseId;
+        observation.emit('leaseGranted', { weight, attempt: 1 });
         // A delayed event loop can deliver admission before an overdue timer.
         if (queueDeadline !== undefined && performance.now() >= queueDeadline) {
           job.cancel(new QueueTimeoutError(queueTimeoutMs!));
@@ -206,7 +222,23 @@ export class ScheduledLimiter {
           clearQueueTimer();
           job.running = true;
           options.signal?.removeEventListener('abort', abort);
-          value = await task(admission);
+          observation.emit('attemptStarted', { attempt: 1 });
+          const started = performance.now();
+          try {
+            value = await observation.run(() => task(admission));
+            observation.emit('attemptCompleted', {
+              attempt: 1,
+              status: 'fulfilled',
+              durationMs: performance.now() - started,
+            });
+          } catch (error) {
+            observation.emit('attemptCompleted', {
+              attempt: 1,
+              status: 'rejected',
+              durationMs: performance.now() - started,
+            });
+            throw error;
+          }
         }
       } catch (error) {
         if (!cancelled) {
@@ -216,14 +248,18 @@ export class ScheduledLimiter {
       } finally {
         if (lease) {
           await this.releaseLease(lease, failure);
+          observation.emit('leaseReleased', { status: failure.failed ? 'rejected' : 'fulfilled' });
         }
         clearQueueTimer();
         options.signal?.removeEventListener('abort', abort);
         this.jobs.delete(job);
       }
       if (cancelled) {
+        observation.end();
         return;
       }
+      observation.settle(failure.failed ? 'rejected' : 'fulfilled');
+      observation.end();
       if (failure.failed) {
         rejectResult(failure.error);
       } else {
@@ -242,8 +278,12 @@ export class ScheduledLimiter {
       return Promise.reject(closedError());
     }
     try {
-      const execution = startExecution(this.backend, task, options, (error) =>
-        this.cleanupErrors.push(error),
+      const execution = startExecution(
+        this.backend,
+        task,
+        options,
+        (error) => this.cleanupErrors.push(error),
+        this.telemetry,
       );
       this.executions.add(execution);
       void execution.finished.finally(() => this.executions.delete(execution)).catch(() => {});

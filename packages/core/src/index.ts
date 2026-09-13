@@ -1,3 +1,10 @@
+import type { TelemetryOptions } from './telemetry.js';
+export type {
+  TelemetryOptions,
+  LifecycleEvent,
+  Instrumentation,
+  InstrumentationScope,
+} from './telemetry.js';
 import { abortError } from './client-errors.js';
 // Public scheduling/lifecycle API. Clients in one JS runtime share a coordinator
 // for each canonical pool; separate processes coordinate through the same files.
@@ -14,7 +21,7 @@ import { PoolDrainingError } from './maintenance-state.js';
 
 export type { PoolConfig } from './config.js';
 export type { Admission } from './protocol.js';
-export type OpenOptions = { path: string; config: PoolConfig };
+export type OpenOptions = { path: string; config: PoolConfig; telemetry?: TelemetryOptions };
 export {
   LeaseExpiredError,
   QueueTimeoutError,
@@ -201,7 +208,7 @@ export class Limiter extends ScheduledLimiter {
     coordinator.users++;
     try {
       await coordinator.ready;
-      return new Limiter(coordinator);
+      return new Limiter(coordinator, options.telemetry, 'sqlite');
     } catch (error) {
       coordinator.users--;
       if (!coordinator.users && registry.get(key) === coordinator) {

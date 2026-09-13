@@ -1,6 +1,7 @@
 // Private Rust Node-API boundary. Native objects own every OS descriptor and wait.
 export type NativeFileRole = 'file' | 'gate' | 'notification' | 'lifetime';
 export interface NativeFile {
+  tryWithGate<T>(callback: () => T): T;
   withGate<T>(callback: () => T): T;
   lockLifetime(): void;
   pulse(): void;

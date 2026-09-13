@@ -228,6 +228,31 @@ impl NativeFile {
     }
 
     #[napi]
+    pub fn try_with_gate<'env>(
+        &self,
+        callback: Function<'env, (), Unknown<'env>>,
+    ) -> Result<Unknown<'env>> {
+        if !self.entry.gate {
+            return Err(error("file is not a coordination gate"));
+        }
+        let _scope = GateScope::enter(&self._registry)?;
+        let gate = self
+            .entry
+            .file
+            .try_gate()
+            .map_err(error)?
+            .ok_or_else(|| error("coordination gate busy"))?;
+        let result = callback.call(());
+        let released = gate.release().map_err(error);
+        let value = result?;
+        released?;
+        if value.is_promise()? {
+            return Err(error("gate callback must be synchronous"));
+        }
+        Ok(value)
+    }
+
+    #[napi]
     pub fn lock_lifetime(&self) -> Result<()> {
         self._registry.lock().map_err(error)?.require_open()?;
         if !self.entry.lifetime {

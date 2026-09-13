@@ -1,3 +1,10 @@
+import type { TelemetryOptions } from './telemetry.js';
+export type {
+  TelemetryOptions,
+  LifecycleEvent,
+  Instrumentation,
+  InstrumentationScope,
+} from './telemetry.js';
 // Explicit in-process entry point: importing it requires no SQLite or native addon.
 import { ScheduledLimiter } from './client.js';
 import { openMemoryBackend } from './memory-backend.js';
@@ -9,11 +16,11 @@ export {
   AttemptTimeoutError,
 } from './client.js';
 export type { Admission, PoolConfig, ScheduleOptions, CloseOptions, Snapshot } from './client.js';
-export type OpenOptions = { key: string; config: PoolConfig };
+export type OpenOptions = { key: string; config: PoolConfig; telemetry?: TelemetryOptions };
 
 export class Limiter extends ScheduledLimiter {
   static async open(options: OpenOptions): Promise<Limiter> {
-    return new Limiter(openMemoryBackend(options.key, options.config));
+    return new Limiter(openMemoryBackend(options.key, options.config), options.telemetry, 'memory');
   }
 }
 export const openLimiter = (options: OpenOptions): Promise<Limiter> => Limiter.open(options);
