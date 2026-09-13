@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { owner, server, key, config, connect } from './harness.mjs';
 import { spawn } from 'node:child_process';
-import { createServer } from 'node:http';
+import { httpFixture } from './http-fixture.mjs';
 import { once } from 'node:events';
 const redis = await server();
 let passed = 0;
@@ -164,39 +164,7 @@ try {
     assert.equal(await a.client.exists(pool), 0);
   });
   await test('two independent processes submit twenty HTTP requests with shared cap five', async () => {
-    let active = 0,
-      peak = 0,
-      completed = 0;
-    const held = [];
-    let saturated = false;
-    const finish = (response) => {
-      active--;
-      completed++;
-      response.end('ok');
-    };
-    const http = createServer((_request, response) => {
-      active++;
-      peak = Math.max(peak, active);
-      if (saturated) {
-        finish(response);
-        return;
-      }
-      held.push(response);
-      if (held.length === 5) {
-        saturated = true;
-        for (const pending of held.splice(0)) {
-          finish(pending);
-        }
-      }
-    });
-    // A bounded fixture failure, never a limiter eligibility/polling timer.
-    const saturationTimeout = setTimeout(() => {
-      for (const response of held.splice(0)) {
-        response.destroy();
-      }
-    }, 10000);
-    http.listen(0, '127.0.0.1');
-    await once(http, 'listening');
+    const http = await httpFixture();
     const pool = key(),
       children = [];
     try {
@@ -206,7 +174,7 @@ try {
             ...process.env,
             REDIS_URL: redis.url,
             POOL: pool,
-            HTTP_URL: `http://127.0.0.1:${http.address().port}`,
+            HTTP_URL: http.url,
           },
           stdio: ['ignore', 'pipe', 'pipe'],
         });
@@ -220,25 +188,37 @@ try {
         });
         return once(child, 'exit').then(([code]) => assert.equal(code, 0, output));
       });
-      await Promise.all(jobs);
-      assert.equal(completed, 20);
-      assert.equal(peak, 5);
-      console.log(`  participants=2 requests=${completed} peak=${peak}`);
+      await Promise.all([http.saturated, ...jobs]);
+      assert.equal(http.stats.completed, 20);
+      assert.equal(http.stats.peak, 5);
+      console.log(`  participants=2 requests=${http.stats.completed} peak=${http.stats.peak}`);
     } finally {
-      clearTimeout(saturationTimeout);
-      for (const response of held) {
-        response.destroy();
-      }
-      http.closeAllConnections();
       for (const child of children) {
         if (child.exitCode === null) {
           child.kill();
         }
       }
-      await new Promise((resolve) => http.close(resolve));
+      await http.close();
     }
   });
-  console.log(`RESULT ${passed}/13 passed`);
+  await test('HTTP fixture detects excess concurrency when no limiter is used', async () => {
+    const http = await httpFixture();
+    try {
+      await Promise.all([
+        http.saturated,
+        ...Array.from({ length: 20 }, async () => {
+          const response = await fetch(http.url);
+          await response.text();
+        }),
+      ]);
+      assert.equal(http.stats.completed, 20);
+      assert.ok(http.stats.peak > 5, `counter hid excess concurrency: ${http.stats.peak}`);
+      console.log(`  unthrottled requests=${http.stats.completed} peak=${http.stats.peak}`);
+    } finally {
+      await http.close();
+    }
+  });
+  console.log(`RESULT ${passed}/14 passed`);
 } finally {
   for (const client of clients) {
     client.destroy();
