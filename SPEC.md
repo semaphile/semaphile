@@ -634,3 +634,86 @@ without renewing or mutating it. This prevents false claim-loss cancellation aft
 another process durably accepts a manual delivery; no expired claim is revived.
 CLI termination signals request active-child cancellation with five-second
 SIGTERM-to-SIGKILL escalation; library close remains graceful by default.
+
+## 12. Observability (DECIDED)
+
+Instrumentation is optional and client-local: it never changes normalized pool
+policy, admission, callback results, or cleanup guarantees. SQLite, Redis and
+memory clients expose typed lifecycle events and optional OpenTelemetry adapters.
+Capture submission context and restore it for callbacks. Distinguish caller
+settlement, callback settlement, lease release and final operation cleanup.
+Observers are bounded, failure-isolated and never awaited under a gate or lease.
+Telemetry is lossy observation, not a durable request ledger. Bodies, arbitrary
+headers, credentials and raw exception messages are not captured by default.
+Identifiers may correlate spans, but never become unbounded metric dimensions.
+
+The optional @semaphile/otel package supplies library adapters and a standalone
+CLI SDK/exporter entry point. Applications own their SDK. Standalone CLI telemetry
+is explicitly enabled, preserves stdout and operation exit results, and flushes
+within a bounded shutdown deadline. Initially support OTLP HTTP/protobuf, traces
+and metrics. Propagate W3C trace context; baggage requires an explicit allowlist
+(empty by default), on both extraction and injection, with bounded size.
+
+### Shared collector
+
+`semaphile telemetry collect` is an explicitly managed monitoring process, never
+started automatically by limiter clients. Discover all pools within configured
+local roots and Redis namespaces by default. Repeated --pool and --include
+selectors form a union; --exclude always wins. Glob matching is case-sensitive.
+--watch-pools defaults on; --no-watch-pools freezes initial identities. External
+collectors cannot discover memory pools. Discovery never creates limiter pools.
+Serve /metrics and /healthz at 127.0.0.1:9464 by default; --host/--port override.
+Optional OTLP exporting samples every 15 seconds by default. Telemetry config is
+client-local; CLI overrides project defaults, credentials use environment names.
+
+Collectors register per canonical pool, including overlapping collectors. Warn
+on partial or complete ownership conflicts, identifying pools and collectors.
+Default startup rejects conflicts and releases partial acquisitions. Later
+conflicts warn and skip pools. --allow-overlap explicitly permits duplicate
+collection without evicting existing collectors; warn about duplicate metrics.
+Warn on ownership changes, not every scrape, and expose conflicts in health.
+Local registrations use lifetime locks and serialized registration checks;
+Redis registrations use token-checked renewable leases. Lost registration stops
+collection and invalidates cached measurements. Registration recovery does not
+promise exactly-once exporting or stronger Redis failover guarantees.
+
+Monitoring alone may sample on scrapes and OTLP export cycles. This is the owner-
+approved exception to the no-polling rule: bound and coalesce sampling/discovery;
+never introduce admission polling. Report sample age/errors, never convert failed
+reads to zero. Shared effective lease occupancy is distinct from callbacks still
+executing after lease expiry. Observation must not register request work.
+
+Redis pool discovery metadata stores namespace and pool name without credentials,
+atomically on new-client open in the existing pool hash slot. Preserve existing
+pool keys and state. Validate metadata against live state; old pools become
+discoverable on new-client open, or can be selected by explicit name. Cluster
+discovery scans primaries in bounded batches, not KEYS.
+
+### Messaging tracing
+
+Messaging format semaphile-messaging/1.1 adds optional bounded trace metadata,
+separate from application content and excluded from dedupe identity. A duplicate
+send retains the first committed trace context. Account metadata within existing
+content retention limits. Invalid automatically captured telemetry is dropped
+with diagnostics, never a reason to reject otherwise valid work.
+
+An explicit offline upgrade preserves pending messages, receipts, dedupe and
+history. Ordinary open never migrates. Operators stop all clients; reject detected
+live registrations, but do not claim these prove all old clients are absent.
+Old messages have no synthesized sender context. Mixed 1.0/1.1 clients are not
+supported. Send/receive/process/settlement instrumentation preserves correlation
+across broadcasts and redelivery, with a processing span per attempt. Respect
+ambient context using links. Handler subprocesses receive current delivery context
+with stale inherited per-message context cleared. CLI exporting remains opt-in.
+
+### Engineering and verification
+
+Implement limiter events/adapters/collector before messaging propagation. Preserve
+SQLite limiter format 1.4 and Redis state 2; discovery/collector metadata are
+separate, versioned records. Validate optional instrumentation with no native
+install-time compilation. Test Node and modern Bun on macOS/Linux; actual Redis
+Cluster, collector contention/crashes/lease loss/overlap, bounded scrapes, OTLP and
+Prometheus receivers, message context/dedupe/redelivery and interrupted upgrades.
+Retain conformance, private raw receipts, fresh reviews and handoffs per milestone.
+No publication, Evie source edits, dashboard, durable ledger, proxy, automatic
+collector election/restart or OTLP logs are included in this increment.
