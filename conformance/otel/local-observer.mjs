@@ -36,7 +36,9 @@ try {
         }),
       { weight: 2 },
     );
-    while (!release) {await new Promise((resolve) => setImmediate(resolve));}
+    while (!release) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
     const sample = await overlap.sample();
     assert.equal(sample.active, 2);
     assert.equal(sample.maxConcurrent, 3);
@@ -69,4 +71,43 @@ assert.deepEqual(await readdir(path + '/.telemetry/collectors-v1'), ['gate']);
 console.log(
   'PASS startup bounds registration scanning and removes stale files without owners calls',
 );
-console.log('RESULT 4/4 passed');
+
+for (let i = 0; i < 20; i++) {
+  const collectorId = randomUUID();
+  const original = await openPoolObserver({ path, collectorId });
+  const [, reopened] = await Promise.allSettled([
+    original.close(),
+    openPoolObserver({ path, collectorId }),
+  ]);
+  const replacement =
+    reopened.status === 'fulfilled'
+      ? reopened.value
+      : await openPoolObserver({ path, collectorId });
+  try {
+    assert((await replacement.owners()).includes(collectorId));
+    await assert.rejects(openPoolObserver({ path, collectorId: randomUUID() }));
+  } finally {
+    await replacement.close();
+  }
+}
+console.log('PASS concurrent close and same-ID replacement preserve live registration visibility');
+const { DatabaseSync } = await import('node:sqlite');
+const db = new DatabaseSync(path + '/state.sqlite');
+try {
+  const before = db.prepare('SELECT value FROM control').get().value;
+  const value = JSON.parse(before);
+  value.maintenance.unconfirmed = Object.fromEntries(
+    Array.from({ length: 20000 }, (_, i) => [
+      'operation-' + i,
+      { owner: 'retired', acknowledged: false, reason: null },
+    ]),
+  );
+  db.prepare('UPDATE control SET value=?').run(JSON.stringify(value));
+  await assert.rejects(openPoolObserver({ path, collectorId: randomUUID() }), /state size bound/);
+  db.prepare('UPDATE control SET value=?').run(before);
+} finally {
+  db.close();
+}
+console.log('PASS oversized legitimate uncertainty state is refused before JSON projection');
+
+console.log('RESULT 6/6 passed');

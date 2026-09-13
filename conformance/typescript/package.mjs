@@ -109,7 +109,12 @@ const installed = join(consumer, 'node_modules/@semaphile/core');
 const manifest = JSON.parse(await readFile(join(installed, 'package.json'), 'utf8'));
 assert.equal(Object.keys(manifest.dependencies ?? {}).length, 0, 'no runtime dependencies');
 assert.equal(manifest.scripts?.install, undefined, 'no native install hook');
-assert.deepEqual(Object.keys(manifest.exports), ['.', './client', './memory']);
+assert.deepEqual(
+  Object.keys(manifest.exports),
+  suppliedArchive && !manifest.exports['./observation']
+    ? ['.', './client', './memory']
+    : ['.', './client', './memory', './observation'],
+);
 const installedHashes = await hashes(join(installed, 'dist'));
 if (!suppliedArchive) {
   assert.deepEqual(installedHashes, await hashes(join(core, 'dist')));

@@ -129,6 +129,7 @@ await rm(join(installed, 'core/dist/native'), { recursive: true, force: true });
 for (const file of await readdir(join(installed, 'core/dist/src'))) {
   if (
     !file.startsWith('client.') &&
+    !file.startsWith('telemetry.') &&
     !file.startsWith('config.') &&
     !file.startsWith('client-errors.') &&
     !file.startsWith('deadline.') &&

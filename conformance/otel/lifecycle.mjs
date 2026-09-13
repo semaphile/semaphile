@@ -27,7 +27,9 @@ const first = context.run('first', () =>
     assert.equal(context.getStore(), 'first');
   }),
 );
-while (!release) {await turn();}
+while (!release) {
+  await turn();
+}
 const second = context.run('second', () => pool.schedule(() => context.getStore()));
 release();
 await first;
@@ -126,7 +128,9 @@ const bounded = await openLimiter({
   telemetry: {
     bufferSize: 2,
     onDiagnostic: (d) => {
-      if (d.kind === 'events-dropped') {diagnostics += d.count;}
+      if (d.kind === 'events-dropped') {
+        diagnostics += d.count;
+      }
     },
     onEvent: () => {
       observed++;
@@ -134,7 +138,9 @@ const bounded = await openLimiter({
     },
   },
 });
-for (let i = 0; i < 20; i++) {await bounded.schedule(() => 42);}
+for (let i = 0; i < 20; i++) {
+  await bounded.schedule(() => 42);
+}
 await bounded.close();
 await turn();
 assert(diagnostics > 0);
@@ -157,9 +163,62 @@ const asyncHook = await openLimiter({
     },
   },
 });
-for (let i = 0; i < 20; i++) {await asyncHook.schedule(() => 1);}
+for (let i = 0; i < 20; i++) {
+  await asyncHook.schedule(() => 1);
+}
 await asyncHook.close();
 assert.equal(hookCalls, 1);
 console.log('PASS asynchronous instrumentation hooks are disabled after one outstanding promise');
 
-console.log('RESULT 5/5 passed');
+for (const method of ['schedule', 'execute']) {
+  for (const action of ['abort', 'close']) {
+    const controller = new AbortController();
+    let called = false,
+      reentrant;
+    reentrant = await openLimiter({
+      key: `reentrant-${method}-${action}`,
+      config: { maxConcurrent: 1 },
+      telemetry: {
+        instrumentation: {
+          start() {
+            if (action === 'abort') {
+              controller.abort();
+            } else {
+              void reentrant.close();
+            }
+            return {};
+          },
+        },
+      },
+    });
+    await assert.rejects(
+      reentrant[method](
+        () => {
+          called = true;
+        },
+        { signal: controller.signal },
+      ),
+    );
+    await reentrant.close();
+    assert.equal(called, false);
+  }
+}
+console.log('PASS reentrant start hooks cannot bypass cancellation or close accounting');
+
+const timingEvents = [];
+const timing = await openLimiter({
+  key: 'submission-timing',
+  config: { maxConcurrent: 1 },
+  telemetry: { onEvent: (event) => timingEvents.push(event) },
+});
+const submitted = Date.now();
+const deferredExecution = timing.execute(() => 1);
+Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 40);
+await deferredExecution;
+await timing.close();
+await turn();
+assert(timingEvents.find((event) => event.kind === 'queued').at <= submitted + 10);
+assert(timingEvents.find((event) => event.kind === 'leaseGranted').elapsedMs >= 35);
+console.log('PASS deferred instrumentation preserves actual submission time and queue duration');
+
+console.log('RESULT 7/7 passed');

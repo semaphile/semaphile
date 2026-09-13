@@ -122,12 +122,13 @@ export class Telemetry {
       /* Diagnostics are observational. */
     }
   }
-  begin(operation: string): Observation {
+  begin(operation: string, submitted?: { monotonic: number; at: number }): Observation {
     return new Observation(
       this,
       operation,
       this.options.pool,
       this.enabled ? this.options.instrumentation : undefined,
+      submitted,
     );
   }
   publish(event: LifecycleEvent): void {
@@ -167,7 +168,9 @@ export class Telemetry {
 }
 export class Observation {
   private readonly id = randomUUID();
-  private readonly started = performance.now();
+  private readonly started: number;
+  private readonly submittedAt: number;
+  private queuedOnce = false;
   private readonly scope?: InstrumentationScope;
   private ended = false;
   private settled = false;
@@ -176,7 +179,10 @@ export class Observation {
     private readonly operation: string,
     private readonly pool: string | undefined,
     instrumentation?: Instrumentation,
+    submitted?: { monotonic: number; at: number },
   ) {
+    this.started = submitted?.monotonic ?? performance.now();
+    this.submittedAt = submitted?.at ?? Date.now();
     const event = this.make('queued');
     try {
       const scope = instrumentation?.start(event);
@@ -197,8 +203,8 @@ export class Observation {
       backend: this.owner.backend,
       pool: this.pool,
       kind,
-      at: Date.now(),
-      elapsedMs: performance.now() - this.started,
+      at: kind === 'queued' && !this.queuedOnce ? this.submittedAt : Date.now(),
+      elapsedMs: kind === 'queued' && !this.queuedOnce ? 0 : performance.now() - this.started,
     });
   }
   emit(kind: LifecycleKind, fields: Partial<LifecycleEvent> = {}): void {
@@ -206,6 +212,9 @@ export class Observation {
       return;
     }
     const event = this.make(kind, fields);
+    if (kind === 'queued') {
+      this.queuedOnce = true;
+    }
     this.owner.hook(() => this.scope?.event?.(event));
     this.owner.publish(event);
   }

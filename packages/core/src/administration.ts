@@ -1,3 +1,4 @@
+import type { Telemetry } from './telemetry.js';
 // Administrative waits observe persisted acceptance/completion boundaries. A
 // timeout or local client close cancels the wait, never resumes the pool.
 import type { ClientBackend } from './client.js';
@@ -22,7 +23,10 @@ export interface Maintenance {
   }): Promise<ControlReceipt>;
   resume(generation: number): Promise<ControlReceipt>;
 }
-export function createAdministration(backend: ClientBackend): {
+export function createAdministration(
+  backend: ClientBackend,
+  telemetry?: Telemetry,
+): {
   api: Maintenance;
   close: () => Promise<void>;
 } {
@@ -33,12 +37,30 @@ export function createAdministration(backend: ClientBackend): {
     if (closed) {
       return Promise.reject(new Error('Limiter is closing or closed'));
     }
-    const task = operation();
+    const task = Promise.resolve().then(operation);
     pending.add(task);
     void task.finally(() => pending.delete(task)).catch(() => {});
     return task;
   };
-  const command = (input: ControlCommand) => run(() => backend.call('control', { command: input }));
+  const command = (input: ControlCommand) =>
+    run(async () => {
+      const observation = telemetry?.begin(`maintenance.${input.action}`);
+      let status: 'fulfilled' | 'rejected' = 'rejected';
+      try {
+        const result = await backend.call('control', { command: input });
+        observation?.emit('stateObserved', {
+          state:
+            'recovery' in result
+              ? `${result.maintenance.mode}/${result.recovery.circuit}`
+              : result.maintenance.mode,
+        });
+        status = 'fulfilled';
+        return result;
+      } finally {
+        observation?.settle(status);
+        observation?.end(status);
+      }
+    });
   const api: Maintenance = {
     status: () => command({ action: 'status' }) as Promise<ControlSnapshot>,
     drain: () => command({ action: 'drain' }),

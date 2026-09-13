@@ -1,8 +1,21 @@
 // One entry point for contributors; the invoking runtime also runs each suite.
 import { spawnSync } from 'node:child_process';
 const suites = {
+  otel: [
+    'native-gate',
+    'lifecycle',
+    'local-observer',
+    'http-lifecycle',
+    'adapter',
+    'exporter',
+    'collector',
+    'redis-observer',
+    'cli',
+    'cluster',
+  ],
   core: [
     'native-binding',
+    'telemetry',
     'recovery',
     'recovery-backend',
     'maintenance-state',

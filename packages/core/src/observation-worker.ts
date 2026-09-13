@@ -89,6 +89,14 @@ function read(): PoolMeasurement {
     const db = new DatabaseSync(join(path, 'state.sqlite'), { readOnly: true });
     try {
       db.exec('PRAGMA busy_timeout=0;');
+      const sizes = db
+        .prepare(
+          'SELECT (SELECT octet_length(value) FROM config WHERE singleton=1) AS config, (SELECT octet_length(value) FROM control WHERE singleton=1) AS control',
+        )
+        .get();
+      if (!sizes || Number(sizes.config) > 65536 || Number(sizes.control) > 1048576) {
+        throw new Error('Pool exceeds observation state size bound');
+      }
       const row = db.prepare('SELECT format,value FROM config WHERE singleton=1').get();
       if (row?.format !== 'semaphile-sqlite-poc/1.4') {
         throw new Error('Unsupported limiter format');
@@ -145,19 +153,27 @@ function read(): PoolMeasurement {
   });
 }
 function close(): void {
-  // Closing the lifetime descriptor is sufficient even if a busy registration
-  // gate prevents metadata cleanup. A future observation removes the stale file.
-  if (registered) {
-    lifetime.close();
-    registered = false;
-    try {
-      registrationGate.tryWithGate(() => unlinkSync(join(registrations, `${id}.lock`)));
-    } catch {
-      /* Future bounded scan removes a stale file. */
+  try {
+    if (registered) {
+      try {
+        registrationGate.tryWithGate(() => {
+          lifetime.close();
+          registered = false;
+          unlinkSync(join(registrations, `${id}.lock`));
+        });
+      } catch {
+        // Without the gate, close only the descriptor. Never unlink a path that
+        // a subsequent registration might already have replaced.
+        if (registered) {
+          lifetime.close();
+          registered = false;
+        }
+      }
     }
+  } finally {
+    native?.close();
+    native = undefined;
   }
-  native?.close();
-  native = undefined;
 }
 parentPort!.on('message', (request: { id: number; action: string }) => {
   try {

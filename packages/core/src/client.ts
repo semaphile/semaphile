@@ -1,4 +1,4 @@
-import { Telemetry, type TelemetryOptions } from './telemetry.js';
+import { Telemetry, type TelemetryOptions, type Observation } from './telemetry.js';
 export type {
   TelemetryOptions,
   LifecycleEvent,
@@ -111,7 +111,7 @@ export class ScheduledLimiter {
   ) {
     this.telemetry = new Telemetry(backendName, telemetry);
     this.backend = backend;
-    this.administration = createAdministration(backend);
+    this.administration = createAdministration(backend, this.telemetry);
     this.maintenance = this.administration.api;
     this.http = createHttpClient(backend, (task, options) => this.execute(task, options));
   }
@@ -148,7 +148,11 @@ export class ScheduledLimiter {
     if (options.signal?.aborted) {
       return Promise.reject(abortError('Scheduled job aborted before starting'));
     }
-    const observation = this.telemetry.begin('schedule');
+    let observation: Observation;
+    let finishJob!: () => void;
+    const finished = new Promise<void>((resolve) => {
+      finishJob = resolve;
+    });
     let resolveResult!: (value: T | PromiseLike<T>) => void,
       rejectResult!: (error: unknown) => void;
     const result = new Promise<T>((yes, no) => {
@@ -170,7 +174,7 @@ export class ScheduledLimiter {
     const job: Job = {
       running: false,
       controller,
-      finished: Promise.resolve(),
+      finished,
       cancel: (error) => {
         if (job.running || cancelled) {
           return;
@@ -178,13 +182,17 @@ export class ScheduledLimiter {
         cancelled = true;
         clearQueueTimer();
         controller.abort();
-        observation.settle('cancelled');
+        observation?.settle('cancelled');
         rejectResult(error);
         options.signal?.removeEventListener('abort', abort);
       },
     };
     options.signal?.addEventListener('abort', abort, { once: true });
     this.jobs.add(job);
+    observation = this.telemetry.begin('schedule');
+    if (cancelled) {
+      observation.settle('cancelled');
+    }
     const checkQueueDeadline = () => {
       if (queueDeadline === undefined || queueTimeoutMs === undefined || cancelled || job.running) {
         return;
@@ -199,6 +207,11 @@ export class ScheduledLimiter {
     };
     checkQueueDeadline();
     const runJob = async () => {
+      if (cancelled) {
+        this.jobs.delete(job);
+        observation.end('cancelled');
+        return;
+      }
       let lease: string | undefined, value!: T;
       // A separate flag preserves rejection reasons such as undefined or false.
       const failure: Failure = { failed: false };
@@ -266,7 +279,11 @@ export class ScheduledLimiter {
         resolveResult(value);
       }
     };
-    job.finished = runJob();
+    void runJob().then(finishJob, (error) => {
+      this.cleanupErrors.push(error);
+      rejectResult(error);
+      finishJob();
+    });
     return result;
   }
 

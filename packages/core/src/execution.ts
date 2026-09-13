@@ -1,4 +1,4 @@
-import type { Telemetry } from './telemetry.js';
+import type { Telemetry, Observation } from './telemetry.js';
 // An execution owns one accepted operation across all attempts. Caller deadlines
 // settle promptly; finished still tracks actual callback and storage cleanup.
 import { randomUUID } from 'node:crypto';
@@ -88,6 +88,7 @@ export function startExecution<T>(
   telemetry?: Telemetry,
 ): ExecutionHandle<T> {
   const submitted = performance.now();
+  const submittedAt = Date.now();
   if (typeof task !== 'function') {
     throw new TypeError('Task must be a function');
   }
@@ -112,7 +113,7 @@ export function startExecution<T>(
   ) {
     throw new RangeError('Invalid queueTimeoutMs');
   }
-  const observation = telemetry?.begin('execute');
+  let observation: Observation | undefined;
   const controller = new AbortController();
   let running = false,
     settling = false,
@@ -147,6 +148,13 @@ export function startExecution<T>(
     }
   };
   const finished = (async () => {
+    // Register the execution handle with the client before calling user hooks.
+    // Async context survives this microtask; reentrant close now awaits cleanup.
+    await Promise.resolve();
+    observation = telemetry?.begin('execute', { monotonic: submitted, at: submittedAt });
+    if (controller.signal.aborted) {
+      observation?.settle('cancelled');
+    }
     let operation: OperationToken | undefined;
     let completion: AttemptResult<T> | undefined;
     try {
