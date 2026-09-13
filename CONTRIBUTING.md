@@ -16,6 +16,7 @@ Fetch pinned dependencies once before the offline explicit native build.
 npm ci --ignore-scripts
 npm ci --prefix packages/core --ignore-scripts
 npm ci --prefix packages/redis --ignore-scripts
+npm ci --prefix packages/otel --ignore-scripts
 npm ci --prefix packages/messaging --ignore-scripts
 cargo +1.93.1 fetch --locked --manifest-path packages/core/native/Cargo.toml
 npm run build

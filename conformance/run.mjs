@@ -67,7 +67,7 @@ const suites = {
 };
 const backend = process.argv[2];
 if (!Object.hasOwn(suites, backend)) {
-  throw new Error('Usage: node conformance/run.mjs core|redis|messaging|administration');
+  throw new Error('Usage: node conformance/run.mjs core|redis|messaging|administration|otel');
 }
 for (const suite of suites[backend]) {
   const directory =

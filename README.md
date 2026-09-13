@@ -16,9 +16,14 @@ as installable archives on [GitHub Releases](https://github.com/semaphile/semaph
 See the [release guide](docs/releases.md). Node >=22.18 is required for source
 builds. Runtime verification covers Node 22.23/Linux, Node 26.7/macOS and
 Bun 1.4.2 on macOS arm64 and Linux x64.
-The current Rust, recovery, HTTP and maintenance implementation passes the same
+The published 0.1.0 Rust, recovery, HTTP and maintenance implementation passed
 483 scenarios under Node and Bun on both platforms, plus two cross-host Redis
 pairings. See [testing](docs/testing.md) for scope and limitations.
+
+The unreleased observability increment adds optional tracing, shared-pool
+collectors and an explicit messaging format upgrade. See
+[observability](docs/observability.md) for setup and compatibility; these APIs
+are not in the published 0.1.0 packages below.
 
 ## Install
 
@@ -44,6 +49,7 @@ See [contributing](CONTRIBUTING.md) for setup and platform requirements.
 npm ci --ignore-scripts
 npm ci --prefix packages/core --ignore-scripts
 npm ci --prefix packages/redis --ignore-scripts
+npm ci --prefix packages/otel --ignore-scripts
 npm ci --prefix packages/messaging --ignore-scripts
 npm run build
 ```
