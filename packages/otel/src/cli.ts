@@ -113,7 +113,11 @@ export async function collectorCommand(
   } finally {
     process.removeListener('SIGINT', stop);
     process.removeListener('SIGTERM', stop);
-    await collector?.close();
-    await sdk?.shutdown();
+    // Flush while registrations and gauge callbacks are still valid.
+    try {
+      await sdk?.shutdown();
+    } finally {
+      await collector?.close();
+    }
   }
 }
