@@ -11,14 +11,27 @@ Choose **SQLite** for processes on the same machine with a daemonless local
 pool, **Redis** for processes on different machines sharing one Redis endpoint,
 or **memory** for callers sharing one JavaScript runtime.
 
-This is experimental software. Version `0.1.0` is distributed as installable
-archives on [GitHub Releases](https://github.com/semaphile/semaphile/releases/tag/v0.1.0);
-the packages are not published to npm. See the [release guide](docs/releases.md). Node >=22.18 is required for source
+This is experimental software. Version `0.1.0` is published on npm and available
+as installable archives on [GitHub Releases](https://github.com/semaphile/semaphile/releases/tag/v0.1.0).
+See the [release guide](docs/releases.md). Node >=22.18 is required for source
 builds. Runtime verification covers Node 22.23/Linux, Node 26.7/macOS and
 Bun 1.4.2 on macOS arm64 and Linux x64.
 The current Rust, recovery, HTTP and maintenance implementation passes the same
 483 scenarios under Node and Bun on both platforms, plus two cross-host Redis
 pairings. See [testing](docs/testing.md) for scope and limitations.
+
+## Install
+
+```sh
+npm install @semaphile/core@0.1.0 @semaphile/redis@0.1.0 @semaphile/messaging@0.1.0
+# Or for Bun projects:
+bun add @semaphile/core@0.1.0 @semaphile/redis@0.1.0 @semaphile/messaging@0.1.0
+```
+
+Install only what you need: core is standalone, Redis requires core, and
+messaging can be used on its own. The packages include prebuilt native addons;
+installation requires no Rust compiler or native build step. Import from
+`@semaphile/core`, `@semaphile/redis` or `@semaphile/messaging` in your application.
 
 ## Start from source
 

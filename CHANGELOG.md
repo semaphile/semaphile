@@ -7,8 +7,8 @@ pilot artifacts, not published GitHub releases.
 
 ## [0.1.0] - 2026-09-13
 
-First GitHub release, distributed as installable package archives under the MIT
-license. This release remains experimental.
+First release, distributed through npm and installable GitHub package archives
+under the MIT license. This release remains experimental.
 
 ### Added
 
@@ -39,7 +39,6 @@ license. This release remains experimental.
   uses SQLite; it does not have a Redis backend.
 - Lease expiration and Redis owner expiry cannot stop remote requests already
   sent. Cross-process queue fairness is not guaranteed.
-- This is not a complete Bottleneck facade. Packages are distributed through
-  GitHub release assets and are not yet published to npm.
+- This is not a complete Bottleneck facade.
 
 [0.1.0]: https://github.com/semaphile/semaphile/releases/tag/v0.1.0

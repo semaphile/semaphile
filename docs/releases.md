@@ -4,6 +4,24 @@ Semaphile 0.1.0 is an experimental MIT-licensed release. All three packages shar
 one version and use exact matching Semaphile peer versions. See the
 [changelog](../CHANGELOG.md) for features and compatibility boundaries.
 
+## Install from npm
+
+All three `0.1.0` packages are public on npm:
+
+- [@semaphile/core](https://www.npmjs.com/package/@semaphile/core)
+- [@semaphile/redis](https://www.npmjs.com/package/@semaphile/redis)
+- [@semaphile/messaging](https://www.npmjs.com/package/@semaphile/messaging)
+
+```sh
+npm install @semaphile/core@0.1.0 @semaphile/redis@0.1.0 @semaphile/messaging@0.1.0
+# Or, for Bun projects:
+bun add @semaphile/core@0.1.0 @semaphile/redis@0.1.0 @semaphile/messaging@0.1.0
+```
+
+The npm archives preserve the tested GitHub release's runtime files, native
+binaries and executable permissions. Their package metadata and READMEs were
+updated for registry publication. The original GitHub assets and tag remain intact.
+
 ## Install the release archives
 
 Download the assets from [v0.1.0](https://github.com/semaphile/semaphile/releases/tag/v0.1.0)
@@ -51,8 +69,8 @@ publication is a separate maintainer step.
 ## First npm publication
 
 The npm package names are `@semaphile/core`, `@semaphile/redis` and
-`@semaphile/messaging`, all at `0.1.0`. Their manifests are prepared for public
-publication; availability is confirmed only after the registry accepts them.
+`@semaphile/messaging`, all at `0.1.0`. They were published publicly on 2026-09-13. The steps below document how the
+publication archives were prepared and verified; the version cannot be republished.
 The maintainer needs an npm account with publishing rights in the `semaphile`
 organization. GitHub and npm organizations are separate.
 
@@ -70,8 +88,9 @@ runtime commit, and archive hashes. Run the installed-consumer tests on these
 exact files under Node and Bun on macOS and Linux before publication. Never
 publish an arbitrary local build that may contain only one native target.
 
-From the repository root, the maintainer publishes the verified archives in
-peer dependency order:
+The maintainer published the verified archives in peer dependency order from
+the repository root. This is the historical command sequence for `0.1.0`; use
+new version numbers and freshly verified archives for later releases:
 
 ```sh
 npm login --registry=https://registry.npmjs.org &&
@@ -84,7 +103,7 @@ npm login --registry=https://registry.npmjs.org &&
 These commands upload packages; add `--dry-run` to inspect publication without
 uploading. Complete any npm authentication challenge in your terminal. After
 publication, verify each registry version and integrity value, then install the
-registry packages in a clean consumer. Once all three are available:
+registry packages in a clean consumer. For example, the published versions install with:
 
 ```sh
 npm install @semaphile/core@0.1.0 @semaphile/redis@0.1.0 @semaphile/messaging@0.1.0
