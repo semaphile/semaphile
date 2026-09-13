@@ -1,0 +1,18 @@
+[package]
+name = "semaphile-native"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.93"
+publish = false
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+semaphile-os = { path = "os" }
+napi = { version = "3", default-features = false, features = ["napi8"] }
+napi-derive = "3"
+
+[build-dependencies]
+napi-build = "2"
