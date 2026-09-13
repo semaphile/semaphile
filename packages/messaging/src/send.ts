@@ -1,3 +1,4 @@
+import { validateTrace } from './trace.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Database } from './database.js';
 import type { Presence } from './presence.js';
@@ -25,6 +26,8 @@ function validateEnvelope(store: Database, input: SendOptions): SendOptions {
 }
 export function send(store: Database, presence: Presence, input: SendOptions): SendResult {
   const envelope = validateEnvelope(store, input);
+  const trace = validateTrace(input.trace);
+  const encodedTrace = trace ? JSON.stringify(trace) : null;
   const encoded = JSON.stringify(envelope),
     fingerprint = createHash('sha256').update(encoded).digest('hex');
   const { db, config } = store;
@@ -72,7 +75,11 @@ export function send(store: Database, presence: Presence, input: SendOptions): S
     );
     if (
       count >= config.maxMessages ||
-      contentBytes(store) + Buffer.byteLength(encoded) + recipients.length * 8192 + 2048 >
+      contentBytes(store) +
+        Buffer.byteLength(encoded) +
+        Buffer.byteLength(encodedTrace ?? '') +
+        recipients.length * 8192 +
+        2048 >
         config.maxContentBytes
     ) {
       cleanup(store, true);
@@ -105,7 +112,7 @@ export function send(store: Database, presence: Presence, input: SendOptions): S
         now = Date.now();
       const result = db
         .prepare(
-          'INSERT INTO messages(id,dedupe_key,fingerprint,envelope,recipients,created_at,expires_at) VALUES(?,?,?,?,?,?,?)',
+          'INSERT INTO messages(id,dedupe_key,fingerprint,envelope,recipients,created_at,expires_at,trace) VALUES(?,?,?,?,?,?,?,?)',
         )
         .run(
           id,
@@ -115,6 +122,7 @@ export function send(store: Database, presence: Presence, input: SendOptions): S
           JSON.stringify(recipients),
           now,
           envelope.expiresInMs === undefined ? null : now + envelope.expiresInMs,
+          encodedTrace,
         );
       const seq = Number(result.lastInsertRowid);
       for (const recipient of recipients) {

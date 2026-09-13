@@ -167,3 +167,13 @@ SEMAPHILE_MESSAGING_ARCHIVE=/absolute/path/to/messaging.tgz \
 
 Repeat with Bun. An ordinary rebuild replaces native artifacts with the current
 host's target, so assemble both targets again before packing a portable archive.
+
+## Observability conformance
+
+`npm run test:otel` runs collector contention, deadlines, aliases and process
+crashes; a real three-primary Redis Cluster; actual Prometheus/OTLP receivers;
+installed-package consumers; and messaging context/CLI export scenarios.
+`npm run test:messaging` includes offline migration crash recovery, trace dedupe
+and redelivery, and hook isolation. Run the same commands through modern Bun.
+Redis scenarios require local Redis on macOS or Docker on Linux. All test stores
+remain inside the repository `.tmp` directory.

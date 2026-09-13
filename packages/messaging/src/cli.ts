@@ -4,9 +4,10 @@ import { dirname, resolve, join } from 'node:path';
 import { poolCommand } from './pool-cli.js';
 import { openClient } from './client.js';
 import { findConfig, messagingOptions } from './settings.js';
-import { init, info } from './admin.js';
+import { init, info, upgradeMessaging } from './admin.js';
 import { MessagingError } from './config.js';
 import { help, readArguments, validateAction, receivingOptions } from './cli-options.js';
+import { commandTelemetry, environmentTrace, flushCommandTelemetry } from './cli-telemetry.js';
 import { execute, output } from './cli-actions.js';
 async function main(): Promise<void> {
   if (process.argv[2] === 'telemetry' && process.argv[3] === 'collect') {
@@ -69,6 +70,10 @@ async function main(): Promise<void> {
     throw new MessagingError('INPUT', 'Invalid --config-mismatch');
   }
   const resolved = await messagingOptions({ store: get('store'), configMismatch: mismatch });
+  if (action === 'upgrade') {
+    output(await upgradeMessaging({ path: resolved.open.path }));
+    return;
+  }
   const receiveOptions = receivingOptions(
     args,
     resolved.project?.value.messaging?.listenerDefaults,
@@ -78,15 +83,32 @@ async function main(): Promise<void> {
     controller.abort();
     process.exitCode = 3;
   };
-  const client = await openClient(resolved.open);
-  process.once('SIGINT', interrupt);
-  process.once('SIGTERM', interrupt);
+  const telemetryProject = resolved.project ?? (await findConfig());
+  const sdk = await commandTelemetry(args, telemetryProject);
+  const run = async () => {
+    const client = await openClient({
+      ...resolved.open,
+      telemetry: sdk
+        ? {
+            instrumentation: sdk.messagingInstrumentation,
+            baggageAllowlist: telemetryProject?.value.telemetry?.baggageAllowlist,
+          }
+        : undefined,
+    });
+    process.once('SIGINT', interrupt);
+    process.once('SIGTERM', interrupt);
+    try {
+      await execute({ action, client, args, resolved, receiveOptions, controller });
+    } finally {
+      process.removeListener('SIGINT', interrupt);
+      process.removeListener('SIGTERM', interrupt);
+      await client.close();
+    }
+  };
   try {
-    await execute({ action, client, args, resolved, receiveOptions, controller });
+    await (sdk ? sdk.withMessageContext(environmentTrace(), run) : run());
   } finally {
-    process.removeListener('SIGINT', interrupt);
-    process.removeListener('SIGTERM', interrupt);
-    await client.close();
+    await flushCommandTelemetry(sdk);
   }
 }
 try {

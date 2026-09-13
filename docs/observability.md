@@ -160,3 +160,71 @@ are not pool identities. A response timeout retires the observation connection
 and invalidates its registrations; health becomes degraded until the explicitly
 managed collector is restarted. Startup must verify every selected registration
 within its bounded cycle, or it fails and releases partial acquisitions.
+
+## Messaging tracing and offline upgrade
+
+This unreleased change requires matching messaging and OTel builds. Published
+0.1.0 stores use messaging format 1.0. Stop **every** client before upgrading:
+
+```sh
+semaphile message upgrade --store .semaphile/messaging
+```
+
+The command takes the existing gate and commits the new nullable trace column
+and format 1.1 together. It preserves messages, delivery attempts, receipts,
+dedupe records and history. Ordinary opens never migrate. Live registered agents
+cause a refusal, but an unregistered old process cannot be detected reliably;
+registration checks do not replace stopping clients. Mixed 1.0/1.1 readers are
+unsupported. Use a backup of the entire closed store for rollback to old clients.
+The library equivalent is `upgradeMessaging({ path })`.
+
+Applications supply their own OTel SDK and context manager:
+
+```ts
+import { openMessaging } from '@semaphile/messaging';
+import { createMessagingInstrumentation } from '@semaphile/otel/messaging';
+
+const baggageAllowlist = ['tenant']; // default is [] at both boundaries
+const client = await openMessaging({
+  path: '.semaphile/messaging',
+  telemetry: {
+    baggageAllowlist,
+    instrumentation: createMessagingInstrumentation({ baggageAllowlist }),
+    onDiagnostic: ({ kind }) => console.error(kind),
+  },
+});
+```
+
+Send, receive/wait, processing attempts and claim settlements produce spans.
+Each handler attempt has a new processing span with its ambient parent and a
+link to the committed sender context. Redelivery preserves the sender link.
+Handler errors and claim loss mark the processing span as failed. Metrics use
+operation/outcome dimensions; message, delivery and correlation IDs are span
+attributes only. Bodies and handler error text are not captured.
+
+`send({ to, body, trace })` accepts explicit `traceparent`, `tracestate` and
+`baggage` metadata. Automatic capture is optional and invalid captured metadata
+is dropped with a diagnostic. Explicit invalid metadata is an input error.
+Bounds are 256 bytes for traceparent (version 00), 512 for tracestate and 4096 for
+baggage. The adapter also limits each baggage entry to 1024 encoded bytes.
+Baggage requires an allowlist on injection and extraction. The `trace` field is
+stored separately, returned on deliveries/history, and excluded from message
+content and dedupe identity: the first committed context wins. Trace bytes count
+toward retention and are evicted with the message envelope. Optional trace data
+in receipts preserves context for later manual acknowledgements; it has no role
+in claim validation.
+
+`commandHandler` clears inherited `TRACEPARENT`, `TRACESTATE` and `BAGGAGE`
+(including lowercase variants), then injects the current processing context.
+Without instrumentation those variables remain absent. The delivery JSON still
+contains its committed sender context, so a consumer-owned adapter can use it
+explicitly. `processDelivery(delivery, callback)` provides the same processing
+scope for manual receivers; callers remain responsible for settling their claim.
+
+CLI export is opt-in with `--otel` or `telemetry.enabled: true` in the nearest
+`semaphile.json`; `--no-otel` overrides that default. Install `@semaphile/otel`
+alongside messaging. `telemetry.serviceName` and `telemetry.baggageAllowlist`
+configure the standalone SDK. Standard OTLP environment variables select the
+HTTP/protobuf endpoint. Incoming uppercase context variables are extracted at
+the CLI boundary. Export and bounded shutdown failures do not change command
+JSON stdout or protocol exit codes. The default shutdown budget is one second.

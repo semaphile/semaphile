@@ -23,9 +23,44 @@ try {
         const row = db.prepare('SELECT format,value FROM config WHERE singleton=1').get();
         if (
           !row ||
-          !['semaphile-messaging/1.0', 'semaphile-sqlite-poc/1.4'].includes(String(row.format))
+          ![
+            'semaphile-messaging/1.0',
+            'semaphile-messaging/1.1',
+            'semaphile-sqlite-poc/1.4',
+          ].includes(String(row.format))
         ) {
           throw new Error('Unsupported store format');
+        }
+        if (workerData.upgrade) {
+          if (!String(row.format).startsWith('semaphile-messaging/')) {
+            throw new Error('Not a messaging store');
+          }
+          if (db.prepare('PRAGMA journal_mode').get()!.journal_mode !== 'delete') {
+            throw new Error('Messaging requires rollback journal mode');
+          }
+          // Registrations detect known live agents, not every legacy reader.
+          // The operator must stop all clients before invoking this command.
+          for (const owner of db.prepare('SELECT id FROM agents WHERE online=1').iterate()) {
+            if (native.alive(join(path, 'owners', String(owner.id) + '.lock'))) {
+              throw new Error('Stop registered clients before offline upgrade');
+            }
+          }
+          if (row.format === 'semaphile-messaging/1.0') {
+            db.exec('PRAGMA synchronous=FULL; BEGIN IMMEDIATE;');
+            try {
+              db.exec('ALTER TABLE messages ADD COLUMN trace TEXT;');
+              db.prepare('UPDATE config SET format=? WHERE singleton=1').run(
+                'semaphile-messaging/1.1',
+              );
+              db.exec('COMMIT');
+              row.format = 'semaphile-messaging/1.1';
+            } catch (error) {
+              if (db.isTransaction) {
+                db.exec('ROLLBACK');
+              }
+              throw error;
+            }
+          }
         }
         parentPort!.postMessage({
           value: { path, format: row.format, config: JSON.parse(String(row.value)) as unknown },

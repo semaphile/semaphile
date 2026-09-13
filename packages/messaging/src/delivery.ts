@@ -18,11 +18,12 @@ interface Row {
   available_at: number;
   acked_claim: string | null;
   envelope: string;
+  trace: string | null;
   message_id: string;
   expires_at: number | null;
 }
 const SELECT =
-  'SELECT d.*,m.id AS message_id,m.envelope,m.expires_at FROM deliveries d JOIN messages m ON m.seq=d.message_seq';
+  'SELECT d.*,m.id AS message_id,m.envelope,m.trace,m.expires_at FROM deliveries d JOIN messages m ON m.seq=d.message_seq';
 function rowFor(store: Database, id: string): Row | undefined {
   return store.db.prepare(SELECT + ' WHERE d.id=?').get(id) as unknown as Row | undefined;
 }
@@ -132,6 +133,7 @@ export function receive(
         seq: row.message_seq,
         recipient,
         message,
+        ...(row.trace ? { trace: JSON.parse(row.trace) as Delivery['trace'] } : {}),
         receipt: { deliveryId: row.id, claimId },
         attempt: row.attempts + 1,
         ackMode: effectiveMode,

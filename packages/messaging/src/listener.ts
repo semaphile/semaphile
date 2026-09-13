@@ -1,3 +1,4 @@
+import { markMessageFailure } from './telemetry.js';
 import { listenerDefaults } from './validation.js';
 import { MessagingError, integer, mode } from './config.js';
 import type { MessagingClient } from './client.js';
@@ -100,7 +101,7 @@ export class MessageListener {
           await this.client.release(delivery.receipt);
           break;
         }
-        await this.handle(delivery);
+        await this.client.processDelivery(delivery, () => this.handle(delivery));
       }
     } catch (error) {
       if (this.stopping && error instanceof MessagingError && error.code === 'ABORTED') {
@@ -134,6 +135,7 @@ export class MessageListener {
         return;
       }
       lost = true;
+      markMessageFailure();
       if (timer) {
         clearTimeout(timer);
       }
@@ -219,6 +221,7 @@ export class MessageListener {
       });
     } catch (error) {
       failed = true;
+      markMessageFailure();
       failure = error;
     } finally {
       finished = true;
@@ -239,6 +242,7 @@ export class MessageListener {
     } else if (!settled && !lost && delivery.ackMode === 'handler-success') {
       const result = await this.client.ack(delivery.receipt);
       if (result.status === 'stale') {
+        markMessageFailure();
         this.report(new MessagingError('STALE', 'Handler completed after claim loss'), delivery);
       }
     }

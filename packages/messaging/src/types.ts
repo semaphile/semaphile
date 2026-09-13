@@ -1,3 +1,13 @@
+import type { MessageTelemetryOptions } from './telemetry.js';
+export type {
+  MessageTelemetryOptions,
+  MessageInstrumentation,
+  MessageScope,
+  MessageEvent,
+  MessageMetadata,
+} from './telemetry.js';
+import type { TraceCarrier } from './trace.js';
+export type { TraceCarrier } from './trace.js';
 /** Shared store policy. Existing stores retain their creation-time values. */
 export interface StoreConfig {
   claimTtlMs: number;
@@ -19,12 +29,14 @@ export interface Difference {
   actual: unknown;
 }
 export interface OpenOptions {
+  telemetry?: MessageTelemetryOptions;
   path: string;
   config?: Partial<StoreConfig>;
   configMismatch?: 'warn' | 'error';
   onWarning?: (differences: Difference[]) => void;
 }
 export interface SendOptions {
+  trace?: TraceCarrier;
   to: string;
   body: string;
   sender?: string;
@@ -43,10 +55,12 @@ export interface SendResult {
   deduplicated: boolean;
 }
 export interface Receipt {
+  trace?: TraceCarrier;
   deliveryId: string;
   claimId: string;
 }
 export interface Delivery {
+  trace?: TraceCarrier;
   id: string;
   messageId: string;
   seq: number;
@@ -95,6 +109,7 @@ export interface HistoryOptions {
   since?: number;
 }
 export interface MessageHistory extends SendResult {
+  trace?: TraceCarrier;
   message: SendOptions | null;
   createdAt: number;
   terminalAt: number | null;

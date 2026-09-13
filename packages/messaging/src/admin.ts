@@ -98,10 +98,9 @@ export async function info(
     const persisted = await inspectStore(resolve(options.cwd ?? process.cwd(), options.store));
     let expected: Record<string, unknown> | null = null;
     if (options.expectedConfig !== undefined) {
-      expected =
-        persisted.format === 'semaphile-messaging/1.0'
-          ? { ...normalize(options.expectedConfig) }
-          : await normalizePoolConfig(options.expectedConfig);
+      expected = persisted.format.startsWith('semaphile-messaging/')
+        ? { ...normalize(options.expectedConfig) }
+        : await normalizePoolConfig(options.expectedConfig);
     }
     const differences = expected === null ? null : configDifferences(expected, persisted.config);
     return {
@@ -146,4 +145,13 @@ function configDifferences(expected: Record<string, unknown>, actual: Record<str
   return Object.keys(expected)
     .filter((key) => JSON.stringify(expected[key]) !== JSON.stringify(actual[key]))
     .map((field) => ({ field, expected: expected[field], actual: actual[field] }));
+}
+
+/** Offline format upgrade. Stop every client first, including unregistered ones. */
+export function upgradeMessaging(options: { path: string }): Promise<StoreInfo> {
+  return readInspection(
+    new Worker(new URL('./inspect-worker.js', import.meta.url), {
+      workerData: { path: resolve(options.path), upgrade: true },
+    }),
+  );
 }

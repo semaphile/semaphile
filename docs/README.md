@@ -9,6 +9,7 @@ for readers who have no access to development conversations or private records.
 | [Blocking and descriptor ownership](blocking.md) | Where threads wait and how shutdown releases resources         |
 | [Design decisions](design-decisions.md)          | Why the backends use these coordination mechanisms             |
 | [Execution and maintenance](resilience.md)       | Retry safety, HTTP lifetime, recovery and persistent drains    |
+| [Observability](observability.md) | Optional tracing, shared collectors and messaging upgrades |
 | [Testing](testing.md)                            | How to reproduce local, cross-runtime and cross-host checks    |
 | [Documentation policy](publication.md)           | What belongs in public guides and private working records      |
 | [Specification](../SPEC.md)                      | The authoritative behavior and versioned engineering decisions |

@@ -598,7 +598,10 @@ Consumer events support topic labels without topic subscriptions.
 
 ### Implementation and verification (ENGINEERING)
 
-Format semaphile-messaging/1.0 is distinct from pool formats. Reuse private
+Messaging format is distinct from pool formats. Section 12 advances the
+initial 1.0 format to 1.1 through an explicit offline upgrade: add a nullable
+messages.trace column in the same FULL transaction as the format update.
+Trace bytes count toward content retention and expire with the envelope. Reuse private
 native machinery at build time, with no descriptor exports or install-time
 compilation. Retain rollback journal, synchronous FULL and busy_timeout=0.
 All database access takes a short exclusive gate on a worker. Arm inbox

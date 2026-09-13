@@ -5,6 +5,26 @@ released together. Before 1.0, minor releases may include breaking changes;
 patch releases contain compatible fixes. Earlier CalVer snapshots were private
 pilot artifacts, not published GitHub releases.
 
+## Unreleased
+
+### Added
+
+- Optional limiter lifecycle hooks and `@semaphile/otel` adapters with application-owned SDKs.
+- Explicit shared-pool collectors with Prometheus/health endpoints, optional OTLP,
+  pool selection/discovery, ownership conflict warnings and deliberate overlap.
+- Redis Cluster discovery and daemonless local collector registrations.
+- Messaging send/receive/process/settlement tracing, bounded W3C propagation,
+  baggage allowlists, handler context and opt-in CLI export.
+- Explicit offline messaging 1.0 → 1.1 upgrade preserving messages and receipts.
+  Trace metadata is separate from content and dedupe identity.
+
+### Compatibility
+
+- SQLite limiter format 1.4 and Redis state 2 remain unchanged. Messaging readers
+  must upgrade together; ordinary open rejects old messaging stores.
+- These changes are not included in published 0.1.0. Use matching builds until
+  the owner publishes the next minor release; no packages were published here.
+
 ## [0.1.0] - 2026-09-13
 
 First release, distributed through npm and installable GitHub package archives

@@ -10,7 +10,7 @@ import type { Native, NativeContext, NativeFile } from './native.js';
 import { contentBytes, trimEvents } from './storage.js';
 import { differences, MessagingError, normalize } from './config.js';
 import type { Difference, StoreConfig } from './types.js';
-export const FORMAT = 'semaphile-messaging/1.0';
+export const FORMAT = 'semaphile-messaging/1.1';
 export class Database {
   native: NativeContext = new (
     createRequire(import.meta.url)(nativePath()) as Native
@@ -65,7 +65,7 @@ export class Database {
             CREATE TABLE config(singleton INTEGER PRIMARY KEY CHECK(singleton=1),format TEXT NOT NULL,value TEXT NOT NULL);
             CREATE TABLE mailboxes(name TEXT PRIMARY KEY,created_at INTEGER NOT NULL);
             CREATE TABLE agents(id TEXT PRIMARY KEY,name TEXT NOT NULL,pid INTEGER NOT NULL,registered_at INTEGER NOT NULL,metadata TEXT NOT NULL,online INTEGER NOT NULL);
-            CREATE TABLE messages(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,dedupe_key TEXT UNIQUE,fingerprint TEXT NOT NULL,envelope TEXT,recipients TEXT NOT NULL,created_at INTEGER NOT NULL,expires_at INTEGER,terminal_at INTEGER);
+            CREATE TABLE messages(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT UNIQUE NOT NULL,dedupe_key TEXT UNIQUE,fingerprint TEXT NOT NULL,envelope TEXT,recipients TEXT NOT NULL,created_at INTEGER NOT NULL,expires_at INTEGER,terminal_at INTEGER,trace TEXT);
             CREATE TABLE deliveries(id TEXT PRIMARY KEY,message_seq INTEGER NOT NULL,recipient TEXT NOT NULL,state TEXT NOT NULL,attempts INTEGER NOT NULL,claim_id TEXT,claimed_at INTEGER,claim_expires_at INTEGER,handling_expires_at INTEGER,available_at INTEGER NOT NULL,error TEXT,acked_claim TEXT,UNIQUE(message_seq,recipient));
             CREATE INDEX inbox ON deliveries(recipient,state,available_at,message_seq);
             CREATE INDEX message_deliveries ON deliveries(message_seq);

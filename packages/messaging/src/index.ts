@@ -5,5 +5,5 @@ export { MessageListener } from './listener.js';
 export { commandHandler } from './command-handler.js';
 export { loadConfig, messagingOptions } from './settings.js';
 export type { ProjectConfig, ResolvedConfig } from './settings.js';
-export { init, info, inspectStore } from './admin.js';
+export { init, info, inspectStore, upgradeMessaging } from './admin.js';
 export type { StoreInfo } from './admin.js';

@@ -254,3 +254,12 @@ and close the administrative client. No command kills producer processes.
 
 See [execution and maintenance](https://github.com/semaphile/semaphile/blob/main/docs/resilience.md) for the library API,
 recovery behavior and experimental-format replacement procedure.
+
+## Optional tracing (unreleased)
+
+The next release adds optional client-local tracing and explicit offline upgrades
+from messaging format 1.0 to 1.1. See the
+[observability guide](../../docs/observability.md#messaging-tracing-and-offline-upgrade)
+for API hooks, `@semaphile/otel/messaging`, CLI `--otel`, handler propagation,
+baggage limits and the `semaphile message upgrade --store PATH` procedure.
+Stop all old clients before upgrading; ordinary opens never migrate a store.

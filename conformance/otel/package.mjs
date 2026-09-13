@@ -88,6 +88,10 @@ await writeFile(
   join(root, 'consumer.ts'),
   `
 import { createInstrumentation } from '@semaphile/otel';
+import { createMessagingInstrumentation } from '@semaphile/otel/messaging';
+import type { MessageTelemetryOptions } from '@semaphile/messaging';
+const messageTelemetry: MessageTelemetryOptions = { instrumentation: createMessagingInstrumentation() };
+void messageTelemetry;
 import type { TelemetryOptions } from '@semaphile/core/client';
 import { startTelemetry } from '@semaphile/otel/sdk';
 import { startCollector } from '@semaphile/otel/collector';

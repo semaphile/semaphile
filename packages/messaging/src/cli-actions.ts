@@ -1,3 +1,5 @@
+import { validateTrace } from './trace.js';
+import type { Receipt } from './types.js';
 import { readFile } from 'node:fs/promises';
 import type { MessagingClient } from './client.js';
 import type { messagingOptions } from './settings.js';
@@ -60,10 +62,15 @@ async function settleClaim(context: Context, action: 'ack' | 'release' | 'renew'
   }
   const envelope = record(raw, 'receipt');
   const value = record('receipt' in envelope ? envelope.receipt : envelope, 'receipt');
-  const receipt = {
+  const receipt: Receipt = {
     deliveryId: text(value.deliveryId, 'deliveryId'),
     claimId: text(value.claimId, 'claimId'),
   };
+  try {
+    receipt.trace = validateTrace(value.trace ?? envelope.trace);
+  } catch {
+    /* Invalid optional telemetry does not invalidate a receipt. */
+  }
   const result =
     action === 'renew'
       ? await client.renew(receipt, numeric('claim-ttl'))

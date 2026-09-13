@@ -50,7 +50,7 @@ export function contentBytes(store: Database): number {
   const row = store.db
     .prepare(
       `SELECT
-    (SELECT COALESCE(SUM(length(CAST(COALESCE(envelope,'') AS BLOB))+length(CAST(recipients AS BLOB))+length(CAST(COALESCE(dedupe_key,'') AS BLOB))+512),0) FROM messages)
+    (SELECT COALESCE(SUM(length(CAST(COALESCE(envelope,'') AS BLOB))+length(CAST(COALESCE(trace,'') AS BLOB))+length(CAST(recipients AS BLOB))+length(CAST(COALESCE(dedupe_key,'') AS BLOB))+512),0) FROM messages)
     +(SELECT COALESCE(SUM(CASE WHEN state IN ('pending','claimed') THEN 8192
       ELSE length(CAST(COALESCE(error,'') AS BLOB))+1024 END),0) FROM deliveries)
     +(SELECT COALESCE(SUM(length(CAST(metadata AS BLOB))+length(CAST(name AS BLOB))+1024),0) FROM agents)
@@ -83,7 +83,7 @@ export function cleanup(store: Database, pressure = false): void {
       now - config.retainHistoryMs,
     );
   for (const row of rows) {
-    db.prepare('UPDATE messages SET envelope=NULL WHERE seq=?').run(row.seq);
+    db.prepare('UPDATE messages SET envelope=NULL,trace=NULL WHERE seq=?').run(row.seq);
     if (row.dedupe_key === null || Number(row.terminal_at) + config.dedupeRetentionMs <= now) {
       db.prepare('DELETE FROM deliveries WHERE message_seq=?').run(row.seq);
       db.prepare('DELETE FROM messages WHERE seq=?').run(row.seq);
@@ -132,6 +132,7 @@ export function history(store: Database, options: HistoryOptions = {}): MessageH
     seq: Number(row.seq),
     recipients: JSON.parse(String(row.recipients)) as string[],
     deduplicated: false,
+    ...(row.trace ? { trace: JSON.parse(String(row.trace)) as MessageHistory['trace'] } : {}),
     message: row.envelope === null ? null : (JSON.parse(String(row.envelope)) as SendOptions),
     createdAt: Number(row.created_at),
     terminalAt: row.terminal_at === null ? null : Number(row.terminal_at),

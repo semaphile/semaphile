@@ -7,11 +7,13 @@ export const help = `Usage: semaphile init [--directory PATH]
        semaphile pool <status|drain|wait|acknowledge|resume> [--name NAME | --store PATH]
        semaphile message <command> [--store PATH] [options]
 Commands: create, register, agents, send, receive, wait, listen, ack, release,
-          renew, retry, history, events, append
+          renew, retry, history, events, append, upgrade
 Addressing: --name NAME (create/register), --to NAME|* (send), --as NAME (receive/listen)
 Payload: --body TEXT | --body-file FILE; --dedupe-key KEY; --correlation ID
 Claims: --receipt-file FILE or --delivery-id ID --claim-id ID
 Handlers: listen --as NAME -- EXECUTABLE [ARG ...]
+Telemetry: --otel | --no-otel (optional @semaphile/otel addon)
+Upgrade: message upgrade --store PATH (offline; stop all clients first)
 Policies: --ack-mode manual|handler-success --config-mismatch warn|error
 Timeouts: --timeout MS --claim-ttl MS --max-handling MS
 Pools: --generation N --timeout MS; acknowledge --ids-file FILE --reason TEXT
@@ -64,6 +66,8 @@ export function readArguments() {
     options: Object.fromEntries([
       ...stringOptions.map((key) => [key, { type: 'string' as const }]),
       ['help', { type: 'boolean' as const }],
+      ['otel', { type: 'boolean' as const }],
+      ['no-otel', { type: 'boolean' as const }],
     ]),
   });
   const v = parsed.values as Record<string, string | boolean | undefined>;
@@ -83,12 +87,23 @@ export function readArguments() {
     return value === undefined ? undefined : Number(value);
   };
   const [group, action, ...command] = parsed.positionals;
-  return { get, required, numeric, group, action, command, help: v.help };
+  return {
+    get,
+    required,
+    numeric,
+    group,
+    action,
+    command,
+    help: v.help,
+    otel: v.otel,
+    noOtel: v['no-otel'],
+  };
 }
 export type Arguments = ReturnType<typeof readArguments>;
 export function validateAction(action: string, { get }: Arguments): void {
   if (
     ![
+      'upgrade',
       'create',
       'agents',
       'register',

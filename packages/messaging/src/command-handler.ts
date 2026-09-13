@@ -1,3 +1,4 @@
+import { currentMessageTrace } from './telemetry.js';
 import { spawn } from 'node:child_process';
 import type { Handler } from './types.js';
 import { MessagingError } from './config.js';
@@ -19,8 +20,24 @@ function runCommand(
       reject(context.signal.reason);
       return;
     }
+    const env = { ...process.env };
+    for (const key of [
+      'TRACEPARENT',
+      'TRACESTATE',
+      'BAGGAGE',
+      'traceparent',
+      'tracestate',
+      'baggage',
+    ]) {
+      delete env[key];
+    }
+    const trace = currentMessageTrace();
+    for (const [key, value] of Object.entries(trace ?? {})) {
+      env[key.toUpperCase()] = value;
+    }
     const child = spawn(command[0], command.slice(1), {
       cwd: options.cwd,
+      env,
       stdio: ['pipe', 'inherit', 'inherit'],
       shell: false,
     });

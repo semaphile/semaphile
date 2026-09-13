@@ -14,6 +14,8 @@ const suites = {
     'redis-timeout',
     'cli',
     'cluster',
+    'messaging',
+    'messaging-cli',
     'package',
   ],
   core: [
@@ -50,6 +52,9 @@ const suites = {
   ],
   administration: ['pool-cli'],
   messaging: [
+    'upgrade',
+    'trace-store',
+    'telemetry',
     'primitive',
     'retention',
     'review-regressions',
