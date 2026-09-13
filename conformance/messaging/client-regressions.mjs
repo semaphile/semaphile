@@ -4,6 +4,8 @@ import { mkdtemp, mkdir } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
+import { Worker } from 'node:worker_threads';
+import { readInspection } from '../../packages/messaging/dist/src/admin.js';
 import { openMessaging } from '../../packages/messaging/dist/src/index.js';
 const root = resolve('.tmp/messaging');
 await mkdir(root, { recursive: true });
@@ -40,8 +42,9 @@ await scenario('invalid handler fails before claiming or consuming an attempt', 
   assert.equal(h.deliveries[0].state, 'pending');
   assert.equal(h.deliveries[0].attempts, 0);
 });
-async function cancelledCommand(c, action) {
+async function cancelledCommand(c, action, adapter) {
   const script =
+    adapter ??
     "process.on('SIGTERM',()=>{});process.stdin.resume();setTimeout(()=>{},60000);console.log('adapter-ready')";
   const child = spawn(
     process.execPath,
@@ -74,7 +77,12 @@ async function cancelledCommand(c, action) {
   });
   const timeout = setTimeout(() => child.kill('SIGKILL'), 12000);
   try {
-    await ready.promise;
+    await Promise.race([
+      ready.promise,
+      exited.then(([code, signal]) => {
+        throw new Error(`CLI exited before adapter readiness (${code ?? signal}): ${errors}`);
+      }),
+    ]);
     const started = Date.now();
     child.kill('SIGTERM');
     const [code, signal] = await exited;
@@ -82,8 +90,18 @@ async function cancelledCommand(c, action) {
     assert.ok(Date.now() - started < 10000, 'five-second escalation must finish');
   } finally {
     clearTimeout(timeout);
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill('SIGKILL');
+    }
+    await exited;
   }
 }
+await scenario('adapter exit before readiness rejects instead of hanging', {}, async (c) => {
+  await assert.rejects(
+    cancelledCommand(c, 'register', 'process.exit(0)'),
+    /before adapter readiness/,
+  );
+});
 await scenario('CLI cancellation terminates an active handler with escalation', {}, async (c) => {
   await c.send({ to: 'a', body: 'work' });
   await cancelledCommand(c, 'listen');
@@ -162,5 +180,25 @@ await scenario('empty CLI policy overrides fail before consuming deliveries', {}
     assert.equal(r.status, 5, `${key}: ${r.stdout} ${r.stderr} ${r.error ?? ''}`);
   }
   assert.equal((await c.history())[0].deliveries[0].attempts, 0);
+});
+for (const code of [0, 7]) {
+  await scenario(`inspection worker exit ${code} without a reply rejects`, {}, async () => {
+    const worker = new Worker(new URL('./inspection-worker.mjs', import.meta.url), {
+      workerData: { code },
+    });
+    await assert.rejects(
+      readInspection(worker),
+      (error) => error.code === 'STORE' && error.message.includes(`(${code})`),
+    );
+  });
+}
+await scenario('inspection worker reply wins over its subsequent clean exit', {}, async () => {
+  const value = { path: 'fixture', format: 'fixture', config: {} };
+  const worker = new Worker(new URL('./inspection-worker.mjs', import.meta.url), {
+    workerData: { value },
+  });
+  const exited = once(worker, 'exit');
+  assert.deepEqual(await readInspection(worker), value);
+  await exited;
 });
 console.log(`RESULT ${passed}/${passed} passed`);

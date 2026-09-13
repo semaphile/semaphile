@@ -108,8 +108,10 @@ export function validateAction(action: string, { get }: Arguments): void {
   }
   if (
     action === 'events' &&
-    ['to', 'sender', 'correlation', 'kind', 'as', 'delivery-id'].some(
-      (key) => get(key) !== undefined,
+    stringOptions.some(
+      (key) =>
+        !['store', 'config-mismatch', 'after', 'limit', 'topic', 'since'].includes(key) &&
+        get(key) !== undefined,
     )
   ) {
     throw new MessagingError(

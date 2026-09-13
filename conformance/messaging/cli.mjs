@@ -123,4 +123,59 @@ await scenario(
     assert.equal(result.stores[1].config.maxConcurrent, 5);
   },
 );
+await scenario(
+  'malformed receipt JSON consistently reports input refusal without payloads',
+  async () => {
+    const file = join(directory, 'invalid-receipt.json');
+    for (const contents of [
+      'null',
+      '42',
+      'true',
+      '"receipt"',
+      '[]',
+      '{}',
+      '{"receipt":null}',
+      '{"receipt":[]}',
+      '{"deliveryId":42,"claimId":"x"}',
+      '{"receipt":{"deliveryId":"x"}}',
+      '{"private-canary":',
+    ]) {
+      await writeFile(file, contents);
+      for (const action of ['ack', 'release', 'renew']) {
+        const result = await run(['message', action, '--receipt-file', file]);
+        assert.equal(result.code, 5, `${action}: ${result.err}`);
+        assert.match(result.err, /MessagingError/);
+        assert.ok(!result.err.includes('private-canary'));
+        assert.ok(!result.err.includes('TypeError'));
+      }
+    }
+  },
+);
+
+await scenario(
+  'events rejects ignored options while preserving common options and filters',
+  async () => {
+    for (const key of ['reply-to', 'body', 'name', 'claim-ttl', 'pool', 'payload']) {
+      const result = await run(['message', 'events', '--' + key, 'ignored']);
+      assert.equal(result.code, 5, `${key}: ${result.err}`);
+    }
+    const result = await run([
+      'message',
+      'events',
+      '--store',
+      '.semaphile/messaging',
+      '--config-mismatch',
+      'error',
+      '--after',
+      '0',
+      '--limit',
+      '1',
+      '--topic',
+      'x',
+      '--since',
+      '0',
+    ]);
+    assert.equal(result.code, 0, result.err);
+  },
+);
 console.log(`RESULT ${passed}/${passed} passed`);

@@ -14,6 +14,10 @@ export function inspectStore(path: string): Promise<StoreInfo> {
   const worker = new Worker(new URL('./inspect-worker.js', import.meta.url), {
     workerData: { path: resolve(path) },
   });
+  return readInspection(worker);
+}
+// Every worker termination must settle the caller, even a clean exit without a reply.
+export function readInspection(worker: Worker): Promise<StoreInfo> {
   return new Promise((resolveInfo, reject) => {
     worker.once('error', reject);
     worker.once('message', (reply: { value: StoreInfo; error?: string }) => {
@@ -24,9 +28,7 @@ export function inspectStore(path: string): Promise<StoreInfo> {
       }
     });
     worker.once('exit', (code) => {
-      if (code !== 0) {
-        reject(new MessagingError('STORE', `Inspection worker exited (${code})`));
-      }
+      reject(new MessagingError('STORE', `Inspection worker exited without a reply (${code})`));
     });
   });
 }
@@ -101,19 +103,7 @@ export async function info(
           ? { ...normalize(options.expectedConfig) }
           : await normalizePoolConfig(options.expectedConfig);
     }
-    const comparisonConfig = expected;
-    const differences =
-      comparisonConfig === null
-        ? null
-        : Object.keys(comparisonConfig)
-            .filter(
-              (k) => JSON.stringify(comparisonConfig[k]) !== JSON.stringify(persisted.config[k]),
-            )
-            .map((field) => ({
-              field,
-              expected: comparisonConfig[field],
-              actual: persisted.config[field],
-            }));
+    const differences = expected === null ? null : configDifferences(expected, persisted.config);
     return {
       ...persisted,
       expected,
@@ -143,13 +133,17 @@ export async function info(
       await access(join(store.path, 'state.sqlite'));
       const persisted = await inspectStore(store.path);
       const expected = store.expected as Record<string, unknown>;
-      const differences = Object.keys(expected)
-        .filter((k) => JSON.stringify(expected[k]) !== JSON.stringify(persisted.config[k]))
-        .map((field) => ({ field, expected: expected[field], actual: persisted.config[field] }));
+      const differences = configDifferences(expected, persisted.config);
       result.push({ name: store.name, ...persisted, expected, differences });
     } catch (error) {
       result.push({ ...store, error: String(error) });
     }
   }
   return { file: project.file, directory: project.directory, stores: result };
+}
+
+function configDifferences(expected: Record<string, unknown>, actual: Record<string, unknown>) {
+  return Object.keys(expected)
+    .filter((key) => JSON.stringify(expected[key]) !== JSON.stringify(actual[key]))
+    .map((field) => ({ field, expected: expected[field], actual: actual[field] }));
 }

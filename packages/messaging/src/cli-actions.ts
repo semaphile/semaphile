@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises';
 import type { MessagingClient } from './client.js';
 import type { messagingOptions } from './settings.js';
-import { MessagingError, mode } from './config.js';
+import { MessagingError, mode, text } from './config.js';
 import { help } from './cli-options.js';
+import { record } from './validation.js';
 import type { Arguments } from './cli-options.js';
 import type { ReceiveOptions, SendOptions } from './types.js';
 export const output = (value: unknown) =>
@@ -45,14 +46,24 @@ async function settleClaim(context: Context, action: 'ack' | 'release' | 'renew'
     args: { get, required, numeric },
   } = context;
 
-  const raw = get('receipt-file')
-    ? (JSON.parse(await readFile(required('receipt-file'), 'utf8')) as {
-        receipt?: { deliveryId: string; claimId: string };
-        deliveryId: string;
-        claimId: string;
-      })
-    : { deliveryId: required('delivery-id'), claimId: required('claim-id') };
-  const receipt = 'receipt' in raw && raw.receipt ? raw.receipt : raw;
+  let raw: unknown;
+  if (get('receipt-file') !== undefined) {
+    const contents = await readFile(required('receipt-file'), 'utf8');
+    try {
+      raw = JSON.parse(contents);
+    } catch {
+      // Parser messages can contain receipt contents; report only the category.
+      throw new MessagingError('INPUT', 'Receipt file must contain valid JSON');
+    }
+  } else {
+    raw = { deliveryId: required('delivery-id'), claimId: required('claim-id') };
+  }
+  const envelope = record(raw, 'receipt');
+  const value = record('receipt' in envelope ? envelope.receipt : envelope, 'receipt');
+  const receipt = {
+    deliveryId: text(value.deliveryId, 'deliveryId'),
+    claimId: text(value.claimId, 'claimId'),
+  };
   const result =
     action === 'renew'
       ? await client.renew(receipt, numeric('claim-ttl'))
