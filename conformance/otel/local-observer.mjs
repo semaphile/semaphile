@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, realpath } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, readdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { openLimiter } from '../../packages/core/dist/src/index.js';
 import {
@@ -36,7 +36,7 @@ try {
         }),
       { weight: 2 },
     );
-    while (!release) await new Promise((resolve) => setImmediate(resolve));
+    while (!release) {await new Promise((resolve) => setImmediate(resolve));}
     const sample = await overlap.sample();
     assert.equal(sample.active, 2);
     assert.equal(sample.maxConcurrent, 3);
@@ -57,4 +57,16 @@ try {
 const restarted = await openPoolObserver({ path, collectorId: randomUUID() });
 await restarted.close();
 console.log('PASS collector close releases lifetime registration for subsequent ownership');
-console.log('RESULT 3/3 passed');
+assert.deepEqual(await readdir(path + '/.telemetry/collectors-v1'), ['gate']);
+await Promise.all(
+  Array.from({ length: 100 }, () =>
+    writeFile(path + '/.telemetry/collectors-v1/' + randomUUID() + '.lock', ''),
+  ),
+);
+const cleaned = await openPoolObserver({ path, collectorId: randomUUID() });
+await cleaned.close();
+assert.deepEqual(await readdir(path + '/.telemetry/collectors-v1'), ['gate']);
+console.log(
+  'PASS startup bounds registration scanning and removes stale files without owners calls',
+);
+console.log('RESULT 4/4 passed');

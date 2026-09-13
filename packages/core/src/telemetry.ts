@@ -16,6 +16,7 @@ export type LifecycleKind =
   | 'responseStarted'
   | 'responseCompleted'
   | 'responseCancelled'
+  | 'responseFailed'
   | 'stateObserved';
 export type LifecycleEvent = Readonly<{
   id: string;
@@ -58,7 +59,36 @@ export function observeCurrent(kind: LifecycleKind, fields: Partial<LifecycleEve
   current.getStore()?.emit(kind, fields);
 }
 
+export function settleCurrent(status: 'fulfilled' | 'rejected' | 'cancelled'): void {
+  current.getStore()?.settle(status);
+}
+const thenable = (value: unknown): value is PromiseLike<unknown> =>
+  value !== null &&
+  (typeof value === 'object' || typeof value === 'function') &&
+  'then' in value &&
+  typeof value.then === 'function';
 export class Telemetry {
+  enabled = true;
+  private diagnosticEnabled = true;
+  /** Context adapters are synchronous. Disable a violating adapter after its
+   * first promise so a hanging hook cannot allocate one promise per event/job. */
+  checkHook(value: unknown): void {
+    if (thenable(value)) {
+      this.enabled = false;
+      void Promise.resolve(value).catch(() => {});
+      this.diagnostic('observer-failed');
+    }
+  }
+  hook(callback: () => unknown): void {
+    if (!this.enabled) {
+      return;
+    }
+    try {
+      this.checkHook(callback());
+    } catch {
+      this.diagnostic('observer-failed');
+    }
+  }
   private readonly options: TelemetryOptions;
   private readonly queue: LifecycleEvent[] = [];
   private scheduled = false;
@@ -67,21 +97,38 @@ export class Telemetry {
     readonly backend: string,
     options: TelemetryOptions = {},
   ) {
-    this.options = { ...options };
+    try {
+      this.options = { ...options };
+    } catch {
+      this.options = {};
+    }
+    options = this.options;
     this.capacity =
       Number.isSafeInteger(options.bufferSize) && options.bufferSize! > 0
         ? Math.min(options.bufferSize!, 65536)
         : 1024;
   }
   diagnostic(kind: 'observer-failed' | 'events-dropped', count = 1): void {
+    if (!this.diagnosticEnabled) {
+      return;
+    }
     try {
-      void Promise.resolve(this.options.onDiagnostic?.({ kind, count })).catch(() => {});
+      const result = this.options.onDiagnostic?.({ kind, count });
+      if (thenable(result)) {
+        this.diagnosticEnabled = false;
+        void Promise.resolve(result).catch(() => {});
+      }
     } catch {
       /* Diagnostics are observational. */
     }
   }
   begin(operation: string): Observation {
-    return new Observation(this, operation, this.options.pool, this.options.instrumentation);
+    return new Observation(
+      this,
+      operation,
+      this.options.pool,
+      this.enabled ? this.options.instrumentation : undefined,
+    );
   }
   publish(event: LifecycleEvent): void {
     if (!this.options.onEvent) {
@@ -132,7 +179,11 @@ export class Observation {
   ) {
     const event = this.make('queued');
     try {
-      this.scope = instrumentation?.start(event);
+      const scope = instrumentation?.start(event);
+      owner.checkHook(scope);
+      if (owner.enabled) {
+        this.scope = scope;
+      }
     } catch {
       owner.diagnostic('observer-failed');
     }
@@ -155,13 +206,7 @@ export class Observation {
       return;
     }
     const event = this.make(kind, fields);
-    try {
-      void Promise.resolve(this.scope?.event?.(event)).catch(() =>
-        this.owner.diagnostic('observer-failed'),
-      );
-    } catch {
-      this.owner.diagnostic('observer-failed');
-    }
+    this.owner.hook(() => this.scope?.event?.(event));
     this.owner.publish(event);
   }
   run<T>(callback: () => T): T {
@@ -185,10 +230,10 @@ export class Observation {
       return result;
     };
     try {
-      if (this.scope?.run) {
+      if (this.owner.enabled && this.scope?.run) {
         const returned = this.scope.run(once);
         if (returned !== result) {
-          void Promise.resolve(returned).catch(() => this.owner.diagnostic('observer-failed'));
+          this.owner.checkHook(returned);
         }
       } else {
         once();
@@ -213,18 +258,12 @@ export class Observation {
     this.settled = true;
     this.emit('callerSettled', { status });
   }
-  end(): void {
+  end(status?: 'fulfilled' | 'rejected' | 'cancelled'): void {
     if (this.ended) {
       return;
     }
-    this.emit('completed');
+    this.emit('completed', { status });
     this.ended = true;
-    try {
-      void Promise.resolve(this.scope?.end?.(this.make('completed'))).catch(() =>
-        this.owner.diagnostic('observer-failed'),
-      );
-    } catch {
-      this.owner.diagnostic('observer-failed');
-    }
+    this.owner.hook(() => this.scope?.end?.(this.make('completed', { status })));
   }
 }

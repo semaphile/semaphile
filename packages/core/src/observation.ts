@@ -13,6 +13,7 @@ export type PoolMeasurement = {
   openUntil: number;
 };
 export interface PoolObserver {
+  valid(): boolean;
   sample(): Promise<PoolMeasurement>;
   owners(): Promise<string[]>;
   close(): Promise<void>;
@@ -90,6 +91,7 @@ export async function openPoolObserver(options: {
     throw error;
   }
   return {
+    valid: () => !closed,
     sample: () => call<PoolMeasurement>('sample'),
     owners: () => call<string[]>('owners'),
     close: async () => {

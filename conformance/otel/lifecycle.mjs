@@ -27,7 +27,7 @@ const first = context.run('first', () =>
     assert.equal(context.getStore(), 'first');
   }),
 );
-while (!release) await turn();
+while (!release) {await turn();}
 const second = context.run('second', () => pool.schedule(() => context.getStore()));
 release();
 await first;
@@ -126,7 +126,7 @@ const bounded = await openLimiter({
   telemetry: {
     bufferSize: 2,
     onDiagnostic: (d) => {
-      if (d.kind === 'events-dropped') diagnostics += d.count;
+      if (d.kind === 'events-dropped') {diagnostics += d.count;}
     },
     onEvent: () => {
       observed++;
@@ -134,10 +134,32 @@ const bounded = await openLimiter({
     },
   },
 });
-for (let i = 0; i < 20; i++) await bounded.schedule(() => 42);
+for (let i = 0; i < 20; i++) {await bounded.schedule(() => 42);}
 await bounded.close();
 await turn();
 assert(diagnostics > 0);
 assert.equal(observed, 1);
 console.log('PASS hung event subscriber remains bounded and cannot block limiter close');
-console.log('RESULT 4/4 passed');
+
+let hookCalls = 0;
+const asyncHook = await openLimiter({
+  key: 'async-hook-cap',
+  config: { maxConcurrent: 1 },
+  telemetry: {
+    bufferSize: 2,
+    instrumentation: {
+      start: () => ({
+        event: () => {
+          hookCalls++;
+          return new Promise(() => {});
+        },
+      }),
+    },
+  },
+});
+for (let i = 0; i < 20; i++) {await asyncHook.schedule(() => 1);}
+await asyncHook.close();
+assert.equal(hookCalls, 1);
+console.log('PASS asynchronous instrumentation hooks are disabled after one outstanding promise');
+
+console.log('RESULT 5/5 passed');

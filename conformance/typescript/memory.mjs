@@ -343,6 +343,7 @@ test('duplicate module imports share the versioned memory pool registry', async 
     'maintenance-state',
     'recovery-state',
     'client',
+    'telemetry',
     'client-errors',
     'deadline',
     'execution',

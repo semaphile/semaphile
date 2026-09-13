@@ -2,7 +2,7 @@
 // gate and the pool gate together; every acquisition is a single nonblocking try.
 import { parentPort, workerData } from 'node:worker_threads';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdirSync, readdirSync, realpathSync, statSync, existsSync, unlinkSync } from 'node:fs';
+import { mkdirSync, opendirSync, realpathSync, statSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { nativePath } from './native-path.js';
@@ -25,10 +25,16 @@ function inode(): string {
   const value = statSync(path, { bigint: true });
   return `${value.dev}:${value.ino}`;
 }
-function owners(): string[] {
-  return registrationGate.tryWithGate(() => {
-    const result: string[] = [];
-    for (const name of readdirSync(registrations)) {
+function scanRegistrations(): string[] {
+  const result: string[] = [];
+  const directory = opendirSync(registrations);
+  try {
+    let seen = 0;
+    for (let entry = directory.readSync(); entry; entry = directory.readSync()) {
+      if (++seen > 4096) {
+        throw new Error('Collector registration scan exceeds bound');
+      }
+      const name = entry.name;
       if (!/^[a-f0-9-]{36}\.lock$/.test(name)) {
         continue;
       }
@@ -42,7 +48,12 @@ function owners(): string[] {
       }
     }
     return result.sort();
-  });
+  } finally {
+    directory.closeSync();
+  }
+}
+function owners(): string[] {
+  return registrationGate.tryWithGate(scanRegistrations);
 }
 function open(): void {
   if (!/^[a-f0-9-]{36}$/.test(id)) {
@@ -61,11 +72,7 @@ function open(): void {
   mkdirSync(registrations, { recursive: true, mode: 0o700 });
   registrationGate = native.open(join(registrations, 'gate'), 'gate');
   registrationGate.tryWithGate(() => {
-    const conflicts = readdirSync(registrations)
-      .filter(
-        (name) => /^[a-f0-9-]{36}\.lock$/.test(name) && native!.alive(join(registrations, name)),
-      )
-      .map((name) => name.slice(0, -5));
+    const conflicts = scanRegistrations();
     if (conflicts.includes(id) || (conflicts.length && !workerData.allowOverlap)) {
       throw Object.assign(new Error('Collector conflict'), { owners: conflicts });
     }
@@ -143,6 +150,11 @@ function close(): void {
   if (registered) {
     lifetime.close();
     registered = false;
+    try {
+      registrationGate.tryWithGate(() => unlinkSync(join(registrations, `${id}.lock`)));
+    } catch {
+      /* Future bounded scan removes a stale file. */
+    }
   }
   native?.close();
   native = undefined;

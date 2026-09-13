@@ -302,7 +302,7 @@ export function startExecution<T>(
       options.signal?.removeEventListener('abort', abort);
     }
     observation?.settle(completion?.status ?? 'rejected');
-    observation?.end();
+    observation?.end(completion?.status ?? 'rejected');
     if (completion?.status === 'fulfilled') {
       resolveResult(completion.value);
     } else if (completion?.status === 'rejected') {

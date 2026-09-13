@@ -1,4 +1,4 @@
-import { observeCurrent } from './telemetry.js';
+import { observeCurrent, settleCurrent } from './telemetry.js';
 // Scoped processing and fetch-style delivery share one retry engine. Once a
 // response reaches application code its execution can report, but never replay.
 import type { ClientBackend } from './client.js';
@@ -154,7 +154,11 @@ export function createHttpClient(backend: ClientBackend, execute: Execute): Http
           if (safe && transient && context.attempt < policy.retry.maxAttempts) {
             try {
               await original.body?.cancel();
+              observeCurrent(original.body ? 'responseCancelled' : 'responseCompleted', {
+                attempt: context.attempt,
+              });
             } catch (error) {
+              observeCurrent('responseFailed', { attempt: context.attempt, status: 'rejected' });
               retryAllowed = false;
               throw error;
             }
@@ -167,7 +171,8 @@ export function createHttpClient(backend: ClientBackend, execute: Execute): Http
                 attempt: context.attempt,
               });
             },
-            () => {},
+            () =>
+              observeCurrent('responseFailed', { attempt: context.attempt, status: 'rejected' }),
           );
           try {
             checkDelivery();
@@ -177,6 +182,7 @@ export function createHttpClient(backend: ClientBackend, execute: Execute): Http
           }
           delivered = true;
           if (!handler) {
+            settleCurrent('fulfilled');
             resolveResponse(lifetime.response);
             try {
               await lifetime.finished;

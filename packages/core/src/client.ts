@@ -255,11 +255,11 @@ export class ScheduledLimiter {
         this.jobs.delete(job);
       }
       if (cancelled) {
-        observation.end();
+        observation.end(failure.failed ? 'rejected' : 'cancelled');
         return;
       }
       observation.settle(failure.failed ? 'rejected' : 'fulfilled');
-      observation.end();
+      observation.end(failure.failed ? 'rejected' : 'fulfilled');
       if (failure.failed) {
         rejectResult(failure.error);
       } else {
