@@ -119,9 +119,43 @@ try {
   console.log(
     'PASS handler subprocess receives current processing context and clears stale inherited fields',
   );
+  await client.createMailbox('loss');
+  const lostMessage = await client.send({
+    to: 'loss',
+    body: 'renewal loss',
+    ackMode: 'handler-success',
+  });
+  const originalRenew = client.renew;
+  client.renew = async () => ({ status: 'stale' });
+  let abortObserved;
+  const aborted = new Promise((resolve) => {
+    abortObserved = resolve;
+  });
+  listener = client.listen(
+    'loss',
+    async (_delivery, { signal }) => {
+      await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+      abortObserved();
+    },
+    { claimTtlMs: 300, onError: () => {} },
+  );
+  await aborted;
+  await listener.close();
+  listener = undefined;
+  client.renew = originalRenew;
+  await provider.forceFlush();
+  const lostSpan = exporter
+    .getFinishedSpans()
+    .find(
+      (span) =>
+        span.name === 'semaphile message process' &&
+        span.attributes['messaging.message.id'] === lostMessage.id,
+    );
+  assert.equal(lostSpan.status.code, SpanStatusCode.ERROR);
+  console.log('PASS renewal claim loss remains an error when the handler returns after abort');
 } finally {
   await listener?.close({ cancel: true });
   await client.close();
   await provider.shutdown();
 }
-console.log('RESULT 2/2 passed');
+console.log('RESULT 3/3 passed');

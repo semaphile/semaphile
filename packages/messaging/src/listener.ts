@@ -125,6 +125,7 @@ export class MessageListener {
       return;
     }
     if (Date.now() >= delivery.claimExpiresAt) {
+      markMessageFailure();
       this.report(new MessagingError('STALE', 'Claim expired before handler dispatch'), delivery);
       return;
     }
@@ -232,7 +233,7 @@ export class MessageListener {
       markMessageFailure();
       failure = error;
     } finally {
-      if (controller.signal.aborted) {
+      if (controller.signal.aborted && !lost) {
         markMessageCancelled();
       }
       finished = true;

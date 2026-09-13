@@ -29,7 +29,14 @@ async function run(
 ) {
   const child = spawn(
     process.execPath,
-    [resolve('packages/messaging/dist/src/cli.js'), 'message', ...args, '--store', path, '--otel'],
+    [
+      resolve('packages/messaging/dist/src/cli.js'),
+      'message',
+      ...args,
+      '--store',
+      path,
+      telemetryFlag,
+    ],
     {
       cwd: root,
       env: {
@@ -81,7 +88,9 @@ try {
   assert(performance.now() - start < 5000);
   console.log('PASS unreachable exporter cannot change message results or exceed bounded shutdown');
   await writeFile(join(root, 'semaphile.json'), '{broken');
+  const beforeDisabled = payloads.length;
   assert((await run(['send', '--to', 'worker', '--body', 'explicit'], undefined, '--no-otel')).id);
+  assert.equal(payloads.length, beforeDisabled, 'disabled telemetry must not export');
   assert((await run(['send', '--to', 'worker', '--body', 'explicit with export'])).id);
   console.log(
     'PASS explicit store bypasses malformed nearby project config with telemetry on or off',
