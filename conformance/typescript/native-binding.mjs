@@ -143,7 +143,7 @@ test('cancel and close join an idle wait without retiring its owner', async () =
   const f = fixture();
   try {
     const sub = f.context.subscribe(f.path);
-    const result = wait(sub, undefined);
+    const result = wait(sub, null);
     sub.cancel();
     sub.close();
     assert.equal(await result, 2);

@@ -45,7 +45,7 @@ return function(script, events, config, null)
   local redis = {}
   function redis.call(action, ...)
     local input = {...}
-    if action == 'TIME' then return {tostring(math.floor(now / 1000)), tostring((now % 1000) * 1000)} end
+    if action == 'TIME' then return {string.format('%.0f', math.floor(now / 1000)), string.format('%.0f', (now % 1000) * 1000)} end
     if action == 'GET' then return raw or false end
     if action == 'SET' then raw = input[2]; return 'OK' end
     if action == 'PUBLISH' then publications = publications + 1; return 0 end

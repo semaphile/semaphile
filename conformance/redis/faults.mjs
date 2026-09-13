@@ -1,3 +1,4 @@
+import { deferred } from '../typescript/fixtures/cases.mjs';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
@@ -9,13 +10,6 @@ import { proxy } from './proxy.mjs';
 const redis = await server(),
   control = await connect(redis.url);
 let passed = 0;
-const deferred = () => {
-  let resolve;
-  const promise = new Promise((yes) => {
-    resolve = yes;
-  });
-  return { promise, resolve };
-};
 async function test(name, fn) {
   await fn();
   passed++;

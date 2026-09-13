@@ -1,3 +1,4 @@
+import { deferred } from './fixtures/cases.mjs';
 import { nativePath } from '../../packages/core/dist/src/native-path.js';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -18,13 +19,6 @@ const opened = new Set();
 const children = new Set();
 let serial = 0;
 const tests = [];
-const deferred = () => {
-  let resolve;
-  const promise = new Promise((yes) => {
-    resolve = yes;
-  });
-  return { promise, resolve };
-};
 function within(promise, name) {
   let timer;
   return Promise.race([

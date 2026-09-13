@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { nativePath } from '../../packages/core/dist/src/native-path.js';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
@@ -82,7 +83,7 @@ if (process.argv[2] === 'peer') {
   const child = (path, config, mode = 'jobs') => {
     const peer = spawn(
       process.execPath,
-      [new URL(import.meta.url).pathname, 'peer', path, JSON.stringify(config), mode],
+      [fileURLToPath(import.meta.url), 'peer', path, JSON.stringify(config), mode],
       { stdio: ['ignore', 'pipe', 'pipe'] },
     );
     children.add(peer);

@@ -1,3 +1,4 @@
+import { deferred } from './fixtures/cases.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { cp, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
@@ -7,13 +8,6 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { openLimiter, QueueTimeoutError } from '../../packages/core/dist/src/memory.js';
 import { suite } from './fixtures/cases.mjs';
 const { test, run } = suite();
-const deferred = () => {
-  let resolve;
-  const promise = new Promise((yes) => {
-    resolve = yes;
-  });
-  return { promise, resolve };
-};
 const key = () => `memory-test:${randomUUID()}`;
 
 test('same-key clients share weighted capacity and callback results', async () => {

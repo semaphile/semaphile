@@ -30,6 +30,7 @@ parentPort.on('message', async ({ id, action, lease }) => {
       } catch (error) {
         value = { error: String(error), gateHeld, pid: process.pid };
       } finally {
+        pool.db.exec = originalExec;
         pool.lifetime.close = originalClose;
       }
     } else if (action === 'close') {

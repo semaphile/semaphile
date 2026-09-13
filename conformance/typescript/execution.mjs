@@ -1,3 +1,4 @@
+import { deferred } from './fixtures/cases.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp } from 'node:fs/promises';
@@ -10,13 +11,6 @@ import { suite } from './fixtures/cases.mjs';
 const { test, run } = suite();
 await mkdir('.tmp/execution', { recursive: true });
 const root = await mkdtemp('.tmp/execution/run-');
-const deferred = () => {
-  let resolve;
-  const promise = new Promise((yes) => {
-    resolve = yes;
-  });
-  return { promise, resolve };
-};
 const policy = { classifierId: 'test/1', retry: { baseDelayMs: 10, maxDelayMs: 20, jitter: 0 } };
 const classifier = {
   id: 'test/1',

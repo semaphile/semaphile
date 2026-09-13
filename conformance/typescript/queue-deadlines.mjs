@@ -1,16 +1,10 @@
+import { deferred } from './fixtures/cases.mjs';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { ScheduledLimiter, QueueTimeoutError } from '../../packages/core/dist/src/client.js';
 import { suite } from './fixtures/cases.mjs';
 
 const { test, run } = suite();
-const deferred = () => {
-  let resolve;
-  const promise = new Promise((yes) => {
-    resolve = yes;
-  });
-  return { promise, resolve };
-};
 
 // Controllable transport: a backend may report a committed lease after cancellation.
 function fixture() {

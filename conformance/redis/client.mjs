@@ -1,3 +1,4 @@
+import { deferred } from '../typescript/fixtures/cases.mjs';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import { openLimiter, LeaseExpiredError } from '../../packages/redis/dist/index.js';
@@ -9,14 +10,6 @@ const redis = await server(),
   clients = [];
 let passed = 0;
 const config = { maxConcurrent: 2 };
-const deferred = () => {
-  let resolve, reject;
-  const promise = new Promise((yes, no) => {
-    resolve = yes;
-    reject = no;
-  });
-  return { resolve, reject, promise };
-};
 async function open(extra = {}) {
   const limiter = await openLimiter({ url: redis.url, pool: key(), config, ...extra });
   clients.push(limiter);

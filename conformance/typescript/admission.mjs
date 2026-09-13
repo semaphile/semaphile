@@ -1,3 +1,4 @@
+import { deferred } from './fixtures/cases.mjs';
 import assert from 'node:assert/strict';
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,13 +13,6 @@ const open = async (path, config) => {
   const limiter = await openLimiter({ path, config });
   clients.add(limiter);
   return limiter;
-};
-const deferred = () => {
-  let resolve;
-  const promise = new Promise((yes) => {
-    resolve = yes;
-  });
-  return { promise, resolve };
 };
 let passed = 0;
 const test = async (name, body) => {

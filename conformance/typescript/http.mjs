@@ -1,3 +1,4 @@
+import { deferred } from './fixtures/cases.mjs';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp } from 'node:fs/promises';
@@ -8,13 +9,6 @@ import { openLimiter as memoryOpen } from '../../packages/core/dist/src/memory.j
 import { retryAfter } from '../../packages/core/dist/src/http-policy.js';
 import { suite } from './fixtures/cases.mjs';
 const { test, run } = suite();
-const deferred = () => {
-  let resolve;
-  const promise = new Promise((yes) => {
-    resolve = yes;
-  });
-  return { promise, resolve };
-};
 const redis =
   process.env.SEMAPHILE_HTTP_BACKEND === 'redis'
     ? await (await import('../redis/harness.mjs')).server()

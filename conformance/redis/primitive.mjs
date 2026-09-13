@@ -167,15 +167,34 @@ try {
     let active = 0,
       peak = 0,
       completed = 0;
+    const held = [];
+    let saturated = false;
+    const finish = (response) => {
+      active--;
+      completed++;
+      response.end('ok');
+    };
     const http = createServer((_request, response) => {
       active++;
       peak = Math.max(peak, active);
-      setTimeout(() => {
-        active--;
-        completed++;
-        response.end('ok');
-      }, 40);
+      if (saturated) {
+        finish(response);
+        return;
+      }
+      held.push(response);
+      if (held.length === 5) {
+        saturated = true;
+        for (const pending of held.splice(0)) {
+          finish(pending);
+        }
+      }
     });
+    // A bounded fixture failure, never a limiter eligibility/polling timer.
+    const saturationTimeout = setTimeout(() => {
+      for (const response of held.splice(0)) {
+        response.destroy();
+      }
+    }, 10000);
     http.listen(0, '127.0.0.1');
     await once(http, 'listening');
     const pool = key(),
@@ -206,6 +225,11 @@ try {
       assert.equal(peak, 5);
       console.log(`  participants=2 requests=${completed} peak=${peak}`);
     } finally {
+      clearTimeout(saturationTimeout);
+      for (const response of held) {
+        response.destroy();
+      }
+      http.closeAllConnections();
       for (const child of children) {
         if (child.exitCode === null) {
           child.kill();
