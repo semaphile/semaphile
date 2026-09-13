@@ -63,9 +63,20 @@ try {
     await frozen.close();
   }
   console.log('PASS disabled watching freezes startup pool selection');
+  await make('a'.repeat(48));
+  const start = performance.now();
+  const adversarial = await startCollector({
+    sources,
+    port: 0,
+    include: ['*a'.repeat(24) + 'b'],
+    allowOverlap: true,
+  });
+  await adversarial.close();
+  assert(performance.now() - start < 2000);
+  console.log('PASS repeated-wildcard selectors complete within a bounded collection cycle');
 } finally {
   await b?.close();
   await a.close();
   await Promise.all(pools.map((p) => p.close()));
 }
-console.log('RESULT 3/3 passed');
+console.log('RESULT 4/4 passed');

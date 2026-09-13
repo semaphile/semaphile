@@ -29,6 +29,8 @@ async function main(): Promise<void> {
         defaults = {
           ...collector,
           otel: project.value.telemetry?.enabled ?? false,
+          serviceName: project.value.telemetry?.serviceName,
+          baggageAllowlist: project.value.telemetry?.baggageAllowlist,
           sources: collector?.sources?.map((source) =>
             source.backend === 'sqlite'
               ? { ...source, directory: resolve(dirname(project.file), source.directory) }

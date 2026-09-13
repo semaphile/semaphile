@@ -2,6 +2,7 @@
 // let an SDK's default propagator silently opt application secrets into export.
 import {
   propagation,
+  diag,
   type Context,
   type TextMapPropagator,
   type TextMapGetter,
@@ -10,6 +11,7 @@ import {
 import { W3CTraceContextPropagator, W3CBaggagePropagator } from '@opentelemetry/core';
 export function createPropagator(allowlist: readonly string[] = []): TextMapPropagator {
   if (
+    !Array.isArray(allowlist) ||
     allowlist.length > 64 ||
     allowlist.some((key) => typeof key !== 'string' || !key || key.length > 128)
   ) {
@@ -25,8 +27,21 @@ export function createPropagator(allowlist: readonly string[] = []): TextMapProp
       if (!allowed.has(key)) {
         continue;
       }
-      const bytes =
-        Buffer.byteLength(encodeURIComponent(key) + '=' + encodeURIComponent(entry.value)) + 1;
+      let bytes: number;
+      try {
+        if (typeof entry.value !== 'string') {
+          continue;
+        }
+        bytes =
+          Buffer.byteLength(encodeURIComponent(key) + '=' + encodeURIComponent(entry.value)) + 1;
+      } catch {
+        try {
+          diag.warn('Semaphile dropped invalid baggage');
+        } catch {
+          /* Diagnostics are isolated. */
+        }
+        continue;
+      }
       if (bytes > 1024 || size + bytes > 4096) {
         continue;
       }

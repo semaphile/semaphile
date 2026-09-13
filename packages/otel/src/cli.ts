@@ -6,7 +6,11 @@ import { startCollector, type CollectorOptions, type CollectorSource } from './c
 import { startTelemetry } from './sdk.js';
 export async function collectorCommand(
   argv: string[],
-  defaults: Partial<CollectorOptions> & { otel?: boolean } = {},
+  defaults: Partial<CollectorOptions> & {
+    otel?: boolean;
+    serviceName?: string;
+    baggageAllowlist?: string[];
+  } = {},
 ) {
   const { values: v } = parseArgs({
     args: argv,
@@ -65,7 +69,8 @@ export async function collectorCommand(
   }
   const sdk = (v['no-otel'] ? false : (v.otel ?? defaults.otel))
     ? await startTelemetry({
-        serviceName: process.env.OTEL_SERVICE_NAME ?? 'semaphile-collector',
+        serviceName: defaults.serviceName ?? process.env.OTEL_SERVICE_NAME ?? 'semaphile-collector',
+        baggageAllowlist: defaults.baggageAllowlist,
         instanceId: collectorId,
         intervalMs: v['interval-ms'] ? Number(v['interval-ms']) : defaults.intervalMs,
       })

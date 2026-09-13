@@ -47,13 +47,34 @@ interface Source {
   discover: (deadline: number) => Promise<Candidate[]>;
   close: () => Promise<void>;
 }
-const glob = (pattern: string, value: string) =>
-  new RegExp(
-    `^${Array.from(pattern)
-      .map((c) => (c === '*' ? '.*' : c === '?' ? '.' : c.replace(/[\\^$.*+?()[\]{}|]/g, '\\$&')))
-      .join('')}$`,
-    'u',
-  ).test(value);
+// Iterative wildcard matching avoids exponential regex backtracking for
+// selectors such as *a*a*a*a*b against long near-matching pool names.
+const glob = (pattern: string, value: string) => {
+  const p = Array.from(pattern),
+    v = Array.from(value);
+  let i = 0,
+    j = 0,
+    star = -1,
+    retry = 0;
+  while (j < v.length) {
+    if (p[i] === '?' || p[i] === v[j]) {
+      i++;
+      j++;
+    } else if (p[i] === '*') {
+      star = i++;
+      retry = j;
+    } else if (star >= 0) {
+      i = star + 1;
+      j = ++retry;
+    } else {
+      return false;
+    }
+  }
+  while (p[i] === '*') {
+    i++;
+  }
+  return i === p.length;
+};
 const text = (value: string) => JSON.stringify(value); // Prometheus string escaping.
 export async function startCollector(options: CollectorOptions) {
   for (const value of [options.watchPools, options.allowOverlap]) {
