@@ -1,0 +1,16 @@
+# Local credentials, private working records, build and test artifacts.
+.env*
+.scratch/
+.tmp/
+node_modules/
+**/node_modules/
+**/dist/
+**/.build/
+releases/
+.DS_Store
+**/._*
+
+# Rust compiler output and local code-analysis caches.
+**/target/
+.scannerwork/
+.sonar/
