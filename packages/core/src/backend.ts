@@ -293,11 +293,7 @@ export class Pool {
         }
       }
     } catch (error) {
-      this.fatal = error instanceof Error ? error : new Error(String(error));
-      for (const entry of this.pending.splice(0)) {
-        entry.cleanup();
-        entry.reject(this.fatal);
-      }
+      this.stopAdmissions(error instanceof Error ? error : new Error(String(error)));
     }
   }
   release(id: string, outcome: Outcome = { kind: 'neutral' }) {
@@ -328,6 +324,9 @@ export class Pool {
     });
   }
   acceptOperation(id: string): OperationToken {
+    if (this.fatal) {
+      throw this.fatal;
+    }
     return this.locked(() => {
       const state = readControl(this.db);
       const token = acceptControlOperation(state, this.owner, id);
@@ -385,6 +384,9 @@ export class Pool {
   }
   private async waitUntilDrained(generation: number, signal?: AbortSignal) {
     while (true) {
+      if (this.fatal) {
+        throw this.fatal;
+      }
       if (this.closing) {
         throw new Error('pool closed');
       }
@@ -426,13 +428,16 @@ export class Pool {
     }
   }
   stopAdmissions(error: Error) {
-    this.fatal = error;
+    this.fatal ??= error;
     for (const entry of this.pending.splice(0)) {
       entry.cleanup();
-      entry.reject(error);
+      entry.reject(this.fatal);
     }
-    if (this.waiting) {
-      this.waiting.cancel();
+    this.waiting?.cancel();
+    // A fatal coordinator cannot establish successful drain completion. Wake
+    // existing waiters to reject, while release/finish remain usable for cleanup.
+    for (const subscription of this.controlWaits) {
+      subscription.cancel();
     }
   }
   inspect(): Snapshot {

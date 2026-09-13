@@ -205,7 +205,13 @@ export class RedisBackend implements ClientBackend {
       return await admission;
     } catch (error) {
       if (implicit && !this.failure) {
-        await this.wire.invoke('finish', { operation });
+        try {
+          await this.wire.invoke('finish', { operation });
+        } catch (cleanupError) {
+          // Keep the acquisition error for its caller; uncertain cleanup makes
+          // the backend unusable and remains available through failure.
+          this.wire.fail(cleanupError);
+        }
       }
       throw error;
     }

@@ -1,7 +1,7 @@
 // Redis stores mutable integers as decimal strings to avoid cjson rounding.
 // Decode fields by schema name, preserving arbitrary IDs and acknowledgement text.
 import type { ControlSnapshot, ControlResult } from '@semaphile/core/client';
-const numericFields = new Set([
+export const numericFields: ReadonlySet<string> = new Set([
   'generation',
   'operationSequence',
   'activeAttempts',

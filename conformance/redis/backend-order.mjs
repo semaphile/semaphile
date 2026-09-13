@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import { numericFields, decodeControl } from '../../packages/redis/dist/control-codec.js';
+import { deferred } from '../typescript/fixtures/cases.mjs';
 // Exercise local Redis queue ordering with controlled command completion. This
 // does not connect to Redis; protocol atomicity belongs to the live suites.
 import assert from 'node:assert/strict';
@@ -10,13 +13,6 @@ import {
 } from '../../packages/core/dist/src/control-state.js';
 import { suite } from '../typescript/fixtures/cases.mjs';
 const { test, run } = suite();
-const deferred = () => {
-  let resolve;
-  const promise = new Promise((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
-};
 const timed = (reply = {}) => ({
   sent: performance.now(),
   received: performance.now(),
@@ -67,6 +63,21 @@ function stub(override = () => undefined) {
   backend.wire.close = async () => {};
   return { backend, admitted, finished };
 }
+
+test('Lua and TypeScript agree on every numeric control field', async () => {
+  const lua = await readFile(
+    new URL('../../packages/redis/src/control.lua', import.meta.url),
+    'utf8',
+  );
+  const declaration = lua.match(/ipairs\(\{([\s\S]*?)\}\) do numericFields/);
+  assert.ok(declaration, 'Lua numeric field declaration must be present');
+  const fields = [...declaration[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert.deepEqual(fields.sort(), [...numericFields].sort());
+  for (const field of fields) {
+    assert.equal(decodeControl({ [field]: '42' })[field], 42);
+  }
+  assert.deepEqual(decodeControl({ id: '42', reason: '42' }), { id: '42', reason: '42' });
+});
 
 test('acceptance delay preserves FIFO across implicit and explicit operations', async () => {
   const gate = deferred();
@@ -155,6 +166,30 @@ test('queued fail-fast reports recovery floor rather than earlier capacity wake'
   abort.abort();
   assert.equal((await first).name, 'AbortError');
   await backend.detach();
+});
+
+test('failed cancellation cleanup preserves AbortError and stops the backend', async () => {
+  const gate = deferred(),
+    abort = new AbortController();
+  const cleanup = new Error('cleanup refused');
+  const { backend } = stub((action) => {
+    if (action === 'accept') {
+      return gate.promise;
+    }
+    if (action === 'finish') {
+      throw cleanup;
+    }
+  });
+  try {
+    const first = acquire(backend, {}, abort.signal).catch((error) => error);
+    abort.abort();
+    gate.resolve(timed({ value: { id: 'cancelled', generation: 1 } }));
+    assert.equal((await first).name, 'AbortError');
+    assert.equal(backend.failure, cleanup);
+    await assert.rejects(acquire(backend), (error) => error === cleanup);
+  } finally {
+    await backend.detach();
+  }
 });
 
 await run();

@@ -450,4 +450,32 @@ test('coordinator invalid outcome preserves lease and permits corrected release'
   }
 });
 
+test('fatal stop rejects current and future drain waits while permitting cleanup', async () => {
+  const pools = pair({ maxConcurrent: 1 });
+  const [a, b] = pools;
+  try {
+    const token = a.acceptOperation(randomUUID());
+    const lease = await admit(a, token);
+    const generation = a.control({ action: 'drain' }).maintenance.generation;
+    const waits = [a.waitForDrain(generation), a.waitForDrain(generation)];
+    assert.equal(a.stats.waits, 2, 'both native waits must be registered');
+    const fatal = new Error('injected fatal backend error');
+    const rejected = Promise.all(waits.map((wait) => assert.rejects(wait, (e) => e === fatal)));
+    a.stopAdmissions(fatal);
+    await rejected;
+    await assert.rejects(a.waitForDrain(generation), (e) => e === fatal);
+    assert.throws(
+      () => a.acceptOperation(randomUUID()),
+      (e) => e === fatal,
+    );
+    a.release(lease.leaseId);
+    assert.equal(a.finishOperation(token), true);
+    assert.equal(b.control().maintenance.settled, true);
+    a.stopAdmissions(new Error('secondary failure'));
+    await assert.rejects(a.waitForDrain(generation), (e) => e === fatal);
+  } finally {
+    await close(pools);
+  }
+});
+
 await run();
