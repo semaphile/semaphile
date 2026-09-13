@@ -7,6 +7,7 @@ import { mkdir, mkdtemp } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
+import { startCollector } from '../../packages/otel/dist/collector.js';
 import { openLimiter } from '../../packages/redis/dist/index.js';
 import { openObservationSource, poolKey } from '../../packages/redis/dist/observation.js';
 const { createCluster, createClient } = createRequire(
@@ -179,6 +180,22 @@ try {
       await observer.close();
     }
   }
+  process.env.SEMAPHILE_TEST_SEED_A = rootUrls[0];
+  process.env.SEMAPHILE_TEST_SEED_B = rootUrls[1];
+  const collector = await startCollector({
+    port: 0,
+    sources: [
+      { name: 'first', backend: 'redis', rootUrlsEnv: ['SEMAPHILE_TEST_SEED_A'], namespace },
+      { name: 'alias', backend: 'redis', rootUrlsEnv: ['SEMAPHILE_TEST_SEED_B'], namespace },
+    ],
+  });
+  try {
+    assert.equal(collector.health().pools.length, 3);
+    assert(collector.health().healthy);
+  } finally {
+    await collector.close();
+  }
+  console.log('PASS different Cluster seeds collect each canonical pool once');
   console.log('PASS registration and read-only projection route within each pool hash slot');
 } finally {
   await source?.close();
@@ -195,4 +212,4 @@ try {
     await node.exited;
   }
 }
-console.log('RESULT 2/2 passed');
+console.log('RESULT 3/3 passed');

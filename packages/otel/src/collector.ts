@@ -1,7 +1,7 @@
 // Explicitly managed collector. Sampling is observational and coalesced; limiter
 // clients never start this process or depend on it for admission.
 import { createServer, type Server } from 'node:http';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { opendir, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { PoolMeasurement, PoolObserver } from '@semaphile/core/observation';
@@ -43,6 +43,7 @@ type Entry = {
   owners: string[];
 };
 interface Source {
+  name: string;
   discover: (deadline: number) => Promise<Candidate[]>;
   close: () => Promise<void>;
 }
@@ -54,7 +55,6 @@ const glob = (pattern: string, value: string) =>
     'u',
   ).test(value);
 const text = (value: string) => JSON.stringify(value); // Prometheus string escaping.
-const digest = (value: string) => createHash('sha256').update(value).digest('hex');
 export async function startCollector(options: CollectorOptions) {
   for (const value of [options.watchPools, options.allowOverlap]) {
     if (value !== undefined && typeof value !== 'boolean') {
@@ -184,6 +184,7 @@ export async function startCollector(options: CollectorOptions) {
         };
         const root = await realpath(source.directory);
         sources.push({
+          name: source.name,
           close: async () => {},
           discover: async (deadline) => {
             const result: Candidate[] = [];
@@ -240,6 +241,7 @@ export async function startCollector(options: CollectorOptions) {
         const implementation = (await import(moduleName)) as {
           openObservationSource: (options: unknown) => Promise<{
             discover: (options?: { timeoutMs: number }) => Promise<string[]>;
+            identity: (pool: string) => Promise<string>;
             open: (pool: string, id: string, overlap: boolean) => Promise<PoolObserver>;
             close: () => Promise<void>;
           }>;
@@ -250,6 +252,7 @@ export async function startCollector(options: CollectorOptions) {
           namespace: source.namespace,
         });
         sources.push({
+          name: source.name,
           close: () => backend.close(),
           discover: async (deadline) => {
             const pools = new Set(
@@ -261,13 +264,20 @@ export async function startCollector(options: CollectorOptions) {
                 pools.add(pool);
               }
             }
-            return [...pools].map((pool) => ({
-              id: `redis:${digest(JSON.stringify([url, urls, source.namespace ?? 'semaphile', pool]))}`,
-              pool,
-              source: source.name,
-              backend: 'redis',
-              open: () => backend.open(pool, id, options.allowOverlap ?? false),
-            }));
+            const result: Candidate[] = [];
+            for (const pool of pools) {
+              if (performance.now() >= deadline) {
+                throw new Error('Redis identity discovery timed out');
+              }
+              result.push({
+                id: `redis:${await backend.identity(pool)}`,
+                pool,
+                source: source.name,
+                backend: 'redis',
+                open: () => backend.open(pool, id, options.allowOverlap ?? false),
+              });
+            }
+            return result;
           },
         });
       }
@@ -281,6 +291,7 @@ export async function startCollector(options: CollectorOptions) {
     sourceFailure = false;
     if (!initialized || options.watchPools !== false) {
       const found = new Map<string, Candidate>();
+      const successful = new Set<string>();
       for (const source of sources) {
         try {
           for (const candidate of await source.discover(deadline)) {
@@ -288,25 +299,27 @@ export async function startCollector(options: CollectorOptions) {
               found.set(candidate.id, candidate);
             }
           }
+          successful.add(source.name);
         } catch {
           sourceFailure = true;
         }
       }
-      if (found.size > 1024) {
-        throw new Error('Collector exceeds pool bound');
-      }
-      for (const candidate of found.values()) {
-        if (!entries.has(candidate.id)) {
-          entries.set(candidate.id, { candidate, owners: [] });
+      // Retire disappeared entries only from sources successfully inspected.
+      // A separate unavailable source must not prevent healthy-source cleanup.
+      for (const [key, entry] of entries) {
+        if (!found.has(key) && successful.has(entry.candidate.source)) {
+          await entry.observer?.close().catch(() => {});
+          warnings.delete(`${entry.candidate.source}/${entry.candidate.pool}`);
+          entries.delete(key);
         }
       }
-      if (!sourceFailure) {
-        for (const [key, entry] of entries) {
-          if (!found.has(key)) {
-            await entry.observer?.close().catch(() => {});
-            entries.delete(key);
-          }
-        }
+      const additions = [...found.values()].filter((candidate) => !entries.has(candidate.id));
+      if (entries.size + additions.length > 1024) {
+        sourceFailure = true;
+        throw new Error('Collector exceeds retained pool bound');
+      }
+      for (const candidate of additions) {
+        entries.set(candidate.id, { candidate, owners: [] });
       }
     }
     const conflicts: string[] = [];
@@ -363,6 +376,9 @@ export async function startCollector(options: CollectorOptions) {
     }
     if (!initialized && conflicts.length && !options.allowOverlap) {
       throw new Error(`Selected pools already have collectors: ${conflicts.join(', ')}`);
+    }
+    if (!initialized && (skipped || ordered.some((entry) => !entry.observer))) {
+      throw new Error('Collector startup could not verify every selected pool');
     }
     if (!initialized && sourceFailure) {
       throw new Error('Collector source discovery failed');

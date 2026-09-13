@@ -17,7 +17,13 @@ await once(server, 'listening');
 try {
   const code = `import {startTelemetry} from './packages/otel/dist/sdk.js';
  import {openLimiter} from './packages/core/dist/src/memory.js';
+ const { createRequire } = await import('node:module');
+ const { propagation, ROOT_CONTEXT, defaultTextMapGetter, defaultTextMapSetter } = createRequire(new URL('./packages/otel/package.json', import.meta.url))('@opentelemetry/api');
  const sdk=await startTelemetry();
+ const ctx = propagation.extract(ROOT_CONTEXT, { baggage: 'secret=private-value' }, defaultTextMapGetter);
+ const carrier = {}; propagation.inject(ctx, carrier, defaultTextMapSetter);
+ if (carrier.baggage) throw Error('Default baggage leaked');
+
  const limiter=await openLimiter({key:'export',config:{maxConcurrent:1},telemetry:{instrumentation:sdk.instrumentation}});
  await limiter.schedule(()=>42);await limiter.close();await sdk.shutdown();`;
   const child = spawn(process.execPath, ['--input-type=module', '-e', code], {

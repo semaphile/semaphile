@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { mkdir, mkdtemp } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { openLimiter } from '../../packages/core/dist/src/index.js';
 await mkdir('.tmp/otel', { recursive: true });
@@ -12,12 +12,12 @@ const pools = await Promise.all(
   ),
 );
 const children = [];
-function launch(args = []) {
+function launch(args = [], cwd) {
   const child = spawn(
     process.execPath,
     [
       '--no-warnings',
-      'packages/messaging/dist/src/cli.js',
+      resolve('packages/messaging/dist/src/cli.js'),
       'telemetry',
       'collect',
       '--root',
@@ -26,7 +26,7 @@ function launch(args = []) {
       '0',
       ...args,
     ],
-    { stdio: ['ignore', 'pipe', 'pipe'] },
+    { cwd, stdio: ['ignore', 'pipe', 'pipe'] },
   );
   const record = { child, output: '', errors: '', exited: once(child, 'exit') };
   children.push(record);
@@ -89,6 +89,26 @@ try {
   const recovered = launch(['--pool', 'api-a']);
   await recovered.ready;
   await stop(recovered);
+  const configured = join(root, 'config');
+  await mkdir(configured);
+  await writeFile(
+    join(configured, 'semaphile.json'),
+    JSON.stringify({
+      version: 1,
+      directory: '.',
+      telemetry: { collector: { exclude: ['api-b'], port: 0, watchPools: false } },
+    }),
+  );
+  const fromConfig = launch([], configured);
+  const configReady = await fromConfig.ready;
+  const health = await (await fetch(`http://127.0.0.1:${configReady.address.port}/healthz`)).json();
+  assert.equal(health.watchPools, false);
+  assert.deepEqual(
+    health.pools.map((p) => p.pool),
+    ['api-a'],
+  );
+  await stop(fromConfig);
+  console.log('PASS explicit source override preserves project exclusions and watching defaults');
   console.log(
     'PASS CLI override exports selected metrics; SIGKILL releases local collector ownership',
   );
@@ -96,4 +116,4 @@ try {
   await Promise.allSettled(children.map((child) => stop(child)));
   await Promise.all(pools.map((pool) => pool.close()));
 }
-console.log('RESULT 2/2 passed');
+console.log('RESULT 3/3 passed');

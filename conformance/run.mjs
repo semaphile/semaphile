@@ -9,9 +9,12 @@ const suites = {
     'adapter',
     'exporter',
     'collector',
+    'collector-faults',
     'redis-observer',
+    'redis-timeout',
     'cli',
     'cluster',
+    'package',
   ],
   core: [
     'native-binding',

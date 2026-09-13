@@ -6,9 +6,16 @@ import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk
 import { resourceFromAttributes, detectResources, envDetector } from '@opentelemetry/resources';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
+import { createPropagator } from './propagation.js';
 import { createInstrumentation } from './index.js';
 export async function startTelemetry(
-  options: { serviceName?: string; intervalMs?: number; shutdownTimeoutMs?: number } = {},
+  options: {
+    serviceName?: string;
+    instanceId?: string;
+    baggageAllowlist?: string[];
+    intervalMs?: number;
+    shutdownTimeoutMs?: number;
+  } = {},
 ) {
   if (process.env.OTEL_SDK_DISABLED === 'true') {
     return { instrumentation: { start: () => ({}) }, meter: undefined, shutdown: async () => {} };
@@ -53,7 +60,7 @@ export async function startTelemetry(
       }),
     ],
   });
-  tracer.register();
+  tracer.register({ propagator: createPropagator(options.baggageAllowlist) });
   metrics.setGlobalMeterProvider(meter);
   let stopped: Promise<void> | undefined;
   return {

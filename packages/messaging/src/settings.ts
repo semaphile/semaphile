@@ -160,7 +160,10 @@ async function validateProject(value: ProjectConfig): Promise<void> {
   }
 }
 /** Nearest config wins; invalid nearer files are never silently skipped. */
-async function discoverConfig(start = process.cwd()): Promise<ResolvedConfig> {
+async function discoverConfig(
+  start = process.cwd(),
+  optional = false,
+): Promise<ResolvedConfig | undefined> {
   let directory = resolve(start);
   for (;;) {
     const file = join(directory, 'semaphile.json');
@@ -172,6 +175,9 @@ async function discoverConfig(start = process.cwd()): Promise<ResolvedConfig> {
       }
       const parent = dirname(directory);
       if (parent === directory) {
+        if (optional) {
+          return undefined;
+        }
         throw new MessagingError(
           'CONFIG',
           'No semaphile.json found; use --store or semaphile init',
@@ -228,8 +234,13 @@ export async function normalizePoolConfig(
 }
 export async function loadConfig(start = process.cwd()): Promise<ResolvedConfig> {
   try {
-    return await discoverConfig(start);
+    return (await discoverConfig(start))!;
   } catch (error) {
     throw new MessagingError('CONFIG', String(error));
   }
+}
+
+/** Optional discovery still rejects malformed nearer configuration. */
+export async function findConfig(start = process.cwd()): Promise<ResolvedConfig | undefined> {
+  return discoverConfig(start, true);
 }

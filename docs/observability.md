@@ -153,3 +153,10 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 \
 Standard OTLP endpoint and header environment variables configure the exporters.
 Standalone exporting defaults to a 15-second interval and bounded shutdown flushing.
 It does not replace the host application's SDK. No OTLP logs pipeline is included.
+
+Redis observers require `INFO server` on primaries to identify aliases by the
+server's run ID, database, namespace and pool. Cluster seed order and credentials
+are not pool identities. A response timeout retires the observation connection
+and invalidates its registrations; health becomes degraded until the explicitly
+managed collector is restarted. Startup must verify every selected registration
+within its bounded cycle, or it fails and releases partial acquisitions.

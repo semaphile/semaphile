@@ -35,14 +35,17 @@
     "lint:types": "oxlint --config ../../.oxlintrc.json --type-aware --deny-warnings src/*.ts"
   },
   "peerDependencies": {
-    "@opentelemetry/api": "^1.9.0"
+    "@opentelemetry/api": "^1.9.0",
+    "@semaphile/core": "0.1.0",
+    "@semaphile/redis": "0.1.0"
   },
   "dependencies": {
     "@opentelemetry/sdk-trace-node": "2.11.0",
     "@opentelemetry/sdk-metrics": "2.11.0",
     "@opentelemetry/resources": "2.11.0",
     "@opentelemetry/exporter-trace-otlp-proto": "0.222.0",
-    "@opentelemetry/exporter-metrics-otlp-proto": "0.222.0"
+    "@opentelemetry/exporter-metrics-otlp-proto": "0.222.0",
+    "@opentelemetry/core": "2.11.0"
   },
   "devDependencies": {
     "@opentelemetry/api": "1.9.1",
@@ -50,7 +53,8 @@
     "@types/node": "22.19.11",
     "typescript": "5.9.3",
     "oxlint": "1.82.0",
-    "oxlint-tsgolint": "7.0.2001"
+    "oxlint-tsgolint": "7.0.2001",
+    "@semaphile/redis": "file:../redis"
   },
   "repository": {
     "type": "git",
@@ -60,5 +64,13 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependenciesMeta": {
+    "@semaphile/core": {
+      "optional": true
+    },
+    "@semaphile/redis": {
+      "optional": true
+    }
   }
 }

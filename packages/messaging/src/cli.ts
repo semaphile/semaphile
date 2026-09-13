@@ -3,7 +3,7 @@
 import { dirname, resolve, join } from 'node:path';
 import { poolCommand } from './pool-cli.js';
 import { openClient } from './client.js';
-import { loadConfig, messagingOptions } from './settings.js';
+import { findConfig, messagingOptions } from './settings.js';
 import { init, info } from './admin.js';
 import { MessagingError } from './config.js';
 import { help, readArguments, validateAction, receivingOptions } from './cli-options.js';
@@ -22,27 +22,20 @@ async function main(): Promise<void> {
     }
     const argv = process.argv.slice(4);
     let defaults: unknown = {};
-    if (
-      !argv.some(
-        (arg) =>
-          arg === '--root' ||
-          arg.startsWith('--root=') ||
-          arg === '--redis-url-env' ||
-          arg.startsWith('--redis-url-env=') ||
-          arg === '--help',
-      )
-    ) {
-      const project = await loadConfig();
-      const collector = project.value.telemetry?.collector;
-      defaults = {
-        ...collector,
-        otel: project.value.telemetry?.enabled ?? false,
-        sources: collector?.sources?.map((source) =>
-          source.backend === 'sqlite'
-            ? { ...source, directory: resolve(dirname(project.file), source.directory) }
-            : source,
-        ) ?? [{ name: 'local', backend: 'sqlite', directory: join(project.directory, 'pools') }],
-      };
+    if (!argv.includes('--help')) {
+      const project = await findConfig();
+      if (project) {
+        const collector = project.value.telemetry?.collector;
+        defaults = {
+          ...collector,
+          otel: project.value.telemetry?.enabled ?? false,
+          sources: collector?.sources?.map((source) =>
+            source.backend === 'sqlite'
+              ? { ...source, directory: resolve(dirname(project.file), source.directory) }
+              : source,
+          ) ?? [{ name: 'local', backend: 'sqlite', directory: join(project.directory, 'pools') }],
+        };
+      }
     }
     await implementation.collectorCommand(argv, defaults);
     return;

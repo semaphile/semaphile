@@ -4,7 +4,10 @@ import { resolve } from 'node:path';
 import { once } from 'node:events';
 import { startCollector, type CollectorOptions, type CollectorSource } from './collector.js';
 import { startTelemetry } from './sdk.js';
-export async function collectorCommand(argv: string[], defaults: Partial<CollectorOptions> = {}) {
+export async function collectorCommand(
+  argv: string[],
+  defaults: Partial<CollectorOptions> & { otel?: boolean } = {},
+) {
   const { values: v } = parseArgs({
     args: argv,
     options: {

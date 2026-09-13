@@ -64,13 +64,31 @@ export async function openObservationSource(options: RedisObservationOptions) {
     ? createCluster({ rootNodes: options.rootUrls.map((url) => ({ url })), defaults })
     : createClient({ ...defaults, url: options.url });
   client.on('error', () => {});
+  let retired = false;
+  const retire = () => {
+    retired = true;
+    try {
+      client.destroy();
+    } catch {
+      /* A failed connect may already be closed. */
+    }
+  };
+  const available = () => {
+    if (retired) {
+      throw new Error('Redis observation source retired');
+    }
+  };
+
   const bounded = async <T>(work: Promise<T>): Promise<T> => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       return await Promise.race([
         work,
         new Promise<never>((_, reject) => {
-          timer = setTimeout(() => reject(new Error('Redis observation timed out')), 2000);
+          timer = setTimeout(() => {
+            retire();
+            reject(new Error('Redis observation timed out'));
+          }, 2000);
         }),
       ]);
     } finally {
@@ -80,10 +98,11 @@ export async function openObservationSource(options: RedisObservationOptions) {
   try {
     await bounded<unknown>(client.connect());
   } catch (error) {
-    client.destroy();
+    retire();
     throw error;
   }
   const evaluation = async (script: string, keys: string[], args: string[]) => {
+    available();
     const result = await bounded(client.eval(script, { keys, arguments: args }));
     if (typeof result !== 'string') {
       throw new Error('Invalid Redis observation reply');
@@ -92,7 +111,24 @@ export async function openObservationSource(options: RedisObservationOptions) {
   };
   const observers = new Set<PoolObserver>();
   return {
+    async identity(pool: string): Promise<string> {
+      available();
+      const node =
+        'getNodeClientForKey' in client
+          ? await bounded(client.getNodeClientForKey(poolKey(namespace, pool)))
+          : client;
+      const info = await bounded(node.info('server'));
+      const runId = /^run_id:([^\r\n]+)/m.exec(info)?.[1];
+      if (!runId) {
+        throw new Error('Redis server identity unavailable');
+      }
+      const database = options.rootUrls
+        ? '0'
+        : String(Number(new URL(options.url ?? 'redis://localhost').pathname.slice(1) || '0'));
+      return hash(JSON.stringify([runId, database, namespace, pool]));
+    },
     async discover(options: { timeoutMs?: number } = {}): Promise<string[]> {
+      available();
       const deadline = performance.now() + Math.min(options.timeoutMs ?? 5000, 30000);
       const nodes =
         'masters' in client
@@ -145,6 +181,7 @@ export async function openObservationSource(options: RedisObservationOptions) {
       return [...pools].sort();
     },
     async open(pool: string, collectorId: string, allowOverlap = false): Promise<PoolObserver> {
+      available();
       if (!/^[a-f0-9-]{36}$/.test(collectorId)) {
         throw new Error('Invalid collector identity');
       }
@@ -197,12 +234,12 @@ export async function openObservationSource(options: RedisObservationOptions) {
       };
       renew();
       const check = () => {
-        if (closed || failed || performance.now() >= validUntil) {
+        if (retired || closed || failed || performance.now() >= validUntil) {
           throw new Error('Collector registration lost');
         }
       };
       const observer: PoolObserver = {
-        valid: () => !closed && !failed && performance.now() < validUntil,
+        valid: () => !retired && !closed && !failed && performance.now() < validUntil,
         async sample() {
           check();
           try {
@@ -252,7 +289,7 @@ export async function openObservationSource(options: RedisObservationOptions) {
     },
     async close() {
       await Promise.allSettled([...observers].map((observer) => observer.close()));
-      client.destroy();
+      retire();
     },
   };
 }
