@@ -84,9 +84,21 @@ scenario(
     await assert.rejects(nativeRustFlags(), /Unicode escapes require explicit selection/);
   },
 );
+scenario('large comment-only Cargo config preserves an empty flag selection', async () => {
+  await mkdir(process.env.CARGO_HOME);
+  await writeFile(
+    join(process.env.CARGO_HOME, 'config.toml'),
+    (' '.repeat(1000) + '# rustflags = ["ignored"]\n').repeat(1000),
+  );
+  assert.deepEqual(await nativeRustFlags(), []);
+});
 test('contaminated native bytes reject even with spaces in a synthetic home name', () => {
-  for (const prefix of ['Users', 'home']) {
-    const bytes = Buffer.from(`binary\0/${prefix}/Example Person/project/source.rs\0suffix`);
+  for (const path of [
+    '/Users/Example Person/project/source.rs',
+    '/home/Example Person/project/source.rs',
+    '/root/project/source.rs',
+  ]) {
+    const bytes = Buffer.from(`binary\0${path}\0suffix`);
     assert.throws(
       () => assertNoBuildHomePaths(bytes),
       (error) => {

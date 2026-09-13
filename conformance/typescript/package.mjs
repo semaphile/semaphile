@@ -198,6 +198,13 @@ await writeFile(
   join(broken, 'src/type-error.ts'),
   'export const invalid: number = "type error fixture";\n',
 );
+const stagingRoot = resolve(broken, '../../.tmp/core-build');
+const beforeStaging = await readdir(stagingRoot).catch((error) => {
+  if (error.code === 'ENOENT') {
+    return [];
+  }
+  throw error;
+});
 const failed = spawnSync(process.execPath, ['build.mjs'], {
   cwd: broken,
   env: { ...env, RUSTC: 'must-not-invoke-native-compiler' },
@@ -215,6 +222,7 @@ assert.deepEqual(
   original,
   'type errors must not replace a previous build',
 );
+assert.deepEqual((await readdir(stagingRoot)).sort(), beforeStaging.sort());
 console.log('PASS type errors fail build before native compilation and preserve existing output');
 // A fresh consumer process must resolve the explicit memory entry point without
 // any SQLite implementation or native artifacts left in its installed package.

@@ -47,6 +47,16 @@ await fixture(() => {}, Buffer.from('corrupt binary'));
 await assert.rejects(assembleNative(core, [incoming]), /binary hash mismatch/);
 await unchanged();
 console.log('PASS corrupt binary rejects without modifying built artifacts');
+const contaminated = Buffer.concat([
+  original.get(binaryName),
+  Buffer.from('\0/root/build/source.rs\0'),
+]);
+await fixture((manifest) => {
+  manifest.binarySha256 = createHash('sha256').update(contaminated).digest('hex');
+}, contaminated);
+await assert.rejects(assembleNative(core, [incoming]), /build-user home path/);
+await unchanged();
+console.log('PASS correctly hashed artifact with a home path is rejected before assembly');
 const different = Buffer.concat([
   original.get(binaryName),
   Buffer.from('different compiler output'),
@@ -113,4 +123,4 @@ if (missing.error) {
 assert.notEqual(missing.status, 0);
 assert.ok(missing.stderr.includes(`Semaphile native artifact missing for ${target}`));
 console.log('PASS missing runtime target fails explicitly before worker startup');
-console.log('RESULT 7/7 passed');
+console.log('RESULT 8/8 passed');

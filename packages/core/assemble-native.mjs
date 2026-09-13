@@ -2,7 +2,7 @@ import { readFile, readdir, mkdir, mkdtemp, writeFile, rename, rm } from 'node:f
 import { createHash } from 'node:crypto';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertBinaryTarget } from './native-artifact.mjs';
+import { assertBinaryTarget, assertNoBuildHomePaths } from './native-artifact.mjs';
 import { nativeSourceDigest } from './native-build.mjs';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -22,6 +22,7 @@ async function readArtifact(directory, name, sourceSha256) {
     throw new Error(`Native binary hash mismatch for ${manifest.target}`);
   }
   assertBinaryTarget(binary, manifest.target);
+  assertNoBuildHomePaths(binary);
   return { manifest, binary };
 }
 

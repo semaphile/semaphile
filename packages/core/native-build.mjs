@@ -50,31 +50,37 @@ export async function nativeRustFlags() {
     }
   }
   for (const directory of directories) {
-    for (const name of ['config', 'config.toml']) {
-      let text;
-      try {
-        text = await readFile(join(directory, name), 'utf8');
-      } catch (error) {
-        if (error.code === 'ENOENT') {
-          continue;
-        }
-        throw error;
-      }
-      // Quoted TOML keys can contain Unicode escapes. Refuse that form instead
-      // of guessing at decoded keys and silently losing a compiler option.
-      const config = text.replace(/^\s*#.*$/gm, '');
-      if (/\\[uU]/.test(config)) {
-        throw new Error(
-          `Cargo configuration Unicode escapes require explicit selection. ${guidance}`,
-        );
-      }
-      // Conservatively reject rustflags assignments, including dotted/inline keys.
-      if (/\brustflags["']?\s*=/.test(config)) {
-        throw new Error(`Cargo configuration rustflags require explicit selection. ${guidance}`);
-      }
-    }
+    await checkCargoConfig(directory, guidance);
   }
   return [];
+}
+
+async function checkCargoConfig(directory, guidance) {
+  for (const name of ['config', 'config.toml']) {
+    let text;
+    try {
+      text = await readFile(join(directory, name), 'utf8');
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        continue;
+      }
+      throw error;
+    }
+    // Full-line comments cannot contain effective keys. Scan one line at a time
+    // so long runs of whitespace cannot cause multiline regex backtracking.
+    const config = text
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('#'))
+      .join('\n');
+    if (/\\[uU]/.test(config)) {
+      throw new Error(
+        `Cargo configuration Unicode escapes require explicit selection. ${guidance}`,
+      );
+    }
+    if (/\brustflags["']?\s*=/.test(config)) {
+      throw new Error(`Cargo configuration rustflags require explicit selection. ${guidance}`);
+    }
+  }
 }
 
 export async function buildNative(core, output, temporary) {

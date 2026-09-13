@@ -172,7 +172,7 @@ export function assertNoBuildHomePaths(binary) {
     binary
       .toString('latin1')
       .split('\0')
-      .some((text) => /\/(?:Users|home)\/[^/]+\//.test(text))
+      .some((text) => /\/(?:Users|home)\/[^/]+\/|\/root\//.test(text))
   ) {
     throw new Error('Native artifact contains a build-user home path');
   }
