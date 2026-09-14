@@ -123,6 +123,9 @@ try {
       String(Math.floor((i * 16384) / 3)),
       String(Math.floor(((i + 1) * 16384) / 3) - 1),
     ]);
+  }
+  // Every node needs its epoch before any peer can gossip with it.
+  for (let i = 0; i < 3; i++) {
     for (let j = 0; j < 3; j++) {
       if (i !== j) {
         await nodes[i].client.sendCommand([

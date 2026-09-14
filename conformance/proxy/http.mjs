@@ -555,7 +555,9 @@ for (const backend of redisMode ? ['redis'] : ['memory', 'sqlite']) {
     const origin = await f.upstream(async (req, res) => {
       assert.equal(req.headers['transfer-encoding'], 'chunked');
       let body = '';
-      for await (const chunk of req) body += chunk;
+      for await (const chunk of req) {
+        body += chunk;
+      }
       res.end(body);
     });
     const proxy = await f.proxy(origin.url);
@@ -593,7 +595,9 @@ for (const backend of redisMode ? ['redis'] : ['memory', 'sqlite']) {
   scenario('Connection-nominated length is replaced with valid body framing', async (f) => {
     const origin = await f.upstream(async (req, res) => {
       let body = '';
-      for await (const chunk of req) body += chunk;
+      for await (const chunk of req) {
+        body += chunk;
+      }
       assert.equal(req.headers['transfer-encoding'], 'chunked');
       res.end(body);
     });
