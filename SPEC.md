@@ -795,3 +795,48 @@ contract. Submission validation for the handle throws synchronously; `finished`
 tracks callback and storage cleanup attempts and does not turn a rejected result
 into success. This lets adapters await owned operations without closing borrowed
 clients or inferring lifetime from caller settlement.
+
+## 19. MCP stdio proxy (DECIDED)
+
+The optional `@semaphile/proxy/mcp` adapter connects one downstream MCP stdio
+session to one explicitly configured child server. `startMcpProxy` borrows a
+scheduled limiter; CLI entry points own and close the clients they open. Normal
+Semaphile clients still require no proxy process.
+
+Only downstream `tools/call` requests acquire shared capacity. All other requests,
+notifications, and upstream-initiated messages preserve their JSON-RPC envelopes
+and bypass the tool admission queue, so initialization, discovery, cancellation,
+progress and server callbacks cannot deadlock behind tools. Request IDs remain
+unchanged and are tracked separately by direction. Duplicate live downstream IDs
+are refused. The proxy makes no tool retries, infers no HTTP recovery hints from
+MCP error payloads, and does not advertise capabilities of its own.
+
+Queued cancellation never invokes the upstream. Running cancellation is forwarded
+and retains admission until a terminal response or actual child exit. A finite
+request deadline and cancellation grace terminate an unresponsive owned child;
+all outstanding requests on that child fail. Sending a signal alone cannot release
+capacity. Lease expiration and owner-death boundaries retain existing semantics;
+child exit does not prove cancellation of remote side effects or descendants.
+
+The operator selects executable, argument array, working directory and explicit
+environment additions. No shell interpolation occurs. Standard output contains
+only protocol frames. Proxy diagnostics contain no body, credential or underlying
+error excerpts. Child stderr is discarded unless explicitly enabled. Input frames,
+outbound buffered bytes, queued tool calls and outstanding control requests are
+bounded. Backpressure must not be implemented by awaiting tool completion before
+reading control messages. No periodic polling is introduced.
+
+Default close cancels queued work and terminates the owned child. Drain close
+finishes accepted requests within their existing deadlines before terminating it;
+first close wins. EOF or transport failure closes the session and cleans up the
+owned child. Library callers retain ownership of their limiter and stream objects.
+CLI accepts one explicit version1 JSON file with a memory,SQLite or Redis pool;
+paths resolve relative to the config file. Full pool config drift fails startup.
+`semaphile proxy mcp` delegates to the optional package; standalone entry is
+`semaphile-mcp-proxy`. Source checkpoint0.4.0 does not change persistent formats.
+
+Conformance covers official SDK clients/servers on modern and legacy protocol
+versions, two proxies sharing SQLite/Redis capacity, control traffic under load,
+server callbacks/progress and ID preservation, queued/running cancellation,
+deadlines/crash/EOF/drain, malformed or oversized frames, bounded backpressure,
+CLI/env redaction, package installation, and macOS/Linux on Node/Bun.
