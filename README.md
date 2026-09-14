@@ -1,142 +1,231 @@
 # Semaphile
 
-Semaphile is a **coordination toolkit for agents**. Share request budgets, limit
-concurrency, and exchange messages across independent processes—with local,
-daemonless coordination or Redis across machines.
+**Shared limits. Durable handoffs. Independent agents.**
 
-The TypeScript library queues callbacks and shares admission limits before those
-callbacks run. Agents can also exchange durable messages through named mailboxes.
+Semaphile is a **coordination toolkit for agents**. It lets separate processes
+share request budgets and exchange messages, without running a local broker.
+Use it from TypeScript, Node, Bun, or the messaging CLI.
 
-Choose **SQLite** for processes on the same machine with a daemonless local
-pool, **Redis** for processes on different machines sharing one Redis endpoint,
-or **memory** for callers sharing one JavaScript runtime.
+Five agents, each allowing five concurrent requests, can send 25 requests to the
+same service. A message sent to a terminal pane can disappear into the wrong
+prompt. A crashed worker can leave everyone else waiting for capacity it will
+never release.
 
-This is experimental software. Version `0.2.0` is published on npm and available
-as installable archives on [GitHub Releases](https://github.com/semaphile/semaphile/releases/tag/v0.2.0).
-See the [release guide](docs/releases.md). Node >=22.18 is required for source
-builds. Runtime verification covers Node 22.23/Linux, Node 26.7/macOS and
-Bun 1.4.2 on macOS arm64 and Linux x64.
-The published 0.1.0 Rust, recovery, HTTP and maintenance implementation passed
-483 scenarios under Node and Bun on both platforms, plus two cross-host Redis
-pairings. See [testing](docs/testing.md) for scope and limitations.
+Semaphile gives those agents shared rules and a place to leave work for each
+other—even when they start independently, run in different worktrees, or use
+different harnesses.
 
-Version 0.2.0 adds optional tracing, shared-pool
-collectors and an explicit messaging format upgrade. See
-[observability](docs/observability.md) for setup and the offline messaging upgrade.
-Install `@semaphile/otel@0.2.0` with `@opentelemetry/api` to opt into telemetry.
+## Why use it?
 
-## Install
+### Keep parallel agents from overwhelming a service
+
+Point participating processes at the same pool and enforce **five concurrent
+requests total**, instead of five per process. Share request spacing and credit
+budgets too. This works for APIs with published limits and for a self-hosted
+service where you choose a safe concurrency cap from its actual capacity.
+
+With the HTTP helpers or an outcome classifier passed to `execute`, shared
+cooldown lets one caller's throttling response slow down its peers.
+Optional circuit breaking gives a failing service time to recover. Bounded
+exponential backoff is available for operations explicitly marked safe to retry.
+See [execution and recovery](docs/resilience.md).
+
+### Leave a handoff that outlives the sender
+
+Send “the implementation is ready for review” to a named mailbox. The recipient
+doesn't have to be online at send time. A receiver claims the message, hands it
+to its application, and acknowledges durable acceptance. Abandoned claims can
+be delivered again within configured retry and expiry limits.
+
+Stable delivery IDs support deduplication; correlation IDs connect replies;
+retained history and lifecycle events help explain what happened. Optional agent
+registration records presence. **Acknowledgment means acceptance, not task
+completion**—a completed review can be a separate reply.
+
+### Coordinate without operating another service
+
+On one machine, processes open the same local SQLite store directly. There is
+no broker to start, supervise, or reconnect to. Waiters sleep on OS notifications
+or a computed deadline; they don't repeatedly poll an inbox or ask whether
+capacity is free.
+
+A command can wait for one message and exit. An application can listen for its
+whole lifetime. Separate projects can share an explicit local store path; they
+don't need a common parent process or an orchestrator-owned session.
+
+For rate limits across machines, an optional Redis backend supplies shared
+admission through one authoritative Redis endpoint. Messaging currently stays
+local.
+
+## Try it
+
+Semaphile is experimental. **0.2.0 is published on npm.**
+See [release status](docs/releases.md).
+
+### Share a request limit
 
 ```sh
-npm install @semaphile/core@0.2.0 @semaphile/redis@0.2.0 @semaphile/messaging@0.2.0
-# Or for Bun projects:
-bun add @semaphile/core@0.2.0 @semaphile/redis@0.2.0 @semaphile/messaging@0.2.0
+npm install @semaphile/core@0.2.0
+# Or: bun add @semaphile/core@0.2.0
 ```
 
-Install only what you need: core is standalone, Redis requires core, and
-messaging can be used on its own. The packages include prebuilt native addons;
-installation requires no Rust compiler or native build step. Import from
-`@semaphile/core`, `@semaphile/redis` or `@semaphile/messaging` in your application.
-
-## Start from source
-
-You need Node, npm, Rust 1.93.1 and a platform linker for explicit native builds.
-Fetch the pinned Rust dependencies once with
-`cargo +1.93.1 fetch --locked --manifest-path packages/core/native/Cargo.toml`.
-See [contributing](CONTRIBUTING.md) for setup and platform requirements.
-
-```sh
-npm ci --ignore-scripts
-npm ci --prefix packages/core --ignore-scripts
-npm ci --prefix packages/redis --ignore-scripts
-npm ci --prefix packages/otel --ignore-scripts
-npm ci --prefix packages/messaging --ignore-scripts
-npm run build
-```
-
-For a local SQLite pool:
+Wrap your existing request code:
 
 ```ts
-import { openLimiter } from './packages/core/dist/src/index.js';
+import { openLimiter } from '@semaphile/core';
 
-const limiter = await openLimiter({
-  path: './.tmp/service.pool',
-  config: { maxConcurrent: 5, minTime: 100 },
-});
+export async function fetchPages(urls: string[]) {
+  const limiter = await openLimiter({
+    path: './.semaphile/service.pool',
+    config: { maxConcurrent: 5, minTime: 100 },
+  });
 
-try {
-  await Promise.all(jobs.map((job) => limiter.schedule(() => callService(job))));
-} finally {
-  await limiter.close({ drain: true });
+  try {
+    return await Promise.all(
+      urls.map((url) =>
+        limiter.schedule(async () => {
+          const response = await fetch(url);
+          return response.text(); // Keep capacity until the body is consumed.
+        }),
+      ),
+    );
+  } finally {
+    await limiter.close({ drain: true });
+  }
 }
 ```
 
-For Redis, use `openLimiter` from `./packages/redis/dist/index.js` and replace
-`path` with `url`, `namespace` and `pool`. Installed consumers use
-`@semaphile/core` or `@semaphile/redis`; Redis needs the matching core peer package.
-See the [Redis example](packages/redis/README.md).
+Run callers in two processes with the **same resolved pool path** and they share
+the five slots and 100 ms admission spacing. Different worktrees need a common
+absolute path; identical relative strings can resolve to different stores.
+All clients must supply the same full normalized pool configuration, or opening
+fails. A different concurrency setting cannot silently alter a shared pool.
 
-For in-process limiting, import `openLimiter` from `@semaphile/core/memory`
-and pass `key: 'service'` instead of `path`. Matching keys share limits within
-one JavaScript runtime, including duplicate module copies. Pool configuration,
-budgets and refill timing persist until the runtime exits, even after all clients
-close. This entry point loads no SQLite or native addon. Separate workers and
-processes need SQLite or Redis to coordinate.
+This `schedule` example limits admission only: it makes one attempt and does not
+classify HTTP failures or establish shared cooldown. For that feedback, timeouts,
+safe retries and managed response lifetime, use
+[the execution and HTTP APIs](docs/resilience.md).
 
-## Recovery and HTTP
-
-Use `execute` for bounded, explicitly safe retries; `http.request` and `http.fetch`
-also manage response-body lifetime. Shared cooldown honors provider guidance,
-and an optional breaker limits repeated service failures. Persistent pool
-maintenance rejects new work while accepted operations drain. See
-[execution, HTTP and maintenance](docs/resilience.md) for defaults and examples.
-
-## Local messaging
-
-`@semaphile/messaging` adds durable named mailboxes, atomic broadcasts, claim
-receipts, listeners and a CLI over independent local SQLite stores. A common
-Semaphile directory can hold both messaging and rate-limiter pools.
+### Send a durable message
 
 ```sh
-node packages/messaging/dist/src/cli.js init
-node packages/messaging/dist/src/cli.js message create --name reviewer
-node packages/messaging/dist/src/cli.js message send --to reviewer --body 'Review the change'
-node packages/messaging/dist/src/cli.js info
+npm install @semaphile/messaging@0.2.0
+npx semaphile init
+npx semaphile message create --name reviewer
+npx semaphile message send --to reviewer --body 'The implementation is ready for review'
 ```
 
-Installed consumers use `semaphile message ...`. See the
-[messaging API, configuration and delivery contract](packages/messaging/README.md).
-Messaging clients warn and adopt persisted settings by default; opt into
-`configMismatch: 'error'` for strict validation. Limiter clients always fail
-on mismatched shared configuration.
+In the receiving session, using the same store:
 
-## What the limits mean
+```sh
+npx semaphile message wait --as reviewer --timeout 30000 > receipt.json
+# Hand the delivery to your application's durable inbox, then acknowledge:
+npx semaphile message ack --receipt-file receipt.json
+```
 
-- `maxConcurrent` limits occupied units across clients; a job's `weight` defaults to one.
-- `minTime` spaces admissions across clients.
-- Reservoirs provide shared request budgets, explicit increments and optional fixed-period resets.
-- Request expiration can reclaim a lease while its callback is still running.
-- Queued cancellation prevents dispatch. A running callback must handle its own request cancellation.
-- `close()` cancels queued work and awaits running callbacks; `close({ drain: true })` finishes queued work too.
+`init` creates project defaults in `semaphile.json`. Commands discover the nearest
+config from the working directory upward; `--store PATH` selects a store explicitly.
+The waiter exits after claiming one delivery; its receipt can be acknowledged by
+another process before the claim expires. Claims default to five minutes, and an
+exited waiter does not renew them. Use renewal or a listener for longer handoffs;
+an expired receipt is stale. The 30-second timeout limits waiting for a message,
+not claim lifetime. A timeout exits with code 2 and provides no delivery to acknowledge.
 
-Every client opening the same pool must provide the same full normalized config.
-Queues are local FIFO; cross-process fairness is not guaranteed. Redis owner
-expiry can admit new work while a disconnected client's HTTP requests still run.
-Read the backend limitations before selecting expiration and owner timeouts.
-This implements a scheduling API, not the complete Bottleneck facade.
+Your runtime adapter handles admission into an agent's context or task queue.
+Printing a message or typing it into a pane does not prove the agent accepted it.
+The [messaging guide](packages/messaging/README.md) covers listeners, registration,
+broadcasts, stdin input, receipts, retention, and delivery semantics.
 
-## Find your way around
+## Choose where coordination lives
 
-- [Changelog](CHANGELOG.md)
-- [Documentation index](docs/README.md)
-- [Contributing and coding conventions](CONTRIBUTING.md)
-- [Architecture and one request's lifecycle](docs/architecture.md)
-- [Testing on Node, Bun, macOS and Linux](docs/testing.md)
-- [SQLite API and limitations](packages/core/README.md)
-- [Redis API and limitations](packages/redis/README.md)
-- [Messaging library and CLI](packages/messaging/README.md)
-- [Authoritative specification](SPEC.md)
+| Backend | Coordinates                          | Requires                                    | Messaging                          |
+| ------- | ------------------------------------ | ------------------------------------------- | ---------------------------------- |
+| Memory  | Callers in one JavaScript runtime    | A shared pool key; no native addon          | No                                 |
+| SQLite  | Independent processes on one machine | The same local store path; no broker        | Yes, in a separate messaging store |
+| Redis   | Processes on different machines      | The same Redis endpoint, namespace and pool | Not yet                            |
+
+Use `@semaphile/core/memory` for memory pools and `@semaphile/redis` for Redis.
+Install only what you need; messaging works independently of the limiter.
+[Redis setup](packages/redis/README.md) · [Memory and SQLite API](packages/core/README.md)
+
+## The hard parts Semaphile handles
+
+**Check and reserve together.** Concurrent callers cannot each spend the same
+remaining budget. A denied admission reserves nothing.
+
+**Wake without missing the change.** Subscription, notification and state checks
+follow a coordinated protocol. A wakeup is a reason to check again; only an
+atomic admission or claim grants ownership.
+
+**Recover ownership after crashes.** Local limiter recovery verifies an owner's
+lifetime lock instead of trusting a PID. Messaging uses expiring claim receipts;
+an old receipt cannot acknowledge a replacement claim.
+
+**Account for actual work lifetime.** A timeout or cancellation request does not
+prove an HTTP operation stopped. Managed execution tracks cleanup separately
+from the result returned to the caller.
+
+**Keep the application responsive.** Local database and blocking-lock work runs
+in a coordinator worker; Rust owns the native waits and their cleanup. User
+callbacks run outside coordination locks.
+
+SQLite provides transactions. Semaphile adds the scheduling and delivery protocol
+around them. The local implementation uses rollback journaling, companion lock
+and notification files, and macOS/Linux kernel events. See
+[architecture](docs/architecture.md) and [blocking and crash recovery](docs/blocking.md).
+
+## How it compares
+
+| If you're considering…                                                        | Where Semaphile fits                                                                                                                                                                                           |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [p-limit](https://github.com/sindresorhus/p-limit)                            | Use p-limit for a small promise-concurrency limiter. Semaphile adds coordination across independent processes.                                                                                                 |
+| [Bottleneck](https://github.com/SGrondin/bottleneck)                          | Bottleneck offers scheduling and Redis clustering. Semaphile adds daemonless local sharing and durable mailboxes; it is not a drop-in Bottleneck replacement.                                                  |
+| [rate-limiter-flexible](https://github.com/animir/node-rate-limiter-flexible) | It offers counters across many stores, including SQLite. Semaphile combines callback scheduling, shared concurrency, spacing, budgets and recovery.                                                            |
+| [MCP Agent Mail](https://github.com/Dicklesworthstone/mcp_agent_mail)         | Agent Mail offers an MCP-facing coordination service, searchable threads and file reservations. Semaphile offers direct embedded coordination and a CLI; runtime inbox integration remains your adapter's job. |
+| A custom SQLite outbox or directory of JSON files                             | Semaphile supplies claims, bounded redelivery, dedupe, presence, retention and event-driven waits that otherwise become application code.                                                                      |
+
+See [the comparison guide](docs/comparison.md) for the tradeoffs, primary sources,
+and why a durable store, a wakeup mechanism and runtime delivery are separate jobs.
+
+## Add it to an existing toolchain
+
+Use the library around requests you control, and the CLI from agents or scripts.
+The toolkit doesn't choose models, spawn your agent team, or decide who reviews
+what. Your existing harness keeps those responsibilities.
+
+**OpenTelemetry:** optional traces and shared-pool collectors help explain
+queueing, requests and messaging. See the [observability guide](docs/observability.md)
+for setup with the published 0.2.0 packages.
+
+## Know the boundaries
+
+Local stores require a local filesystem and cooperative processes. They are not
+for NFS/SMB mounts or isolation between mutually untrusted users. Runtime adapters
+must deduplicate message deliveries if repeated external effects matter:
+messaging is **at least once**, not exactly-once task execution. History is bounded.
+
+Queued callbacks live in their caller's memory; they are not durable jobs that
+another process resumes after a crash. Lease expiry can release capacity while
+remote work continues, and Redis owner expiry has the same overlap risk after a
+partition. Queues are FIFO within a client, without global fairness guarantees.
+Redis Cluster, Sentinel and failover guarantees are outside the current contract.
+
+Prebuilt native artifacts cover **macOS arm64 and Linux x64**, with no Rust
+compiler or install-time compilation needed. Node >=22.18 is required; verification
+covers Node 22.23/Linux, Node 26.7/macOS and Bun 1.4.2 on both platforms. Other
+platforms and versions are not established by that evidence. Crash recovery tests
+do not establish power-loss or reboot durability. See [testing](docs/testing.md).
+
+## Learn more and contribute
+
+[Documentation](docs/README.md) — API references, architecture and operating guides.
+
+[Changelog](CHANGELOG.md) — features and compatibility changes by release.
+
+[Specification](SPEC.md) — the authoritative coordination contract.
+
+[Contributing and source builds](CONTRIBUTING.md) — setup, coding conventions and verification.
 
 ## License
 
-[MIT](LICENSE) © 2026 Semaphile contributors.
+[MIT](LICENSE) © 2026 Cedric Hurst.
