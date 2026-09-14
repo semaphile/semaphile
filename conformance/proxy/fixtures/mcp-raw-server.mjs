@@ -1,4 +1,5 @@
 import { createInterface } from 'node:readline';
+import { closeSync } from 'node:fs';
 const held = new Map();
 const send = (message) =>
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...message }) + '\n');
@@ -60,7 +61,7 @@ createInterface({ input: process.stdin })
       return;
     }
     if (message.method === 'fixture/stdout-end') {
-      process.stdout.end();
+      closeSync(1);
       return;
     }
     if (message.method === 'fixture/malformed') {

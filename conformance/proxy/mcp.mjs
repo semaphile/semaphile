@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { PassThrough, Writable } from 'node:stream';
 import { createRequire } from 'node:module';
 import { mkdir, mkdtemp } from 'node:fs/promises';
@@ -11,6 +12,11 @@ import { startMcpProxy } from '../../packages/proxy/dist/mcp.js';
 const require = createRequire(new URL('../../packages/proxy/package.json', import.meta.url));
 const { ReadBuffer } = require('@modelcontextprotocol/client');
 const { test, run } = suite();
+// Bun keeps a duplicated stdout descriptor after writing; use Node to inject
+// a real pipe EOF while the proxy itself still runs under the invoking runtime.
+const eofExecutable = process.versions.bun
+  ? execFileSync('node', ['-p', 'process.execPath'], { encoding: 'utf8' }).trim()
+  : process.execPath;
 await mkdir('.tmp/proxy', { recursive: true });
 const root = await mkdtemp(resolve('.tmp/proxy/mcp-'));
 const redis =
@@ -251,12 +257,15 @@ for (const backend of redis ? ['redis'] : ['memory', 'sqlite']) {
   scenario('upstream EOF and malformed JSON close a live owned process promptly', async (f) => {
     for (const method of ['fixture/stdout-end', 'fixture/malformed']) {
       const c = await f.connect({
+        command: eofExecutable,
         args: [resolve('conformance/proxy/fixtures/mcp-raw-server.mjs'), '--ignore-term'],
       });
       c.send(request(1, 'hold'));
       await c.take(started(1));
       c.send({ method });
-      await within(c.proxy.finished, 1500);
+      await within(c.proxy.finished, 1500).catch((error) => {
+        throw new Error(method + ': ' + JSON.stringify(c.proxy.inspect()), { cause: error });
+      });
       assert.equal(
         c.proxy.inspect().error,
         method === 'fixture/stdout-end' ? 'UPSTREAM_EOF' : 'INVALID_MCP_FRAME',
