@@ -108,7 +108,7 @@ their own bound and deadline.
 
 The proxy preserves request IDs, protocol envelopes, metadata, results, errors and
 notifications. Client and server request IDs have separate directions. A duplicate
-live downstream ID terminates the session because replying with that same ID
+live ID in either direction terminates the session because replying with that same ID
 would make the original request ambiguous. The implementation uses the official
 [TypeScript SDK v2](https://ts.sdk.modelcontextprotocol.io/v2/) for wire framing;
 conformance exercises both legacy negotiation and the `2026-07-28` protocol with
@@ -134,7 +134,7 @@ All timeout values are positive integer milliseconds. Defaults are:
 | Option                | Default | Scope                                                |
 | --------------------- | ------: | ---------------------------------------------------- |
 | `maxPending`          |     256 | Queued and running tool calls                        |
-| `maxControlPending`   |      64 | Outstanding downstream control requests              |
+| `maxControlPending`   |      64 | Outstanding control requests, per direction          |
 | `maxMessageBytes`     |   1 MiB | Unparsed input buffer and serialized output frame    |
 | `maxBufferedBytes`    |   8 MiB | Retained request frames, and each output writer      |
 | `queueTimeoutMs`      |  30,000 | Waiting for tool admission                           |

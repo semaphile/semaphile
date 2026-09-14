@@ -47,10 +47,13 @@ export async function mcpCommand(args: string[]): Promise<void> {
     } finally {
       process.removeListener('SIGINT', stop);
       process.removeListener('SIGTERM', stop);
-      await limiter.close();
-      // CLI owns stdout. A host that stops reading must not retain this process.
-      process.stdin.destroy();
-      process.stdout.destroy();
+      try {
+        await limiter.close();
+      } finally {
+        // CLI owns stdio, even if backend cleanup reports an error.
+        process.stdin.destroy();
+        process.stdout.destroy();
+      }
     }
   }
 }

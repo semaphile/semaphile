@@ -231,6 +231,89 @@ for (const backend of redis ? ['redis'] : ['memory', 'sqlite']) {
       assert.equal(await f.pool.schedule(() => 'borrowed'), 'borrowed');
     },
   );
+  scenario(
+    'child crash during drain refuses queued work and reports terminal failures',
+    async (f) => {
+      const c = await f.connect();
+      c.send(request(1, 'hold'));
+      await c.take(started(1));
+      c.send(request(2, 'echo'));
+      const closing = c.proxy.close({ drain: true });
+      c.send({ method: 'fixture/exit' });
+      await within(closing, 1500);
+      assert.ok((await c.take(response(1))).error);
+      assert.ok((await c.take(response(2))).error);
+      assert.ok(c.proxy.inspect().error);
+      assert.equal(c.frames.some(started(2)), false);
+      assert.equal((await f.pool.inspect()).active, 0);
+    },
+  );
+  scenario('upstream EOF and malformed JSON close a live owned process promptly', async (f) => {
+    for (const method of ['fixture/stdout-end', 'fixture/malformed']) {
+      const c = await f.connect({
+        args: [resolve('conformance/proxy/fixtures/mcp-raw-server.mjs'), '--ignore-term'],
+      });
+      c.send(request(1, 'hold'));
+      await c.take(started(1));
+      c.send({ method });
+      await within(c.proxy.finished, 1500);
+      assert.equal(
+        c.proxy.inspect().error,
+        method === 'fixture/stdout-end' ? 'UPSTREAM_EOF' : 'INVALID_MCP_FRAME',
+      );
+      assert.equal((await f.pool.inspect()).active, 0);
+      assert.throws(() => process.kill(c.proxy.pid, 0), { code: 'ESRCH' });
+    }
+  });
+  scenario('server requests have separate bounded identities and finite deadlines', async (f) => {
+    for (const mode of ['duplicate', 'limit', 'timeout', 'bytes']) {
+      const c = await f.connect({
+        maxControlPending: 1,
+        requestTimeoutMs: 1000,
+        ...(mode === 'bytes' ? { maxBufferedBytes: 256 } : {}),
+      });
+      if (mode === 'bytes') {
+        c.send({
+          ...request(1, 'hold'),
+          params: { name: 'hold', arguments: { padding: 'x'.repeat(120) } },
+        });
+        await c.take(started(1));
+      }
+      c.send({ method: 'fixture/server-request', params: { id: 1 } });
+      if (mode !== 'bytes') {
+        await c.take((frame) => frame.method === 'fixture/client');
+      }
+      if (mode === 'duplicate' || mode === 'limit') {
+        c.send({ method: 'fixture/server-request', params: { id: mode === 'duplicate' ? 1 : 2 } });
+      }
+      await within(c.proxy.finished, 2000);
+      assert.equal(
+        c.proxy.inspect().error,
+        mode === 'duplicate'
+          ? 'DUPLICATE_SERVER_REQUEST_ID'
+          : mode === 'timeout'
+            ? 'SERVER_REQUEST_TIMEOUT'
+            : 'SERVER_REQUEST_LIMIT',
+      );
+      assert.equal((await f.pool.inspect()).active, 0);
+    }
+  });
+  scenario('drain waits for server requests and completed server IDs can be reused', async (f) => {
+    const c = await f.connect();
+    for (let i = 0; i < 2; i++) {
+      c.send({ method: 'fixture/server-request', params: { id: 1 } });
+      await c.take((frame) => frame.method === 'fixture/client');
+      c.send({ id: 1, result: {} });
+      c.send({ id: 'barrier', method: 'ping' });
+      await c.take(response('barrier'));
+    }
+    c.send({ method: 'fixture/server-request', params: { id: 1 } });
+    await c.take((frame) => frame.method === 'fixture/client');
+    const closing = c.proxy.close({ drain: true });
+    c.send({ id: 1, result: {} });
+    await within(closing);
+    assert.equal(c.proxy.inspect().error, undefined);
+  });
   scenario('request deadline and upstream crash reclaim running work', async (f) => {
     for (const name of ['ignore', 'exit']) {
       const c = await f.connect({ requestTimeoutMs: 500 });
@@ -262,7 +345,7 @@ for (const backend of redis ? ['redis'] : ['memory', 'sqlite']) {
   scenario(
     'duplicate IDs and invalid or oversized frames terminate the owned session',
     async (f) => {
-      for (const frame of ['{"bad":true}\n', 'x'.repeat(2048), 'duplicate']) {
+      for (const frame of ['{"bad":true}\n', 'not json\n', 'x'.repeat(2048), 'duplicate']) {
         const c = await f.connect({ maxMessageBytes: 1024 });
         c.send(request(1, 'hold'));
         await c.take(started(1));

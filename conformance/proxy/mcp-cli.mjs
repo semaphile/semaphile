@@ -58,7 +58,7 @@ async function config(name, options = {}) {
   return path;
 }
 function peer(args, executable = cli, env = {}) {
-  const child = spawn(process.execPath, [executable, ...args], {
+  const child = spawn(process.execPath, ['--no-warnings', executable, ...args], {
     env: { ...process.env, ...(redis ? { MCP_TEST_REDIS_URL: redis.url } : {}), ...env },
     stdio: ['pipe', 'pipe', 'pipe'],
   });

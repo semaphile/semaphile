@@ -59,6 +59,18 @@ createInterface({ input: process.stdin })
       respond(id, 'released');
       return;
     }
+    if (message.method === 'fixture/stdout-end') {
+      process.stdout.end();
+      return;
+    }
+    if (message.method === 'fixture/malformed') {
+      process.stdout.write('not json\n');
+      return;
+    }
+    if (message.method === 'fixture/server-request') {
+      send({ id: message.params.id, method: 'fixture/client', params: {} });
+      return;
+    }
     if (message.method === 'fixture/exit') {
       process.exit(0);
     }

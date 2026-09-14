@@ -1,7 +1,6 @@
 // Transparent MCP stdio framing; only tool calls participate in admission.
 import { spawn } from 'node:child_process';
 import {
-  ReadBuffer,
   isJSONRPCRequest,
   isJSONRPCResponse,
   type JSONRPCMessage,
@@ -12,7 +11,7 @@ import { getDefaultEnvironment } from '@modelcontextprotocol/client/stdio';
 import type { Outcome } from '@semaphile/core/client';
 import { integer } from './index.js';
 import { ProxyInputError } from './errors.js';
-import { MessageWriter } from './mcp-wire.js';
+import { MessageReader, MessageWriter } from './mcp-wire.js';
 import type { McpProxy, McpProxyOptions } from './mcp-types.js';
 export type { McpProxy, McpProxyOptions } from './mcp-types.js';
 function deferred<T>() {
@@ -140,6 +139,26 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
   const jobs = new Set<Job>(),
     ids = new Map<string | number, Job>(),
     work = new Set<Promise<void>>();
+  const serverRequests = new Map<
+    string | number,
+    {
+      bytes: number;
+      timer: ReturnType<typeof setTimeout>;
+      done: ReturnType<typeof deferred<void>>;
+    }
+  >();
+  let idle: ReturnType<typeof deferred<void>> | undefined;
+  const retainedBytes = () =>
+    [...jobs].reduce((n, job) => n + job.bytes, 0) +
+    [...serverRequests.values()].reduce((n, request) => n + request.bytes, 0);
+  const finishServerRequest = (id: string | number) => {
+    const request = serverRequests.get(id);
+    if (request) {
+      serverRequests.delete(id);
+      clearTimeout(request.timer);
+      request.done.resolve();
+    }
+  };
   const done = deferred<void>(),
     exited = deferred<void>();
   let childExited = false,
@@ -204,16 +223,29 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
     if (childExited) {
       return;
     }
+    const unexpected = terminating === undefined;
     childExited = true;
+    if (unexpected) {
+      error ??= 'UPSTREAM_EXIT';
+      stopping = true;
+      // A drain is not permission to dispatch queued work after a child crash.
+      abortJobs();
+      for (const job of jobs) {
+        replyError(job, 'MCP_UPSTREAM_CLOSED');
+      }
+    }
     child.stdin!.destroy();
     child.stdout!.destroy();
     upstream.stop();
     for (const job of jobs) {
       job.terminal.resolve({ kind: 'neutral' });
     }
+    for (const id of serverRequests.keys()) {
+      finishServerRequest(id);
+    }
     exited.resolve();
-    if (!stopping) {
-      fail('UPSTREAM_EXIT');
+    if (unexpected) {
+      void close();
     }
   };
   child.once('exit', childDone);
@@ -289,7 +321,15 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
   };
   const track = (promise: Promise<void>) => {
     work.add(promise);
-    void promise.finally(() => work.delete(promise)).catch(() => fail('INTERNAL_FAILURE'));
+    void promise
+      .finally(() => {
+        work.delete(promise);
+        if (work.size === 0) {
+          idle?.resolve();
+          idle = undefined;
+        }
+      })
+      .catch(() => fail('INTERNAL_FAILURE'));
   };
   const fromDownstream = (message: JSONRPCMessage) => {
     if (isJSONRPCRequest(message)) {
@@ -299,8 +339,7 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
       }
       const tool = message.method === 'tools/call';
       const bytes = Buffer.byteLength(serializeMessage(message));
-      const overBytes =
-        [...jobs].reduce((total, job) => total + job.bytes, 0) + bytes > settings.maxBufferedBytes;
+      const overBytes = retainedBytes() + bytes > settings.maxBufferedBytes;
       const full =
         [...jobs].filter((job) => job.tool === tool).length >=
         (tool ? settings.maxPending : settings.maxControlPending);
@@ -341,6 +380,9 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
       }
       return;
     }
+    if (isJSONRPCResponse(message) && message.id !== undefined) {
+      finishServerRequest(message.id);
+    }
     if ('method' in message && message.method === 'notifications/cancelled') {
       const id = message.params?.requestId;
       const job = typeof id === 'number' || typeof id === 'string' ? ids.get(id) : undefined;
@@ -360,6 +402,27 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
     sendUp(message);
   };
   const fromUpstream = (message: JSONRPCMessage) => {
+    if (isJSONRPCRequest(message)) {
+      const bytes = Buffer.byteLength(serializeMessage(message));
+      if (serverRequests.has(message.id)) {
+        fail('DUPLICATE_SERVER_REQUEST_ID');
+        return;
+      }
+      if (
+        serverRequests.size >= settings.maxControlPending ||
+        retainedBytes() + bytes > settings.maxBufferedBytes
+      ) {
+        fail('SERVER_REQUEST_LIMIT');
+        return;
+      }
+      const done = deferred<void>();
+      serverRequests.set(message.id, {
+        bytes,
+        done,
+        timer: setTimeout(() => fail('SERVER_REQUEST_TIMEOUT'), settings.requestTimeoutMs),
+      });
+      track(done.promise);
+    }
     if (isJSONRPCResponse(message)) {
       const job = message.id === undefined ? undefined : ids.get(message.id);
       if (job) {
@@ -373,10 +436,10 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
     }
     sendDown(message);
   };
-  const incoming = new ReadBuffer({ maxBufferSize: settings.maxMessageBytes });
-  const outgoing = new ReadBuffer({ maxBufferSize: settings.maxMessageBytes });
+  const incoming = new MessageReader(settings.maxMessageBytes);
+  const outgoing = new MessageReader(settings.maxMessageBytes);
   const read =
-    (buffer: ReadBuffer, receive: (message: JSONRPCMessage) => void) =>
+    (buffer: MessageReader, receive: (message: JSONRPCMessage) => void) =>
     (chunk: Buffer | string) => {
       try {
         buffer.append(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -410,7 +473,10 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
           abortJobs();
           await terminate();
         }
-        await Promise.all(work);
+        // Resolve on quiescence, including callbacks accepted while draining tools.
+        if (work.size) {
+          await (idle ??= deferred<void>()).promise;
+        }
         await terminate();
         await downstream.flush(settings.shutdownGraceMs);
       } finally {
@@ -435,6 +501,13 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
   child.stdin!.on('error', () => fail('UPSTREAM_WRITE_FAILED'));
   child.stdout!.on('error', () => fail('UPSTREAM_READ_FAILED'));
   child.stdout!.on('data', outputData);
+  const upstreamEnd = () => {
+    if (!childExited && terminating === undefined) {
+      fail('UPSTREAM_EOF');
+    }
+  };
+  child.stdout!.once('end', upstreamEnd);
+  child.stdout!.once('close', upstreamEnd);
   output.on('error', outputError);
   output.once('close', outputClose);
   try {
@@ -460,7 +533,7 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
     finished: done.promise,
     close,
     inspect: () => ({
-      pending: jobs.size,
+      pending: jobs.size + serverRequests.size,
       active: [...jobs].filter((job) => job.tool && job.started).length,
       closing: stopping,
       ...(error ? { error } : {}),

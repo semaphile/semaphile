@@ -1,5 +1,9 @@
 import type { Writable } from 'node:stream';
-import { serializeMessage, type JSONRPCMessage } from '@modelcontextprotocol/client';
+import {
+  deserializeMessage,
+  serializeMessage,
+  type JSONRPCMessage,
+} from '@modelcontextprotocol/client';
 /** Bound writes handed to a stream, including those waiting for its drain. */
 export class MessageWriter {
   private stopped = false;
@@ -68,5 +72,29 @@ export class MessageWriter {
     }
     this.pending.clear();
     this.bytes = 0;
+  }
+}
+
+/** Strict newline framing: malformed JSON is a session failure, not server logging. */
+export class MessageReader {
+  private buffer: Buffer = Buffer.alloc(0);
+  constructor(private readonly maxBytes: number) {}
+  append(chunk: Buffer): void {
+    if (this.buffer.length + chunk.length > this.maxBytes) {
+      throw new Error('MCP input limit exceeded');
+    }
+    this.buffer = Buffer.concat([this.buffer, chunk]);
+  }
+  readMessage(): JSONRPCMessage | null {
+    const newline = this.buffer.indexOf('\n');
+    if (newline < 0) {
+      return null;
+    }
+    const line = this.buffer.toString('utf8', 0, newline);
+    this.buffer = this.buffer.subarray(newline + 1);
+    return deserializeMessage(line);
+  }
+  clear(): void {
+    this.buffer = Buffer.alloc(0);
   }
 }
