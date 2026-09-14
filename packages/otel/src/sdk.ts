@@ -1,3 +1,4 @@
+import { startExportBridge } from './export-bridge.js';
 import {
   createMessagingInstrumentation,
   withMessageContext,
@@ -5,14 +6,10 @@ import {
 } from './messaging.js';
 // Explicit standalone SDK. Importing the library adapter never creates global
 // providers, network exporters, timers, or an HTTP listener.
-import { Socket } from 'node:net';
-import type { Agent } from 'node:http';
 import { metrics } from '@opentelemetry/api';
 import { NodeTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { resourceFromAttributes, detectResources, envDetector } from '@opentelemetry/resources';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
 import { createPropagator } from './propagation.js';
 import { createInstrumentation } from './index.js';
 export async function startTelemetry(
@@ -62,55 +59,23 @@ export async function startTelemetry(
       'service.name': options.serviceName ?? process.env.OTEL_SERVICE_NAME ?? 'semaphile',
     }),
   );
-  // Export latency and shutdown grace are independent. Own the agents so the
-  // shutdown deadline can close outstanding requests without shortening normal exports.
-  const agents = new Map<string, Agent>();
-  let exportsStopped = false;
-  const httpAgentOptions = async (protocol: string): Promise<Agent> => {
-    if (exportsStopped) {
-      throw new Error('Telemetry exporter stopped');
-    }
-    let agent = agents.get(protocol);
-    if (!agent) {
-      const implementation =
-        protocol === 'http:' ? await import('node:http') : await import('node:https');
-      if (exportsStopped) {
-        throw new Error('Telemetry exporter stopped');
-      }
-      agent = agents.get(protocol) ?? new implementation.Agent({ keepAlive: true });
-      const connect = agent.createConnection.bind(agent);
-      agent.createConnection = (connectionOptions, callback) => {
-        if (exportsStopped) {
-          queueMicrotask(() =>
-            callback?.(new Error('Telemetry exporter stopped'), new Socket().destroy()),
-          );
-          return undefined;
-        }
-        return connect(connectionOptions, callback);
-      };
-      agents.set(protocol, agent);
-    }
-    return agent;
-  };
+  const propagator = createPropagator(options.baggageAllowlist);
+  const bridge = await startExportBridge(exportTimeoutMs);
   const tracer = new NodeTracerProvider({
     resource,
-    spanProcessors: [
-      new BatchSpanProcessor(
-        new OTLPTraceExporter({ timeoutMillis: exportTimeoutMs, httpAgentOptions }),
-      ),
-    ],
+    spanProcessors: [new BatchSpanProcessor(bridge.traces)],
   });
   const meter = new MeterProvider({
     resource,
     readers: [
       new PeriodicExportingMetricReader({
-        exporter: new OTLPMetricExporter({ timeoutMillis: exportTimeoutMs, httpAgentOptions }),
+        exporter: bridge.metrics,
         exportIntervalMillis: intervalMs,
         exportTimeoutMillis: Math.min(intervalMs, exportTimeoutMs),
       }),
     ],
   });
-  tracer.register({ propagator: createPropagator(options.baggageAllowlist) });
+  tracer.register({ propagator });
   metrics.setGlobalMeterProvider(meter);
   let stopped: Promise<void> | undefined;
   return {
@@ -138,15 +103,7 @@ export async function startTelemetry(
           ]);
         } finally {
           clearTimeout(timer);
-          exportsStopped = true;
-          for (const agent of agents.values()) {
-            for (const sockets of Object.values(agent.sockets)) {
-              for (const socket of sockets ?? []) {
-                socket.destroy(new Error('Telemetry exporter stopped'));
-              }
-            }
-            agent.destroy();
-          }
+          await bridge.close();
         }
       })());
     },

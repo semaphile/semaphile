@@ -1,7 +1,7 @@
 // Independent monitoring connections. Registration never creates an admission
 // owner, and sampling projects a private state draft without writing pool state.
 import { createClient, createCluster, ErrorReply } from '@redis/client';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { PoolMeasurement, PoolObserver } from '@semaphile/core/observation';
 import { CollectorConflictError } from '@semaphile/core/observation';
@@ -11,16 +11,25 @@ export const poolKey = (namespace: string, pool: string) =>
   `semaphile:{${hash(JSON.stringify([namespace, pool]))}}:state`;
 const registrationScript = `
 local time=redis.call('TIME'); local now=tonumber(time[1])*1000+math.floor(tonumber(time[2])/1000)
-local action,id,ttl=ARGV[1],ARGV[2],tonumber(ARGV[3])
+local action,id,ttl,token=ARGV[1],ARGV[2],tonumber(ARGV[3]),ARGV[5]
+local expired=redis.call('ZRANGEBYSCORE',KEYS[1],'-inf',now)
+for _,owner in ipairs(expired) do redis.call('HDEL',KEYS[2],owner) end
 redis.call('ZREMRANGEBYSCORE',KEYS[1],'-inf',now)
 local prior=redis.call('ZSCORE',KEYS[1],id)
-if action=='close' then redis.call('ZREM',KEYS[1],id); return '[]' end
+local acquired=redis.call('HGET',KEYS[2],id)
+if action=='close' then
+ if acquired==token then redis.call('ZREM',KEYS[1],id); redis.call('HDEL',KEYS[2],id) end
+ return '[]'
+end
 local owners=redis.call('ZRANGE',KEYS[1],0,-1)
-if action=='owners' then return cjson.encode(owners) end
-if action=='renew' and (not prior or tonumber(prior)<=now) then return redis.error_reply('Collector registration expired') end
+if action=='owners' or action=='renew' then
+ if not prior or acquired~=token then return redis.error_reply('Collector registration expired') end
+ if action=='owners' then return cjson.encode(owners) end
+end
 if action=='open' and (prior or (#owners>0 and ARGV[4]~='true')) then return cjson.encode({conflicts=owners}) end
 if #owners>=1024 and not prior then return redis.error_reply('Too many collectors') end
 redis.call('ZADD',KEYS[1],now+ttl,id); redis.call('PEXPIRE',KEYS[1],ttl)
+redis.call('HSET',KEYS[2],id,token); redis.call('PEXPIRE',KEYS[2],ttl)
 return cjson.encode(owners)
 `;
 const projectionScript = `
@@ -30,7 +39,7 @@ local function integer(n,minimum,maximum) if n<minimum or n>maximum or n~=math.f
 ${readFileSync(new URL('./control.lua', import.meta.url), 'utf8')}
 local clock=redis.call('TIME'); local now=tonumber(clock[1])*1000+math.floor(tonumber(clock[2])/1000)
 local expires=redis.call('ZSCORE',KEYS[2],ARGV[1])
-if not expires or tonumber(expires)<=now then return redis.error_reply('Collector registration expired') end
+if not expires or tonumber(expires)<=now or redis.call('HGET',KEYS[3],ARGV[1])~=ARGV[2] then return redis.error_reply('Collector registration expired') end
 if redis.call('STRLEN',KEYS[1])>1048576 then return redis.error_reply('Pool exceeds observation state bound') end
 local raw=redis.call('GET',KEYS[1]); if not raw then return redis.error_reply('Missing pool') end
 local state=cjson.decode(raw); if state.format~='2' then return redis.error_reply('Unsupported pool format') end
@@ -187,6 +196,7 @@ export async function openObservationSource(options: RedisObservationOptions) {
       }
       const key = poolKey(namespace, pool),
         registry = key + ':collectors-v1',
+        acquisition = randomUUID(),
         ttl = 30000;
       if (!(await bounded(client.exists(key)))) {
         throw new Error('Missing pool');
@@ -195,8 +205,8 @@ export async function openObservationSource(options: RedisObservationOptions) {
       const opened = JSON.parse(
         await evaluation(
           registrationScript,
-          [registry],
-          ['open', collectorId, String(ttl), String(allowOverlap)],
+          [registry, registry + ':tokens'],
+          ['open', collectorId, String(ttl), String(allowOverlap), acquisition],
         ),
       ) as { conflicts?: string[] };
       if (opened.conflicts) {
@@ -215,8 +225,8 @@ export async function openObservationSource(options: RedisObservationOptions) {
           }
           void evaluation(
             registrationScript,
-            [registry],
-            ['renew', collectorId, String(ttl), ''],
+            [registry, registry + ':tokens'],
+            ['renew', collectorId, String(ttl), '', acquisition],
           ).then(
             () => {
               if (closed || performance.now() >= validUntil) {
@@ -244,7 +254,11 @@ export async function openObservationSource(options: RedisObservationOptions) {
           check();
           try {
             const result = JSON.parse(
-              await evaluation(projectionScript, [key, registry], [collectorId]),
+              await evaluation(
+                projectionScript,
+                [key, registry, registry + ':tokens'],
+                [collectorId, acquisition],
+              ),
             ) as PoolMeasurement;
             check();
             return result;
@@ -263,8 +277,8 @@ export async function openObservationSource(options: RedisObservationOptions) {
           const result = JSON.parse(
             await evaluation(
               registrationScript,
-              [registry],
-              ['owners', collectorId, String(ttl), ''],
+              [registry, registry + ':tokens'],
+              ['owners', collectorId, String(ttl), '', acquisition],
             ),
           );
           check();
@@ -281,7 +295,11 @@ export async function openObservationSource(options: RedisObservationOptions) {
           closed = true;
           clearTimeout(renewal);
           observers.delete(observer);
-          await evaluation(registrationScript, [registry], ['close', collectorId, String(ttl), '']);
+          await evaluation(
+            registrationScript,
+            [registry, registry + ':tokens'],
+            ['close', collectorId, String(ttl), '', acquisition],
+          );
         },
       };
       observers.add(observer);

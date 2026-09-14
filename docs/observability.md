@@ -232,7 +232,11 @@ JSON stdout or protocol exit codes. The default shutdown budget is one second.
 
 Exporter request timeouts default to 10 seconds and are independent of the
 1-second shutdown grace. Library callers can set `startTelemetry({ exportTimeoutMs,
-shutdownTimeoutMs })`. Shutdown closes outstanding exporter connections when its
-grace ends. `--interval-ms` controls OTLP export cycles when `--otel` is enabled;
+shutdownTimeoutMs })`. Exporter I/O and retry timers run in a worker. Shutdown terminates that worker
+when its grace ends, so retry delays cannot retain the CLI process. `--interval-ms` controls OTLP export cycles when `--otel` is enabled;
 Prometheus-only collection refreshes on scrapes, not on a background timer.
 The `startCollector` compatibility field `intervalMs` does not schedule scrapes.
+
+Stop existing collectors before upgrading to 0.3.0. Redis observer registrations
+now use acquisition tokens to prevent expired observers from revoking replacements.
+Pool state and messaging formats are unchanged.

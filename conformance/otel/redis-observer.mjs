@@ -44,11 +44,17 @@ try {
     await command.del(key + ':collectors-v1');
     await assert.rejects(first.sample(), /expired/);
     const reusedId = randomUUID();
+    const stale = await source.open(pool, reusedId);
     await command.zAdd(key + ':collectors-v1', { score: 1, value: reusedId });
     const reopened = await source.open(pool, reusedId);
+    await assert.rejects(stale.sample(), /expired/);
+    await stale.close();
     assert.deepEqual(await reopened.owners(), [reusedId]);
+    assert.equal((await reopened.sample()).active, 0);
     await reopened.close();
-    console.log('PASS expired Redis collector identity can register again');
+    console.log(
+      'PASS expired Redis collector identity reopens and stale cleanup preserves its replacement',
+    );
   } finally {
     command.destroy();
   }

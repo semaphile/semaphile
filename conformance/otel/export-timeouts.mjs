@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+let retrying = false,
+  retryChild,
+  sawRetry;
+const retryReceived = new Promise((resolve) => {
+  sawRetry = resolve;
+});
 const completed = new Set();
 let allDone;
 const delivered = new Promise((resolve) => {
@@ -11,6 +17,12 @@ const timers = new Set();
 const server = createServer((request, response) => {
   request.resume();
   request.once('end', () => {
+    if (retrying) {
+      response.writeHead(503, { 'retry-after': '3' });
+      response.end();
+      sawRetry();
+      return;
+    }
     const timer = setTimeout(() => {
       timers.delete(timer);
       if (!response.destroyed) {
@@ -63,10 +75,28 @@ try {
   assert.equal(status, 0);
   assert.ok(performance.now() - start < 1500);
   console.log('PASS bounded shutdown closes outstanding exporter sockets');
+  retrying = true;
+  retryChild = spawn(process.execPath, ['--input-type=module', '-e', code], {
+    env: {
+      ...process.env,
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:' + server.address().port,
+    },
+    stdio: ['pipe', 'inherit', 'inherit'],
+  });
+  const retryExit = once(retryChild, 'exit');
+  await retryReceived;
+  const beforeRetryClose = performance.now();
+  retryChild.stdin.end('stop');
+  assert.equal((await retryExit)[0], 0);
+  assert.ok(performance.now() - beforeRetryClose < 1500);
+  console.log('PASS shutdown terminates SDK Retry-After timers before the child exits');
 } finally {
   clearTimeout(timeout);
   for (const timer of timers) {
     clearTimeout(timer);
+  }
+  if (retryChild?.exitCode === null) {
+    retryChild.kill('SIGKILL');
   }
   if (child.exitCode === null) {
     child.kill('SIGKILL');
@@ -74,4 +104,4 @@ try {
   server.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 }
-console.log('RESULT 2/2 passed');
+console.log('RESULT 3/3 passed');
