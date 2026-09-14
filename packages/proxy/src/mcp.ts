@@ -163,6 +163,7 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
     exited = deferred<void>();
   let childExited = false,
     stopping = false,
+    draining = false,
     error: string | undefined;
   let closing: Promise<void> | undefined, terminating: Promise<void> | undefined;
   const forget = (job: Job) => {
@@ -457,7 +458,11 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
   const inputData = read(incoming, fromDownstream),
     outputData = read(outgoing, fromUpstream);
   const inputEnd = () => {
-    void close();
+    if (draining) {
+      fail('INPUT_CLOSED');
+    } else {
+      void close();
+    }
   };
   const outputClose = () => fail('OUTPUT_CLOSED');
   const inputError = () => fail('INPUT_FAILURE'),
@@ -467,6 +472,7 @@ export async function startMcpProxy(options: McpProxyOptions): Promise<McpProxy>
       return closing;
     }
     stopping = true;
+    draining = closeOptions.drain === true;
     closing = Promise.resolve().then(async () => {
       try {
         if (!closeOptions.drain) {

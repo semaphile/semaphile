@@ -1,6 +1,6 @@
 import type { Writable } from 'node:stream';
 import {
-  deserializeMessage,
+  parseJSONRPCMessage,
   serializeMessage,
   type JSONRPCMessage,
 } from '@modelcontextprotocol/client';
@@ -92,7 +92,11 @@ export class MessageReader {
     }
     const line = this.buffer.toString('utf8', 0, newline);
     this.buffer = this.buffer.subarray(newline + 1);
-    return deserializeMessage(line);
+    const message: unknown = JSON.parse(line);
+    // Validate with the SDK, but keep the original envelope: schema parsing may
+    // strip extension fields inside recognized metadata objects.
+    parseJSONRPCMessage(message);
+    return message as JSONRPCMessage;
   }
   clear(): void {
     this.buffer = Buffer.alloc(0);

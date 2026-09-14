@@ -30,6 +30,22 @@ createInterface({ input: process.stdin })
         respond(message.id, 'x'.repeat(1048576));
         return;
       }
+      if (name === 'metadata') {
+        send({
+          id: message.id,
+          result: {
+            content: [],
+            _meta: {
+              'io.modelcontextprotocol/serverInfo': {
+                name: 'fixture',
+                version: '1',
+                vendorExtension: 'keep-me',
+              },
+            },
+          },
+        });
+        return;
+      }
       if (name === 'env') {
         respond(message.id, process.env[args.name] ?? 'unset');
         return;

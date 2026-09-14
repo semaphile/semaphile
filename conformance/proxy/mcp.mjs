@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { PassThrough, Writable } from 'node:stream';
-import { createRequire } from 'node:module';
 import { mkdir, mkdtemp } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -9,8 +8,6 @@ import { suite, deferred } from '../typescript/fixtures/cases.mjs';
 import { openLimiter as memory } from '../../packages/core/dist/src/memory.js';
 import { openLimiter as sqlite } from '../../packages/core/dist/src/index.js';
 import { startMcpProxy } from '../../packages/proxy/dist/mcp.js';
-const require = createRequire(new URL('../../packages/proxy/package.json', import.meta.url));
-const { ReadBuffer } = require('@modelcontextprotocol/client');
 const { test, run } = suite();
 // Bun keeps a duplicated stdout descriptor after writing; use Node to inject
 // a real pipe EOF while the proxy itself still runs under the invoking runtime.
@@ -54,11 +51,13 @@ async function connection(pool, options = {}) {
     output = new PassThrough();
   const frames = [],
     waiters = [];
-  const buffer = new ReadBuffer();
+  let buffer = '';
   output.on('data', (chunk) => {
-    buffer.append(chunk);
-    let frame;
-    while ((frame = buffer.readMessage()) !== null) {
+    buffer += chunk.toString();
+    let newline;
+    while ((newline = buffer.indexOf('\n')) >= 0) {
+      const frame = JSON.parse(buffer.slice(0, newline));
+      buffer = buffer.slice(newline + 1);
       const index = waiters.findIndex((waiter) => waiter.match(frame));
       if (index < 0) {
         frames.push(frame);
@@ -322,6 +321,35 @@ for (const backend of redis ? ['redis'] : ['memory', 'sqlite']) {
     c.send({ id: 1, result: {} });
     await within(closing);
     assert.equal(c.proxy.inspect().error, undefined);
+  });
+  scenario('downstream EOF interrupts an active drain and cancels queued admission', async (f) => {
+    const c = await f.connect();
+    c.send(request(1, 'hold'));
+    await c.take(started(1));
+    c.send(request(2, 'echo'));
+    const closing = c.proxy.close({ drain: true });
+    c.input.end();
+    await within(closing, 1500);
+    assert.equal(c.proxy.inspect().error, 'INPUT_CLOSED');
+    assert.equal(c.frames.some(started(2)), false);
+    assert.equal((await f.pool.inspect()).active, 0);
+    assert.throws(() => process.kill(c.proxy.pid, 0), { code: 'ESRCH' });
+  });
+  scenario('recognized nested metadata extensions survive both proxy directions', async (f) => {
+    const c = await f.connect();
+    const meta = {
+      'io.modelcontextprotocol/related-task': { taskId: 'task1', vendorExtension: 'keep-me' },
+    };
+    c.send({ id: 1, method: 'ping', params: { _meta: meta } });
+    assert.deepEqual((await c.take(response(1))).result.echo._meta, meta);
+    c.send(request(2, 'metadata'));
+    assert.deepEqual((await c.take(response(2))).result._meta, {
+      'io.modelcontextprotocol/serverInfo': {
+        name: 'fixture',
+        version: '1',
+        vendorExtension: 'keep-me',
+      },
+    });
   });
   scenario('request deadline and upstream crash reclaim running work', async (f) => {
     for (const name of ['ignore', 'exit']) {
