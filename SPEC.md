@@ -788,3 +788,10 @@ routing and path handling, upstream/downstream failure, Retry-After shared
 cooldown, no POST replay, queue overflow/deadlines, shutdown/drain and startup
 cleanup. Test memory, SQLite and actual Redis, including two proxy processes
 sharing a pool. All native packages retain both supported prebuilt targets.
+
+Proxy lifecycle engineering: expose `startExecution()` on the shared client with
+a frozen `{ result, finished }` handle. Existing `execute()` retains its promise
+contract. Submission validation for the handle throws synchronously; `finished`
+tracks callback and storage cleanup attempts and does not turn a rejected result
+into success. This lets adapters await owned operations without closing borrowed
+clients or inferring lifetime from caller settlement.

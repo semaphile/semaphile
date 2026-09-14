@@ -53,6 +53,37 @@ for (const backend of redisMode ? ['redis'] : ['memory', 'sqlite']) {
       }
     });
   }
+  scenario('tracked execution separates aborted result from actual cleanup', async (a, b, gate) => {
+    const entered = gate(),
+      released = gate();
+    const controller = new AbortController();
+    const operation = a.startExecution(
+      async () => {
+        entered.resolve();
+        await released.promise;
+        return 42;
+      },
+      { signal: controller.signal },
+    );
+    assert(Object.isFrozen(operation));
+    await entered.promise;
+    controller.abort();
+    await assert.rejects(operation.result, { name: 'AbortError' });
+    let finished = false;
+    void operation.finished.then(() => {
+      finished = true;
+    });
+    await setImmediate();
+    assert.equal(finished, false);
+    assert.equal((await b.inspect()).active, 1);
+    released.resolve();
+    await operation.finished;
+    assert.equal((await b.inspect()).active, 0);
+    assert.equal((await b.maintenance.status()).maintenance.pending, 0);
+    const next = a.startExecution(() => 7);
+    assert.equal(await next.result, 7);
+    await next.finished;
+  });
   scenario('safe classified retries spend each admission and preserve final value', async (a) => {
     const contexts = [];
     const value = await a.execute((context) => {

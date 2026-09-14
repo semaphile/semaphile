@@ -35,6 +35,11 @@ export type {
   AttemptContext,
   AttemptResult,
 } from './execution.js';
+/** Caller settlement and actual operation cleanup are separate boundaries. */
+export type TrackedExecution<T> = Readonly<{
+  result: Promise<T>;
+  finished: Promise<void>;
+}>;
 export {
   normalize as normalizePoolConfig,
   normalizeExpiration,
@@ -291,23 +296,31 @@ export class ScheduledLimiter {
     task: (context: AttemptContext) => T | PromiseLike<T>,
     options: ExecuteOptions<T> = {},
   ): Promise<T> {
-    if (this.isClosing) {
-      return Promise.reject(closedError());
-    }
     try {
-      const execution = startExecution(
-        this.backend,
-        task,
-        options,
-        (error) => this.cleanupErrors.push(error),
-        this.telemetry,
-      );
-      this.executions.add(execution);
-      void execution.finished.finally(() => this.executions.delete(execution)).catch(() => {});
-      return execution.result;
+      return this.startExecution(task, options).result;
     } catch (error) {
       return Promise.reject(error);
     }
+  }
+
+  /** Throws on invalid submission. finished waits for callback and storage cleanup attempts. */
+  startExecution<T>(
+    task: (context: AttemptContext) => T | PromiseLike<T>,
+    options: ExecuteOptions<T> = {},
+  ): TrackedExecution<T> {
+    if (this.isClosing) {
+      throw closedError();
+    }
+    const execution = startExecution(
+      this.backend,
+      task,
+      options,
+      (error) => this.cleanupErrors.push(error),
+      this.telemetry,
+    );
+    this.executions.add(execution);
+    void execution.finished.finally(() => this.executions.delete(execution)).catch(() => {});
+    return Object.freeze({ result: execution.result, finished: execution.finished });
   }
 
   private async releaseLease(lease: string, failure: Failure): Promise<void> {

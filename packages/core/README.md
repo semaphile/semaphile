@@ -219,3 +219,17 @@ experimental artifact workflow, not package publication.
 
 See [contributing](https://github.com/semaphile/semaphile/blob/main/CONTRIBUTING.md) for formatting, lint and type checks,
 and [architecture](https://github.com/semaphile/semaphile/blob/main/docs/architecture.md) for callback/worker ownership.
+
+### Tracking execution cleanup
+
+`limiter.startExecution(callback, options)` returns a frozen `{ result, finished }`
+handle. `result` has the same semantics as `execute()`. `finished` waits for the
+callback and storage cleanup attempts, even after the caller cancels or times out.
+Observe both: `finished` is a lifetime boundary, not evidence that a cancelled
+operation succeeded. Submission validation throws synchronously. Use an
+`AbortSignal` to cancel; closing the limiter still waits for cleanup and reports
+recorded cleanup failures.
+
+`@semaphile/core/http-policy` exports the existing HTTP classifier ID,
+`responseOutcome`, `transportOutcome`, and strict `retryAfter` parser for adapters
+that use a transport other than Fetch.
