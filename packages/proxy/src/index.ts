@@ -185,7 +185,10 @@ export async function startHttpProxy(options: HttpProxyOptions): Promise<HttpPro
       try {
         const remainder = raw.slice(name.length + 1);
         const base = route.upstream.pathname.replace(/\/$/, '');
-        const path = base + (remainder.startsWith('?') ? '/' + remainder : remainder) || '/';
+        const path =
+          !remainder || remainder.startsWith('?')
+            ? route.upstream.pathname + remainder
+            : base + remainder;
         const execution = route.limiter.startExecution(
           ({ signal }) =>
             transfer(

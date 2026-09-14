@@ -68,6 +68,7 @@ function request(url, path = '/api', options = {}) {
           resolve({
             status: response.statusCode,
             headers: response.headers,
+            trailers: response.trailers,
             body: Buffer.concat(chunks),
           }),
         );
@@ -587,6 +588,67 @@ for (const backend of redisMode ? ['redis'] : ['memory', 'sqlite']) {
     });
     await proxy.close({ drain: true });
     assert.ok((await f.pool.maintenance.status()).recovery.cooldownUntil > Date.now() + 50000);
+  });
+
+  scenario('Connection-nominated length is replaced with valid body framing', async (f) => {
+    const origin = await f.upstream(async (req, res) => {
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      assert.equal(req.headers['transfer-encoding'], 'chunked');
+      res.end(body);
+    });
+    const proxy = await f.proxy(origin.url);
+    const response = await request(proxy.url, '/api', {
+      method: 'GET',
+      headers: { 'content-length': '4', connection: 'content-length' },
+      body: 'test',
+    });
+    assert.equal(response.body.toString(), 'test');
+  });
+  scenario('request and response trailers honor original Connection exclusions', async (f) => {
+    const origin = await f.upstream(async (req, res) => {
+      for await (const _chunk of req) {
+        /* Drain the upload before inspecting its trailers. */
+      }
+      assert.equal(req.trailers['x-private'], undefined);
+      assert.equal(req.trailers['x-visible'], 'request');
+      res.writeHead(200, { connection: 'x-private', trailer: 'x-private, x-visible' });
+      res.write('body');
+      res.addTrailers({ 'x-private': 'secret', 'x-visible': 'response' });
+      res.end();
+    });
+    const proxy = await f.proxy(origin.url);
+    await new Promise((resolve, reject) => {
+      const req = httpRequest(
+        proxy.url + '/api',
+        { method: 'POST', headers: { connection: 'x-private', trailer: 'x-private, x-visible' } },
+        (res) => {
+          res.resume();
+          res.once('end', () => {
+            try {
+              assert.equal(res.trailers['x-private'], undefined);
+              assert.equal(res.trailers['x-visible'], 'response');
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          });
+        },
+      );
+      req.once('error', reject);
+      req.write('body');
+      req.addTrailers({ 'x-private': 'secret', 'x-visible': 'request' });
+      req.end();
+    });
+  });
+  scenario('route root preserves its configured path with and without a query', async (f) => {
+    const origin = await f.upstream((req, res) => res.end(req.url));
+    for (const base of ['/v1', '/v1/']) {
+      const proxy = await f.proxy(origin.url + base);
+      assert.equal((await request(proxy.url, '/api')).body.toString(), base);
+      assert.equal((await request(proxy.url, '/api?x=1')).body.toString(), base + '?x=1');
+      assert.equal((await request(proxy.url, '/api/more?x=1')).body.toString(), '/v1/more?x=1');
+    }
   });
   scenario('startup validation and occupied ports preserve caller-owned limiter', async (f) => {
     const origin = await f.upstream((_req, res) => res.end());

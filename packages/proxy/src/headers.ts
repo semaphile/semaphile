@@ -24,10 +24,11 @@ export const privateHeaders = new Set([
 export function cleanHeaders(
   input: IncomingHttpHeaders,
   request: boolean,
+  connection?: string,
 ): Record<string, string | string[]> {
   const blocked = new Set(request ? privateHeaders : hop);
   // Connection can nominate otherwise ordinary fields as hop-by-hop.
-  for (const name of String(input.connection ?? '').split(',')) {
+  for (const name of (String(input.connection ?? '') + ',' + (connection ?? '')).split(',')) {
     blocked.add(name.trim().toLowerCase());
   }
   const output: Record<string, string | string[]> = Object.create(null);
@@ -64,4 +65,16 @@ export function overrideHeaders(input: Record<string, string> = {}): Record<stri
     output[normalized] = value;
   }
   return output;
+}
+
+export function cleanTrailers(
+  input: IncomingHttpHeaders,
+  request: boolean,
+  original: IncomingHttpHeaders,
+) {
+  const result = cleanHeaders(input, request, original.connection);
+  for (const name of ['content-length', 'host', 'authorization']) {
+    delete result[name];
+  }
+  return result;
 }

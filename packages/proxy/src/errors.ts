@@ -27,7 +27,13 @@ export function localError(error: unknown): ProxyError {
 }
 export function errorResponse(response: ServerResponse, error: ProxyError): void {
   localResponses.add(response);
-  if (response.destroyed || response.writableEnded) {
+  if (response.destroyed) {
+    return;
+  }
+  if (response.writableEnded) {
+    if (!response.writableFinished) {
+      response.destroy();
+    }
     return;
   }
   if (response.headersSent) {

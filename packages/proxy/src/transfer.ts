@@ -4,7 +4,7 @@ import { request as httpRequest, type IncomingMessage, type ServerResponse } fro
 import { request as httpsRequest } from 'node:https';
 import type { Outcome } from '@semaphile/core/client';
 import { responseOutcome, transportOutcome } from '@semaphile/core/http-policy';
-import { cleanHeaders } from './headers.js';
+import { cleanHeaders, cleanTrailers } from './headers.js';
 import { ProxyError, errorResponse, localError } from './errors.js';
 
 export async function transfer(
@@ -22,7 +22,8 @@ export async function transfer(
   }
   const headers = { ...cleanHeaders(incoming.headers, true), ...overrides };
   if (
-    incoming.headers['transfer-encoding'] !== undefined &&
+    (incoming.headers['transfer-encoding'] !== undefined ||
+      incoming.headers['content-length'] !== undefined) &&
     headers['content-length'] === undefined
   ) {
     headers['transfer-encoding'] = 'chunked';
@@ -62,7 +63,8 @@ export async function transfer(
     request.destroy();
     upstream?.destroy();
   };
-  const trailers = () => request.addTrailers(cleanHeaders(incoming.trailers, true));
+  const trailers = () =>
+    request.addTrailers(cleanTrailers(incoming.trailers, true, incoming.headers));
   downstream.once('finish', done);
   downstream.once('close', done);
   downstream.on('error', done);
@@ -101,7 +103,7 @@ export async function transfer(
     );
     response.once('end', () => {
       if (!downstream.destroyed) {
-        downstream.addTrailers(cleanHeaders(response.trailers, false));
+        downstream.addTrailers(cleanTrailers(response.trailers, false, response.headers));
       }
     });
     const outgoing = cleanHeaders(response.headers, false);
