@@ -274,19 +274,29 @@ export async function openObservationSource(options: RedisObservationOptions) {
         },
         async owners() {
           check();
-          const result = JSON.parse(
-            await evaluation(
-              registrationScript,
-              [registry, registry + ':tokens'],
-              ['owners', collectorId, String(ttl), '', acquisition],
-            ),
-          );
-          check();
-          if (!Array.isArray(result) || !result.includes(collectorId)) {
-            failed = true;
-            throw new Error('Collector registration lost');
+          try {
+            const result = JSON.parse(
+              await evaluation(
+                registrationScript,
+                [registry, registry + ':tokens'],
+                ['owners', collectorId, String(ttl), '', acquisition],
+              ),
+            );
+            check();
+            if (!Array.isArray(result) || !result.includes(collectorId)) {
+              failed = true;
+              throw new Error('Collector registration lost');
+            }
+            return result;
+          } catch (error) {
+            if (
+              !(error instanceof ErrorReply) ||
+              error.message.includes('Collector registration expired')
+            ) {
+              failed = true;
+            }
+            throw error;
           }
-          return result;
         },
         async close() {
           if (closed) {
