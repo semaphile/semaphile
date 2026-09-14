@@ -1,6 +1,6 @@
 {
   "name": "@semaphile/messaging",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -34,9 +34,9 @@
     "semaphile": "dist/src/cli.js"
   },
   "peerDependencies": {
-    "@semaphile/core": "0.1.0",
-    "@semaphile/redis": "0.1.0",
-    "@semaphile/otel": "0.1.0"
+    "@semaphile/core": "0.2.0",
+    "@semaphile/redis": "0.2.0",
+    "@semaphile/otel": "0.2.0"
   },
   "peerDependenciesMeta": {
     "@semaphile/core": {

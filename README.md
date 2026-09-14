@@ -11,8 +11,8 @@ Choose **SQLite** for processes on the same machine with a daemonless local
 pool, **Redis** for processes on different machines sharing one Redis endpoint,
 or **memory** for callers sharing one JavaScript runtime.
 
-This is experimental software. Version `0.1.0` is published on npm and available
-as installable archives on [GitHub Releases](https://github.com/semaphile/semaphile/releases/tag/v0.1.0).
+This is experimental software. Version `0.2.0` is published on npm and available
+as installable archives on [GitHub Releases](https://github.com/semaphile/semaphile/releases/tag/v0.2.0).
 See the [release guide](docs/releases.md). Node >=22.18 is required for source
 builds. Runtime verification covers Node 22.23/Linux, Node 26.7/macOS and
 Bun 1.4.2 on macOS arm64 and Linux x64.
@@ -20,17 +20,17 @@ The published 0.1.0 Rust, recovery, HTTP and maintenance implementation passed
 483 scenarios under Node and Bun on both platforms, plus two cross-host Redis
 pairings. See [testing](docs/testing.md) for scope and limitations.
 
-The unreleased observability increment adds optional tracing, shared-pool
+Version 0.2.0 adds optional tracing, shared-pool
 collectors and an explicit messaging format upgrade. See
-[observability](docs/observability.md) for setup and compatibility; these APIs
-are not in the published 0.1.0 packages below.
+[observability](docs/observability.md) for setup and the offline messaging upgrade.
+Install `@semaphile/otel@0.2.0` with `@opentelemetry/api` to opt into telemetry.
 
 ## Install
 
 ```sh
-npm install @semaphile/core@0.1.0 @semaphile/redis@0.1.0 @semaphile/messaging@0.1.0
+npm install @semaphile/core@0.2.0 @semaphile/redis@0.2.0 @semaphile/messaging@0.2.0
 # Or for Bun projects:
-bun add @semaphile/core@0.1.0 @semaphile/redis@0.1.0 @semaphile/messaging@0.1.0
+bun add @semaphile/core@0.2.0 @semaphile/redis@0.2.0 @semaphile/messaging@0.2.0
 ```
 
 Install only what you need: core is standalone, Redis requires core, and

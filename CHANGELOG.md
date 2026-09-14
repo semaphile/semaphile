@@ -1,11 +1,11 @@
 # Changelog
 
-Semaphile uses semantic versions, with the core, Redis and messaging packages
+Semaphile uses semantic versions, with the core, Redis, messaging and OTel packages
 released together. Before 1.0, minor releases may include breaking changes;
 patch releases contain compatible fixes. Earlier CalVer snapshots were private
 pilot artifacts, not published GitHub releases.
 
-## Unreleased
+## [0.2.0] - 2026-09-13
 
 ### Added
 
@@ -22,8 +22,9 @@ pilot artifacts, not published GitHub releases.
 
 - SQLite limiter format 1.4 and Redis state 2 remain unchanged. Messaging readers
   must upgrade together; ordinary open rejects old messaging stores.
-- These changes are not included in published 0.1.0. Use matching builds until
-  the owner publishes the next minor release; no packages were published here.
+- Use matching 0.2.0 Semaphile packages. Stop all messaging clients before the
+  explicit offline upgrade; 0.1.0 clients cannot read the upgraded store.
+- The optional OTel package requires `@opentelemetry/api` 1.9 or later within 1.x.
 
 ## [0.1.0] - 2026-09-13
 
@@ -62,3 +63,4 @@ under the MIT license. This release remains experimental.
 - This is not a complete Bottleneck facade.
 
 [0.1.0]: https://github.com/semaphile/semaphile/releases/tag/v0.1.0
+[0.2.0]: https://github.com/semaphile/semaphile/releases/tag/v0.2.0

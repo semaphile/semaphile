@@ -255,7 +255,7 @@ and close the administrative client. No command kills producer processes.
 See [execution and maintenance](https://github.com/semaphile/semaphile/blob/main/docs/resilience.md) for the library API,
 recovery behavior and experimental-format replacement procedure.
 
-## Optional tracing (unreleased)
+## Optional tracing (0.2.0)
 
 The next release adds optional client-local tracing and explicit offline upgrades
 from messaging format 1.0 to 1.1. See the

@@ -19,14 +19,26 @@ const run = (command, args, cwd = root) => {
 };
 const archives = [];
 for (const name of ['core', 'redis', 'otel', 'messaging']) {
-  const [pack] = JSON.parse(
-    run(
-      'npm',
-      ['pack', '--json', '--ignore-scripts', '--pack-destination', root],
-      resolve('packages', name),
-    ),
-  );
-  archives.push(join(root, pack.filename));
+  const supplied = process.env[`SEMAPHILE_${name.toUpperCase()}_ARCHIVE`];
+  const archive = supplied && resolve(supplied);
+  const [pack] = archive
+    ? [
+        {
+          filename: archive,
+          files: run('tar', ['-tf', archive])
+            .trim()
+            .split('\n')
+            .map((path) => ({ path: path.replace(/^package\//, '') })),
+        },
+      ]
+    : JSON.parse(
+        run(
+          'npm',
+          ['pack', '--json', '--ignore-scripts', '--pack-destination', root],
+          resolve('packages', name),
+        ),
+      );
+  archives.push(archive ?? join(root, pack.filename));
   if (name === 'otel') {
     for (const path of [
       'dist/index.js',
@@ -35,6 +47,8 @@ for (const name of ['core', 'redis', 'otel', 'messaging']) {
       'dist/sdk.js',
       'dist/collector.js',
       'dist/cli.js',
+      'dist/messaging.js',
+      'dist/messaging.d.ts',
     ]) {
       assert(pack.files.some((file) => file.path === path));
     }

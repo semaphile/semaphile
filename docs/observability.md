@@ -1,7 +1,6 @@
 # Observability
 
-This feature is under development and is not in the published 0.1.0 packages.
-Use matching builds from this branch. Semaphile does not start monitoring services
+Available in matching 0.2.0 Semaphile packages. Semaphile does not start monitoring services
 from limiter clients or executor agents.
 
 ## Library instrumentation
@@ -163,7 +162,7 @@ within its bounded cycle, or it fails and releases partial acquisitions.
 
 ## Messaging tracing and offline upgrade
 
-This unreleased change requires matching messaging and OTel builds. Published
+Use matching messaging and OTel 0.2.0 packages. Existing
 0.1.0 stores use messaging format 1.0. Stop **every** client before upgrading:
 
 ```sh

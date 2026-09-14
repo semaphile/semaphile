@@ -1,9 +1,14 @@
 # @semaphile/otel
 
 Optional OpenTelemetry instrumentation and shared-pool monitoring for Semaphile.
-Unreleased: use matching local builds; this package is not yet published.
+Use matching 0.2.0 Semaphile packages and an application-owned OpenTelemetry SDK.
+
+```sh
+npm install @semaphile/otel@0.2.0 @opentelemetry/api@^1.9.0
+```
 
 - Main entry: `createInstrumentation()` integrates with an application-owned SDK.
+- `@semaphile/otel/messaging`: `createMessagingInstrumentation()` traces message lifecycles.
 - `@semaphile/otel/sdk`: explicit standalone OTLP HTTP/protobuf SDK setup.
 - `@semaphile/otel/collector`: `startCollector()` serves shared-pool metrics and health.
 - `@semaphile/otel/cli`: implementation of `semaphile telemetry collect`.

@@ -1,6 +1,6 @@
 {
   "name": "@semaphile/redis",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -35,7 +35,7 @@
     "@semaphile/core": "file:../core"
   },
   "peerDependencies": {
-    "@semaphile/core": "0.1.0"
+    "@semaphile/core": "0.2.0"
   },
   "license": "MIT",
   "description": "Redis-backed shared rate limiting for agents across processes and machines.",
