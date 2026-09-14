@@ -1,6 +1,6 @@
 # Changelog
 
-Semaphile uses semantic versions, with the core, Redis, messaging and OTel packages
+Semaphile uses semantic versions, with the core, Redis, messaging, OTel and proxy packages
 released together. Before 1.0, minor releases may include breaking changes;
 patch releases contain compatible fixes. Earlier CalVer snapshots were private
 pilot artifacts, not published GitHub releases.
