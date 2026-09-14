@@ -59,7 +59,6 @@ export async function startExportBridge(timeoutMs: number) {
     await worker.terminate();
     throw error;
   }
-  worker.unref();
   worker.on('message', (message: { id: number; code: number }) => {
     const entry = pending.get(message.id);
     if (!entry) {
@@ -74,6 +73,7 @@ export async function startExportBridge(timeoutMs: number) {
       worker.unref();
     }
   });
+  worker.unref();
   const send = (kind: string, data: () => unknown, callback: (result: ExportResult) => void) => {
     if (stopped || pending.size >= 64) {
       callback({ code: 1, error: new Error('Telemetry exporter unavailable') });

@@ -1,7 +1,32 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { once } from 'node:events';
+async function within(promise, milliseconds) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Exporter test deadline')), milliseconds);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+const idle = spawnSync(
+  process.execPath,
+  [
+    '--input-type=module',
+    '-e',
+    "import { startTelemetry } from './packages/otel/dist/sdk.js'; await startTelemetry(); console.log('idle');",
+  ],
+  { encoding: 'utf8', timeout: 2500 },
+);
+assert.equal(idle.status, 0, idle.stdout + idle.stderr + String(idle.error ?? ''));
+assert.match(idle.stdout, /idle/);
+console.log('PASS an idle exporter worker does not retain the process');
 let retrying = false,
   retryChild,
   sawRetry;
@@ -71,7 +96,7 @@ try {
   );
   const start = performance.now();
   child.stdin.end('stop');
-  const [status] = await exited;
+  const [status] = await within(exited, 1500);
   assert.equal(status, 0);
   assert.ok(performance.now() - start < 1500);
   console.log('PASS bounded shutdown closes outstanding exporter sockets');
@@ -84,10 +109,18 @@ try {
     stdio: ['pipe', 'inherit', 'inherit'],
   });
   const retryExit = once(retryChild, 'exit');
-  await retryReceived;
+  await within(
+    Promise.race([
+      retryReceived,
+      retryExit.then(() => {
+        throw new Error('Retry exporter exited before receipt');
+      }),
+    ]),
+    12000,
+  );
   const beforeRetryClose = performance.now();
   retryChild.stdin.end('stop');
-  assert.equal((await retryExit)[0], 0);
+  assert.equal((await within(retryExit, 1500))[0], 0);
   assert.ok(performance.now() - beforeRetryClose < 1500);
   console.log('PASS shutdown terminates SDK Retry-After timers before the child exits');
 } finally {
@@ -104,4 +137,4 @@ try {
   server.closeAllConnections();
   await new Promise((resolve) => server.close(resolve));
 }
-console.log('RESULT 3/3 passed');
+console.log('RESULT 4/4 passed');
