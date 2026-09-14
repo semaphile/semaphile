@@ -123,3 +123,7 @@ does not install a workflow or store a publishing token in the repository.
 Version 0.3.0 adds the optional `@semaphile/proxy` package. It is a source
 checkpoint, not an npm publication. All five Semaphile packages use matching
 0.3.0 versions. Native platform restrictions remain unchanged.
+
+Version 0.4.0 adds MCP stdio admission to the same optional proxy package. It is
+also a source checkpoint, not an npm publication; use all Semaphile packages at
+matching 0.4.0 versions. See the [MCP guide](../packages/proxy/MCP.md).

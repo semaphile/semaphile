@@ -143,3 +143,6 @@ This implements a scheduling API, not the complete Bottleneck facade.
 
 HTTP proxy development is available in the 0.3.0 source checkpoint; see the
 [proxy guide](packages/proxy/README.md). Published npm versions remain 0.2.0.
+
+The 0.4.0 source checkpoint adds an [MCP stdio proxy](packages/proxy/MCP.md) for
+shared tool-call budgets with protocol control traffic outside the admission queue.

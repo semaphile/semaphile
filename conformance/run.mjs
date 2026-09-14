@@ -1,7 +1,7 @@
 // One entry point for contributors; the invoking runtime also runs each suite.
 import { spawnSync } from 'node:child_process';
 const suites = {
-  proxy: ['http', 'lifecycle', 'cli', 'package'],
+  proxy: ['http', 'lifecycle', 'cli', 'package', 'mcp', 'mcp-cli'],
   otel: [
     'native-gate',
     'lifecycle',

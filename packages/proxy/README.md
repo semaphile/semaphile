@@ -117,3 +117,5 @@ using the runtime defaults.
 This is a reverse proxy for configured APIs. CONNECT, WebSocket upgrades,
 TLS interception and automatic retries are outside its contract. The operator
 starts the listener explicitly; direct Semaphile use still needs no daemon.
+
+For MCP tool-call admission, see the [MCP stdio proxy guide](MCP.md), introduced in the 0.4.0 source checkpoint.

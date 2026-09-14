@@ -37,7 +37,7 @@ for (const name of ['core', 'proxy']) {
       pack.files.every(
         (file) =>
           file.path.startsWith('dist/') ||
-          ['package.json', 'README.md', 'LICENSE'].includes(file.path),
+          ['package.json', 'README.md', 'MCP.md', 'LICENSE'].includes(file.path),
       ),
     );
   }
@@ -75,10 +75,15 @@ await writeFile(
   resolve(root, 'consumer.ts'),
   `
 import { startHttpProxy, type HttpProxyOptions } from '@semaphile/proxy';
+import { startMcpProxy, type McpProxyOptions } from '@semaphile/proxy/mcp';
 import { openLimiter } from '@semaphile/core/memory';
 const limiter = await openLimiter({ key: 'types', config: { maxConcurrent: 1 } });
 const options: HttpProxyOptions = { routes: [{ name: 'api', upstream: 'https://example.com', limiter }] };
 const proxy = await startHttpProxy(options); await proxy.close({ drain: true });
+const mcpOptions: McpProxyOptions = { limiter, command: 'bun', args: ['server.ts'] };
+const mcp = await startMcpProxy(mcpOptions); await mcp.close({ drain: true });
+// @ts-expect-error executable must be a string
+await startMcpProxy({ limiter, command: 7 });
 // @ts-expect-error route cannot supply a string instead of a limiter
 await startHttpProxy({ routes: [{ name: 'bad', upstream: 'https://example.com', limiter: 'bad' }] });
 `,
@@ -95,4 +100,33 @@ command(process.execPath, [
   'consumer.ts',
 ]);
 console.log('PASS strict independent consumer accepts public types and rejects invalid routes');
-console.log('RESULT 3/3 passed');
+
+await writeFile(
+  resolve(root, 'mcp-consumer.mjs'),
+  `
+import assert from 'node:assert/strict';
+import { PassThrough } from 'node:stream';
+import { startMcpProxy } from '@semaphile/proxy/mcp';
+import { openLimiter } from '@semaphile/core/memory';
+const limiter = await openLimiter({ key: 'mcp-installed', config: { maxConcurrent: 1 } });
+const input = new PassThrough(), output = new PassThrough();
+const response = new Promise(resolve => {
+  let text = ''; output.on('data', chunk => {
+    text += chunk;
+    for (const line of text.split('\\n').slice(0, -1)) { const frame = JSON.parse(line); if (frame.id === 1 && frame.result) resolve(frame); }
+  });
+});
+const proxy = await startMcpProxy({ limiter, input, output, command: process.execPath, args: [${JSON.stringify(resolve('conformance/proxy/fixtures/mcp-raw-server.mjs'))}], shutdownGraceMs: 100 });
+try {
+  input.write(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'echo', arguments: { installed: true } } }) + '\\n');
+  assert.equal((await response).result.content[0].text, '{"installed":true}');
+} finally { await proxy.close(); input.destroy(); output.destroy(); await limiter.close(); }
+`,
+);
+command(process.execPath, ['mcp-consumer.mjs']);
+assert.match(
+  command(process.execPath, ['node_modules/@semaphile/proxy/dist/mcp-cli.js', '--help']),
+  /--config FILE/,
+);
+console.log('PASS installed MCP consumer loads public entry and standalone CLI');
+console.log('RESULT 4/4 passed');

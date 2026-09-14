@@ -10,21 +10,31 @@ import { help, readArguments, validateAction, receivingOptions } from './cli-opt
 import { commandTelemetry, environmentTrace, flushCommandTelemetry } from './cli-telemetry.js';
 import { execute, output } from './cli-actions.js';
 async function main(): Promise<void> {
-  if (process.argv[2] === 'proxy' && process.argv[3] === 'http') {
-    const name = '@semaphile/proxy/cli';
+  if (process.argv[2] === 'proxy' && ['http', 'mcp'].includes(process.argv[3])) {
+    const mode = process.argv[3];
+    const name = mode === 'http' ? '@semaphile/proxy/cli' : '@semaphile/proxy/mcp-cli';
     let implementation: {
-      proxyCommand(args: string[]): Promise<void>;
-      proxyErrorMessage(error: unknown): string;
+      proxyCommand: (args: string[]) => Promise<void>;
+      proxyErrorMessage: (error: unknown) => string;
+      mcpCommand: (args: string[]) => Promise<void>;
+      mcpErrorMessage: (error: unknown) => string;
     };
     try {
       implementation = (await import(name)) as typeof implementation;
     } catch {
-      throw new MessagingError('CONFIG', 'Install @semaphile/proxy to run an HTTP proxy');
+      throw new MessagingError('CONFIG', 'Install matching @semaphile/proxy to run a proxy');
     }
     try {
-      await implementation.proxyCommand(process.argv.slice(4));
+      await (mode === 'http' ? implementation.proxyCommand : implementation.mcpCommand)(
+        process.argv.slice(4),
+      );
     } catch (error) {
-      throw new MessagingError('CONFIG', implementation.proxyErrorMessage(error));
+      throw new MessagingError(
+        'CONFIG',
+        (mode === 'http' ? implementation.proxyErrorMessage : implementation.mcpErrorMessage)(
+          error,
+        ),
+      );
     }
     return;
   }

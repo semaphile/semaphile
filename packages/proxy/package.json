@@ -1,9 +1,9 @@
 {
   "name": "@semaphile/proxy",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "license": "MIT",
-  "description": "A streaming HTTP reverse proxy backed by Semaphile shared rate limits.",
+  "description": "HTTP and MCP proxies backed by Semaphile shared request budgets.",
   "engines": {
     "node": ">=22.18.0"
   },
@@ -15,23 +15,33 @@
     "./cli": {
       "types": "./dist/command.d.ts",
       "import": "./dist/command.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js"
+    },
+    "./mcp-cli": {
+      "types": "./dist/mcp-command.d.ts",
+      "import": "./dist/mcp-command.js"
     }
   },
   "bin": {
-    "semaphile-http-proxy": "dist/cli.js"
+    "semaphile-http-proxy": "dist/cli.js",
+    "semaphile-mcp-proxy": "dist/mcp-cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "MCP.md"
   ],
   "scripts": {
-    "build": "tsc && chmod +x dist/cli.js",
+    "build": "tsc && chmod +x dist/cli.js dist/mcp-cli.js",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings src/*.ts",
     "lint:types": "oxlint --config ../../.oxlintrc.json --type-aware --deny-warnings src/*.ts"
   },
   "peerDependencies": {
-    "@semaphile/core": "0.3.0",
-    "@semaphile/redis": "0.3.0"
+    "@semaphile/core": "0.4.0",
+    "@semaphile/redis": "0.4.0"
   },
   "peerDependenciesMeta": {
     "@semaphile/redis": {
@@ -44,7 +54,8 @@
     "@types/node": "22.19.11",
     "typescript": "5.9.3",
     "oxlint": "1.82.0",
-    "oxlint-tsgolint": "7.0.2001"
+    "oxlint-tsgolint": "7.0.2001",
+    "@modelcontextprotocol/server": "2.0.0"
   },
   "repository": {
     "type": "git",
@@ -54,5 +65,8 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.0.0"
   }
 }

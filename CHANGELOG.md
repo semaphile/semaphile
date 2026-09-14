@@ -5,6 +5,16 @@ released together. Before 1.0, minor releases may include breaking changes;
 patch releases contain compatible fixes. Earlier CalVer snapshots were private
 pilot artifacts, not published GitHub releases.
 
+## 0.4.0 — source checkpoint
+
+- Add `@semaphile/proxy/mcp`, `semaphile-mcp-proxy` and `semaphile proxy mcp`.
+  Existing stdio servers can share SQLite or Redis tool-call budgets while
+  protocol control messages bypass the admission queue.
+- Preserve cancellation ownership through terminal responses or actual child exit;
+  bound queued work, frames, output buffering and unresponsive-child shutdown.
+- Use matching 0.4.0 Semaphile packages. Persistent formats are unchanged.
+  This checkpoint is not yet published to npm.
+
 ## 0.3.0 — source checkpoint
 
 - Add optional `@semaphile/proxy`: streaming HTTP routes backed by memory,
