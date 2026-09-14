@@ -12,8 +12,8 @@ export const poolKey = (namespace: string, pool: string) =>
 const registrationScript = `
 local time=redis.call('TIME'); local now=tonumber(time[1])*1000+math.floor(tonumber(time[2])/1000)
 local action,id,ttl=ARGV[1],ARGV[2],tonumber(ARGV[3])
-local prior=redis.call('ZSCORE',KEYS[1],id)
 redis.call('ZREMRANGEBYSCORE',KEYS[1],'-inf',now)
+local prior=redis.call('ZSCORE',KEYS[1],id)
 if action=='close' then redis.call('ZREM',KEYS[1],id); return '[]' end
 local owners=redis.call('ZRANGE',KEYS[1],0,-1)
 if action=='owners' then return cjson.encode(owners) end

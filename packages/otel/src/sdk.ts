@@ -5,6 +5,8 @@ import {
 } from './messaging.js';
 // Explicit standalone SDK. Importing the library adapter never creates global
 // providers, network exporters, timers, or an HTTP listener.
+import { Socket } from 'node:net';
+import type { Agent } from 'node:http';
 import { metrics } from '@opentelemetry/api';
 import { NodeTracerProvider, BatchSpanProcessor } from '@opentelemetry/sdk-trace-node';
 import { MeterProvider, PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
@@ -20,6 +22,7 @@ export async function startTelemetry(
     baggageAllowlist?: string[];
     intervalMs?: number;
     shutdownTimeoutMs?: number;
+    exportTimeoutMs?: number;
   } = {},
 ) {
   if (process.env.OTEL_SDK_DISABLED === 'true') {
@@ -38,6 +41,7 @@ export async function startTelemetry(
     }
   }
   const intervalMs = options.intervalMs ?? 15000;
+  const exportTimeoutMs = options.exportTimeoutMs ?? 10000;
   const shutdownTimeoutMs = options.shutdownTimeoutMs ?? 1000;
   if (
     !Number.isSafeInteger(intervalMs) ||
@@ -45,9 +49,12 @@ export async function startTelemetry(
     intervalMs > 2147483647 ||
     !Number.isSafeInteger(shutdownTimeoutMs) ||
     shutdownTimeoutMs < 1 ||
-    shutdownTimeoutMs > 30000
+    shutdownTimeoutMs > 30000 ||
+    !Number.isSafeInteger(exportTimeoutMs) ||
+    exportTimeoutMs < 1 ||
+    exportTimeoutMs > 300000
   ) {
-    throw new Error('Invalid telemetry interval or shutdown timeout');
+    throw new Error('Invalid telemetry interval or timeout');
   }
   const resource = detectResources({ detectors: [envDetector] }).merge(
     resourceFromAttributes({
@@ -55,19 +62,51 @@ export async function startTelemetry(
       'service.name': options.serviceName ?? process.env.OTEL_SERVICE_NAME ?? 'semaphile',
     }),
   );
+  // Export latency and shutdown grace are independent. Own the agents so the
+  // shutdown deadline can close outstanding requests without shortening normal exports.
+  const agents = new Map<string, Agent>();
+  let exportsStopped = false;
+  const httpAgentOptions = async (protocol: string): Promise<Agent> => {
+    if (exportsStopped) {
+      throw new Error('Telemetry exporter stopped');
+    }
+    let agent = agents.get(protocol);
+    if (!agent) {
+      const implementation =
+        protocol === 'http:' ? await import('node:http') : await import('node:https');
+      if (exportsStopped) {
+        throw new Error('Telemetry exporter stopped');
+      }
+      agent = agents.get(protocol) ?? new implementation.Agent({ keepAlive: true });
+      const connect = agent.createConnection.bind(agent);
+      agent.createConnection = (connectionOptions, callback) => {
+        if (exportsStopped) {
+          queueMicrotask(() =>
+            callback?.(new Error('Telemetry exporter stopped'), new Socket().destroy()),
+          );
+          return undefined;
+        }
+        return connect(connectionOptions, callback);
+      };
+      agents.set(protocol, agent);
+    }
+    return agent;
+  };
   const tracer = new NodeTracerProvider({
     resource,
     spanProcessors: [
-      new BatchSpanProcessor(new OTLPTraceExporter({ timeoutMillis: shutdownTimeoutMs })),
+      new BatchSpanProcessor(
+        new OTLPTraceExporter({ timeoutMillis: exportTimeoutMs, httpAgentOptions }),
+      ),
     ],
   });
   const meter = new MeterProvider({
     resource,
     readers: [
       new PeriodicExportingMetricReader({
-        exporter: new OTLPMetricExporter({ timeoutMillis: shutdownTimeoutMs }),
+        exporter: new OTLPMetricExporter({ timeoutMillis: exportTimeoutMs, httpAgentOptions }),
         exportIntervalMillis: intervalMs,
-        exportTimeoutMillis: Math.min(intervalMs, shutdownTimeoutMs),
+        exportTimeoutMillis: Math.min(intervalMs, exportTimeoutMs),
       }),
     ],
   });
@@ -99,6 +138,15 @@ export async function startTelemetry(
           ]);
         } finally {
           clearTimeout(timer);
+          exportsStopped = true;
+          for (const agent of agents.values()) {
+            for (const sockets of Object.values(agent.sockets)) {
+              for (const socket of sockets ?? []) {
+                socket.destroy(new Error('Telemetry exporter stopped'));
+              }
+            }
+            agent.destroy();
+          }
         }
       })());
     },

@@ -64,6 +64,9 @@ export class MessageTelemetry {
         allowed.every((key) => typeof key === 'string' && key.length <= 128)
           ? [...allowed]
           : [];
+      if (this.baggageAllowlist.length !== allowed.length) {
+        this.diagnostic('trace-dropped');
+      }
     } catch {
       this.options = {};
       this.baggageAllowlist = [];

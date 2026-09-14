@@ -229,3 +229,10 @@ configure the standalone SDK. Standard OTLP environment variables select the
 HTTP/protobuf endpoint. Incoming uppercase context variables are extracted at
 the CLI boundary. Export and bounded shutdown failures do not change command
 JSON stdout or protocol exit codes. The default shutdown budget is one second.
+
+Exporter request timeouts default to 10 seconds and are independent of the
+1-second shutdown grace. Library callers can set `startTelemetry({ exportTimeoutMs,
+shutdownTimeoutMs })`. Shutdown closes outstanding exporter connections when its
+grace ends. `--interval-ms` controls OTLP export cycles when `--otel` is enabled;
+Prometheus-only collection refreshes on scrapes, not on a background timer.
+The `startCollector` compatibility field `intervalMs` does not schedule scrapes.

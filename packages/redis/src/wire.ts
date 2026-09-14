@@ -42,6 +42,7 @@ export class Wire {
     resolve: (result: TimedReply) => void;
     reject: (error: unknown) => void;
   }> = [];
+  private readonly discoveryKey: string;
   private dispatching = false;
   private readonly wakes = new Set<() => void>();
   private renewalTimer: ReturnType<typeof setTimeout> | undefined;
@@ -58,6 +59,9 @@ export class Wire {
     private readonly create = true,
     private readonly discovery?: { namespace: string; pool: string },
   ) {
+    this.discoveryKey = `semaphile:discovery:${createHash('sha256')
+      .update(discovery?.namespace ?? '')
+      .digest('hex')}:${key.match(/\{[^}]+\}/)![0]}`;
     const timeout = (this.responseTimeoutMs = Math.min(10000, Math.floor(ownerTimeoutMs / 3)));
     const options = {
       url,
@@ -236,9 +240,7 @@ export class Wire {
           '3',
           this.key,
           this.key + ':notify',
-          `semaphile:discovery:${createHash('sha256')
-            .update(this.discovery?.namespace ?? '')
-            .digest('hex')}:${this.key.match(/\{[^}]+\}/)![0]}`,
+          this.discoveryKey,
           action,
           this.owner,
           String(sequence),

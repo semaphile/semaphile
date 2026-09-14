@@ -19,6 +19,7 @@ export type CollectorOptions = {
   allowOverlap?: boolean;
   host?: string;
   port?: number;
+  /** Compatibility field for CLI configuration; export cadence belongs to startTelemetry. */
   intervalMs?: number;
   meter?: Meter;
   onWarning?: (warning: CollectorWarning) => void;

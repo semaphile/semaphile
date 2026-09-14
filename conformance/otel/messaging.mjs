@@ -158,4 +158,15 @@ try {
   await client.close();
   await provider.shutdown();
 }
-console.log('RESULT 3/3 passed');
+
+const { MessageTelemetry } = await import('../../packages/messaging/dist/src/telemetry.js');
+const invalidDiagnostics = [];
+const invalid = new MessageTelemetry({
+  baggageAllowlist: ['x'.repeat(129)],
+  onDiagnostic: (event) => invalidDiagnostics.push(event.kind),
+});
+assert.deepEqual(invalid.baggageAllowlist, []);
+assert.deepEqual(invalidDiagnostics, ['trace-dropped']);
+console.log('PASS invalid baggage allowlist emits a payload-free diagnostic');
+
+console.log('RESULT 4/4 passed');

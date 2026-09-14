@@ -9,6 +9,7 @@ const suites = {
     'http-lifecycle',
     'adapter',
     'exporter',
+    'export-timeouts',
     'collector',
     'collector-faults',
     'redis-observer',
