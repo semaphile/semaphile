@@ -724,3 +724,67 @@ collector election/restart or OTLP logs are included in this increment.
 Collector engineering: add a nonblocking native gate acquisition for observation
 and collector registration. Busy gates produce a failed sample, not a blocking
 wait or an admission retry loop. Keep all SQLite/native work on a worker thread.
+
+## 18. HTTP proxy (0.3.0)
+
+### Product contract — DECIDED
+
+An optional, explicitly started reverse proxy applies Semaphile admission and
+shared recovery to HTTP clients that can select a base URL. The library remains
+usable without a proxy process. A proxy has named routes to configured HTTP(S)
+upstreams; a caller cannot select an arbitrary outbound host. Routes preserve the
+configured upstream base path and the remaining request path/query. No CONNECT,
+WebSocket upgrade, transparent TLS interception or automatic redirect following.
+
+Forward request and response bodies as streams with backpressure. Preserve wire
+body bytes, status codes, duplicate Set-Cookie fields and end-to-end headers;
+remove hop-by-hop fields and fields named by Connection on both legs. Do not
+implicitly decompress, buffer an entire body, or replay a forwarded operation.
+One incoming request causes at most one upstream request, including POST and
+errors. Upstream429/500/502/503/504 and Retry-After contribute to the same shared recovery
+policy as the core HTTP helper. Do not classify downstream cancellation as an
+upstream service failure. A route uses one limiter pool, which may be memory,
+SQLite or Redis; repeated processes can share that pool's existing guarantees.
+
+Capacity covers upload, upstream response and downstream forwarding until
+actual resource cleanup, subject to the existing configured lease-expiration and
+owner-expiry boundaries. Queue cancellation never starts a later upstream call.
+Client disconnection, a computed request deadline and shutdown abort owned IO;
+caller settlement does not imply the operation's lease has been reclaimed.
+Bound outstanding requests and queue waits. A response already started is
+terminated on failure; never append a fabricated JSON error to a partial body.
+When no response has started, use stable local errors without exception details,
+credentials, configured upstream URLs or payload content.
+
+Listen on loopback by default. Non-loopback listeners require an explicitly
+configured proxy token. Reject browser Origin requests and unexpected Host
+values; this is a service-to-service proxy, not a browser CORS service. The
+proxy's token is separate from upstream Authorization and is never forwarded.
+Operator-specified upstream headers override incoming values; CLI secrets refer
+to environment variable names, not values written in example configuration.
+Route selection and token/host checks precede admission and outbound IO.
+
+Library construction borrows caller-owned limiters; closing a proxy does not
+close those clients. CLI construction owns its configured clients and closes
+them after proxy cleanup, including startup failures. Graceful close rejects new
+requests; default close aborts queued/active transfers, while drain close lets
+accepted requests finish subject to their existing deadlines. The first close
+call chooses behavior. No automatic process election or background service.
+
+### Engineering and verification
+
+Implement in an optional JavaScript-only `@semaphile/proxy` package with a typed
+library API, standalone CLI, and optional `semaphile proxy http` CLI delegation.
+Use Node's HTTP(S) transport for unchanged wire bytes rather than Fetch's response
+decoding. Share the existing core HTTP classifier through an explicit public
+entry point. Keep persistent limiter/message formats unchanged. Require explicit
+proxy configuration; paths resolve relative to that file, environment references
+are validated before listening, and unknown configuration fields fail fast.
+
+Test installed Node/Bun consumers on macOS/Linux: live shared pool contention,
+queued cancellation/no late forwarding, chunked upload and slow streaming/SSE,
+compressed responses and duplicate cookies, header/token isolation, fixed-host
+routing and path handling, upstream/downstream failure, Retry-After shared
+cooldown, no POST replay, queue overflow/deadlines, shutdown/drain and startup
+cleanup. Test memory, SQLite and actual Redis, including two proxy processes
+sharing a pool. All native packages retain both supported prebuilt targets.
