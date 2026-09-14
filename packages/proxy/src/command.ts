@@ -8,7 +8,7 @@ export const help =
   'Usage: semaphile proxy http --config FILE [--drain]\n' +
   'Standalone: semaphile-http-proxy --config FILE [--drain]\n' +
   'Starts configured HTTP routes. --drain finishes accepted requests on shutdown.';
-/** CLI owns clients; library callers own theirs. Signal cleanup is installed before opening pools. */
+/** CLI owns clients; library callers own theirs. Startup retains default signal termination until uncancellable opens finish. */
 export async function proxyCommand(args: string[]): Promise<void> {
   if (args.includes('--help')) {
     console.log(help);
@@ -40,8 +40,6 @@ export async function proxyCommand(args: string[]): Promise<void> {
     stopping = true;
     resolveStop();
   };
-  process.on('SIGINT', stop);
-  process.on('SIGTERM', stop);
   try {
     const config = await readProxyConfig(file);
     const routes: HttpRoute[] = [];
@@ -55,6 +53,8 @@ export async function proxyCommand(args: string[]): Promise<void> {
     }
     if (!stopping) {
       proxy = await startHttpProxy({ ...config, routes });
+      process.on('SIGINT', stop);
+      process.on('SIGTERM', stop);
       console.log(
         JSON.stringify({ listening: proxy.url, routes: routes.map((route) => route.name) }),
       );
@@ -83,4 +83,9 @@ export async function proxyCommand(args: string[]): Promise<void> {
   if (failures.length) {
     throw new AggregateError(failures, 'Proxy operation and cleanup failed');
   }
+}
+
+/** Only validated input errors are safe to print at either CLI entry point. */
+export function proxyErrorMessage(error: unknown): string {
+  return error instanceof ProxyInputError ? error.message : 'HTTP proxy failed';
 }

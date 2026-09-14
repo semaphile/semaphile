@@ -21,6 +21,12 @@ export async function transfer(
     return { kind: 'neutral' };
   }
   const headers = { ...cleanHeaders(incoming.headers, true), ...overrides };
+  if (
+    incoming.headers['transfer-encoding'] !== undefined &&
+    headers['content-length'] === undefined
+  ) {
+    headers['transfer-encoding'] = 'chunked';
+  }
   headers.via = headers.via ? String(headers.via) + ', 1.1 semaphile' : '1.1 semaphile';
   const request = (target.protocol === 'https:' ? httpsRequest : httpRequest)({
     protocol: target.protocol,
@@ -41,7 +47,11 @@ export async function transfer(
   });
   const done = () => endDownstream();
   const failure = (error: unknown) => {
-    outcome = signal.aborted ? { kind: 'neutral' } : transportOutcome(error, signal);
+    if (signal.aborted) {
+      outcome = { kind: 'neutral' };
+    } else if (outcome.kind !== 'throttle' && outcome.kind !== 'service-failure') {
+      outcome = transportOutcome(error, signal);
+    }
     errorResponse(downstream, new ProxyError(502, 'UPSTREAM_FAILURE'));
     request.destroy();
     upstream?.destroy();

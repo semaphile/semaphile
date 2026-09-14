@@ -5,7 +5,7 @@ import { httpClassifierId } from '@semaphile/core/http-policy';
 import type { Outcome } from '@semaphile/core/client';
 import type { HttpProxy, HttpProxyOptions, HttpRoute } from './types.js';
 import { overrideHeaders } from './headers.js';
-import { errorResponse, localError, ProxyError } from './errors.js';
+import { errorResponse, localError, ProxyError, isLocalErrorResponse } from './errors.js';
 import { transfer } from './transfer.js';
 export type { HttpProxy, HttpProxyOptions, HttpRoute, ProxyLimiter } from './types.js';
 
@@ -163,7 +163,7 @@ export async function startHttpProxy(options: HttpProxyOptions): Promise<HttpPro
     request.pause();
     const controller = new AbortController();
     const disconnected = () => {
-      if (!response.writableFinished) {
+      if (!response.writableFinished && !isLocalErrorResponse(response)) {
         controller.abort(new ProxyError(499, 'CLIENT_DISCONNECTED'));
       }
     };
@@ -246,8 +246,12 @@ export async function startHttpProxy(options: HttpProxyOptions): Promise<HttpPro
   server.on('checkContinue', (request, response) => accept(request, response, true));
   for (const event of ['connect', 'upgrade'] as const) {
     server.on(event, (_request, socket) => {
+      const timer = setTimeout(() => socket.destroy(), 1000);
+      timer.unref();
+      socket.once('close', () => clearTimeout(timer));
       socket.end(
         'HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\nContent-Length: 0\r\n\r\n',
+        () => socket.destroy(),
       );
     });
   }

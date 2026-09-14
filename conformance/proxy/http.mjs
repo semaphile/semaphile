@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createServer, request as httpRequest } from 'node:http';
+import { connect } from 'node:net';
 import { gzipSync } from 'node:zlib';
 import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp } from 'node:fs/promises';
@@ -523,6 +524,69 @@ for (const backend of redisMode ? ['redis'] : ['memory', 'sqlite']) {
     hold.resolve();
     assert.equal(await response, 'body');
     await holding;
+  });
+
+  scenario('rejected CONNECT and upgrades cannot retain half-open sockets', async (f) => {
+    const origin = await f.upstream((_req, res) => res.end());
+    for (const requestLine of ['CONNECT example.com:443 HTTP/1.1', 'GET /api HTTP/1.1']) {
+      const proxy = await f.proxy(origin.url);
+      const socket = connect({ host: '127.0.0.1', port: proxy.port, allowHalfOpen: true });
+      const response = new Promise((resolve, reject) => {
+        let body = '';
+        socket.on('data', (data) => {
+          body += data;
+        });
+        socket.once('end', () => resolve(body));
+        socket.once('error', reject);
+      });
+      socket.write(
+        requestLine + '\r\nHost: example.com\r\nConnection: upgrade\r\nUpgrade: websocket\r\n\r\n',
+      );
+      try {
+        assert.match(await response, /405/);
+        await proxy.close();
+      } finally {
+        socket.destroy();
+      }
+    }
+  });
+  scenario('GET and DELETE chunked bodies receive explicit upstream framing', async (f) => {
+    const origin = await f.upstream(async (req, res) => {
+      assert.equal(req.headers['transfer-encoding'], 'chunked');
+      let body = '';
+      for await (const chunk of req) body += chunk;
+      res.end(body);
+    });
+    const proxy = await f.proxy(origin.url);
+    for (const method of ['GET', 'DELETE']) {
+      const response = await request(proxy.url, '/api', {
+        method,
+        headers: { 'transfer-encoding': 'chunked' },
+        body: 'framed',
+      });
+      assert.equal(response.body.toString(), 'framed');
+    }
+  });
+  scenario('truncated throttled response retains shared Retry-After guidance', async (f) => {
+    const release = f.gate();
+    const origin = await f.upstream(async (_req, res) => {
+      res.writeHead(429, { 'retry-after': '60', 'content-length': '100' });
+      res.write('partial');
+      await release.promise;
+      res.destroy();
+    });
+    const proxy = await f.proxy(origin.url);
+    await new Promise((resolve, reject) => {
+      const req = httpRequest(proxy.url + '/api', (res) => {
+        res.on('data', () => release.resolve());
+        res.once('aborted', resolve);
+        res.once('error', resolve);
+      });
+      req.once('error', reject);
+      req.end();
+    });
+    await proxy.close({ drain: true });
+    assert.ok((await f.pool.maintenance.status()).recovery.cooldownUntil > Date.now() + 50000);
   });
   scenario('startup validation and occupied ports preserve caller-owned limiter', async (f) => {
     const origin = await f.upstream((_req, res) => res.end());

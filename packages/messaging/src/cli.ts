@@ -12,13 +12,20 @@ import { execute, output } from './cli-actions.js';
 async function main(): Promise<void> {
   if (process.argv[2] === 'proxy' && process.argv[3] === 'http') {
     const name = '@semaphile/proxy/cli';
-    let implementation: { proxyCommand(args: string[]): Promise<void> };
+    let implementation: {
+      proxyCommand(args: string[]): Promise<void>;
+      proxyErrorMessage(error: unknown): string;
+    };
     try {
       implementation = (await import(name)) as typeof implementation;
     } catch {
       throw new MessagingError('CONFIG', 'Install @semaphile/proxy to run an HTTP proxy');
     }
-    await implementation.proxyCommand(process.argv.slice(4));
+    try {
+      await implementation.proxyCommand(process.argv.slice(4));
+    } catch (error) {
+      throw new MessagingError('CONFIG', implementation.proxyErrorMessage(error));
+    }
     return;
   }
   if (process.argv[2] === 'telemetry' && process.argv[3] === 'collect') {

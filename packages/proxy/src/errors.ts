@@ -1,5 +1,9 @@
 import type { ServerResponse } from 'node:http';
 
+const localResponses = new WeakSet<ServerResponse>();
+export const isLocalErrorResponse = (response: ServerResponse): boolean =>
+  localResponses.has(response);
+
 export class ProxyInputError extends TypeError {}
 
 export class ProxyError extends Error {
@@ -22,6 +26,7 @@ export function localError(error: unknown): ProxyError {
   return new ProxyError(503, 'PROXY_UNAVAILABLE');
 }
 export function errorResponse(response: ServerResponse, error: ProxyError): void {
+  localResponses.add(response);
   if (response.destroyed || response.writableEnded) {
     return;
   }
