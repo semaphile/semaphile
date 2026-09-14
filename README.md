@@ -140,3 +140,6 @@ This implements a scheduling API, not the complete Bottleneck facade.
 ## License
 
 [MIT](LICENSE) © 2026 Semaphile contributors.
+
+HTTP proxy development is available in the 0.3.0 source checkpoint; see the
+[proxy guide](packages/proxy/README.md). Published npm versions remain 0.2.0.

@@ -117,3 +117,9 @@ Future automated releases can use npm's
 Actions. Configure the trusted workflow in each package's npm settings when
 that workflow is implemented. This first release uses manual publication; it
 does not install a workflow or store a publishing token in the repository.
+
+## Next source checkpoint
+
+Version 0.3.0 adds the optional `@semaphile/proxy` package. It is a source
+checkpoint, not an npm publication. All five Semaphile packages use matching
+0.3.0 versions. Native platform restrictions remain unchanged.

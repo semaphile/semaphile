@@ -5,6 +5,16 @@ released together. Before 1.0, minor releases may include breaking changes;
 patch releases contain compatible fixes. Earlier CalVer snapshots were private
 pilot artifacts, not published GitHub releases.
 
+## 0.3.0 — source checkpoint
+
+- Add optional `@semaphile/proxy`: streaming HTTP routes backed by memory,
+  SQLite or Redis pools, CLI configuration, bounded queues and graceful drain.
+- Expose tracked execution completion so adapters retain admission through
+  actual callback cleanup after caller cancellation.
+- Export the existing HTTP outcome classifier through `@semaphile/core/http-policy`.
+- Persistent formats are unchanged. Use matching 0.3.0 Semaphile packages.
+  This checkpoint is not yet published to npm.
+
 ## [0.2.0] - 2026-09-13
 
 ### Added

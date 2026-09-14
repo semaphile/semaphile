@@ -6,17 +6,18 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:docs": "node tools/check-docs.mjs",
-    "build": "npm run --prefix packages/core build && npm run --prefix packages/redis build && npm run --prefix packages/otel build && npm run --prefix packages/messaging build",
-    "lint": "npm run --prefix packages/core lint && npm run --prefix packages/redis lint && packages/core/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings tools/*.mjs conformance/run.mjs conformance/typescript/fixtures/*.mjs && npm run --prefix packages/messaging lint && packages/messaging/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings conformance/messaging/*.mjs && npm run --prefix packages/otel lint && packages/core/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings conformance/otel/*.mjs",
-    "lint:types": "npm run --prefix packages/core lint:types && npm run --prefix packages/redis lint:types && npm run --prefix packages/messaging lint:types && npm run --prefix packages/otel lint:types",
-    "typecheck": "npm run --prefix packages/core typecheck && npm run --prefix packages/redis typecheck && npm run --prefix packages/messaging typecheck && npm run --prefix packages/otel typecheck",
+    "build": "npm run --prefix packages/core build && npm run --prefix packages/redis build && npm run --prefix packages/proxy build && npm run --prefix packages/otel build && npm run --prefix packages/messaging build",
+    "lint": "npm run --prefix packages/core lint && npm run --prefix packages/redis lint && packages/core/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings tools/*.mjs conformance/run.mjs conformance/typescript/fixtures/*.mjs && npm run --prefix packages/messaging lint && packages/messaging/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings conformance/messaging/*.mjs && npm run --prefix packages/otel lint && packages/core/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings conformance/otel/*.mjs && npm run --prefix packages/proxy lint && packages/core/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings conformance/proxy/*.mjs",
+    "lint:types": "npm run --prefix packages/core lint:types && npm run --prefix packages/redis lint:types && npm run --prefix packages/messaging lint:types && npm run --prefix packages/otel lint:types && npm run --prefix packages/proxy lint:types",
+    "typecheck": "npm run --prefix packages/core typecheck && npm run --prefix packages/redis typecheck && npm run --prefix packages/messaging typecheck && npm run --prefix packages/otel typecheck && npm run --prefix packages/proxy typecheck",
     "test:core": "node conformance/run.mjs core",
     "test:redis": "node conformance/run.mjs redis",
     "test:messaging": "node conformance/run.mjs messaging",
     "check:rust": "cargo +1.93.1 fmt --manifest-path packages/core/native/Cargo.toml -- --check && cargo +1.93.1 fmt --manifest-path packages/core/native/os/Cargo.toml -- --check && cargo +1.93.1 clippy --offline --locked --manifest-path packages/core/native/Cargo.toml --all-targets -- -D warnings && cargo +1.93.1 clippy --offline --locked --manifest-path packages/core/native/os/Cargo.toml --all-targets -- -D warnings",
     "test:rust": "cargo +1.93.1 test --offline --locked --manifest-path packages/core/native/os/Cargo.toml",
     "test:administration": "node conformance/run.mjs administration",
-    "test:otel": "node conformance/run.mjs otel"
+    "test:otel": "node conformance/run.mjs otel",
+    "test:proxy": "node conformance/run.mjs proxy"
   },
   "devDependencies": {
     "prettier": "3.9.6"

@@ -1,6 +1,6 @@
 {
   "name": "@semaphile/otel",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "license": "MIT",
   "description": "Optional OpenTelemetry instrumentation and shared-pool monitoring for Semaphile.",
@@ -40,8 +40,8 @@
   },
   "peerDependencies": {
     "@opentelemetry/api": "^1.9.0",
-    "@semaphile/core": "0.2.0",
-    "@semaphile/redis": "0.2.0"
+    "@semaphile/core": "0.3.0",
+    "@semaphile/redis": "0.3.0"
   },
   "dependencies": {
     "@opentelemetry/sdk-trace-node": "2.11.0",

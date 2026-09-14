@@ -8,6 +8,7 @@ const files = [
   'SPEC.md',
   'packages/core/README.md',
   'packages/redis/README.md',
+  'packages/proxy/README.md',
   'packages/messaging/README.md',
 ];
 for (const name of await readdir('docs', { recursive: true })) {

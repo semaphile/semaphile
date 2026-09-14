@@ -1,6 +1,7 @@
 // One entry point for contributors; the invoking runtime also runs each suite.
 import { spawnSync } from 'node:child_process';
 const suites = {
+  proxy: ['http', 'cli', 'package'],
   otel: [
     'native-gate',
     'lifecycle',
@@ -67,7 +68,7 @@ const suites = {
 };
 const backend = process.argv[2];
 if (!Object.hasOwn(suites, backend)) {
-  throw new Error('Usage: node conformance/run.mjs core|redis|messaging|administration|otel');
+  throw new Error('Usage: node conformance/run.mjs core|redis|messaging|administration|otel|proxy');
 }
 for (const suite of suites[backend]) {
   const directory =

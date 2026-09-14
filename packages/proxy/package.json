@@ -1,0 +1,58 @@
+{
+  "name": "@semaphile/proxy",
+  "version": "0.3.0",
+  "type": "module",
+  "license": "MIT",
+  "description": "A streaming HTTP reverse proxy backed by Semaphile shared rate limits.",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/command.d.ts",
+      "import": "./dist/command.js"
+    }
+  },
+  "bin": {
+    "semaphile-http-proxy": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/cli.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --config ../../.oxlintrc.json --deny-warnings src/*.ts",
+    "lint:types": "oxlint --config ../../.oxlintrc.json --type-aware --deny-warnings src/*.ts"
+  },
+  "peerDependencies": {
+    "@semaphile/core": "0.3.0",
+    "@semaphile/redis": "0.3.0"
+  },
+  "peerDependenciesMeta": {
+    "@semaphile/redis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@semaphile/core": "file:../core",
+    "@semaphile/redis": "file:../redis",
+    "@types/node": "22.19.11",
+    "typescript": "5.9.3",
+    "oxlint": "1.82.0",
+    "oxlint-tsgolint": "7.0.2001"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/semaphile/semaphile.git",
+    "directory": "packages/proxy"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

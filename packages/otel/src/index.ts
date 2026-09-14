@@ -14,8 +14,8 @@ export type { Instrumentation, LifecycleEvent } from './types.js';
 export function createInstrumentation(
   options: { tracer?: Tracer; meter?: Meter } = {},
 ): Instrumentation {
-  const tracer = options.tracer ?? trace.getTracer('@semaphile/otel', '0.2.0');
-  const meter = options.meter ?? metrics.getMeter('@semaphile/otel', '0.2.0');
+  const tracer = options.tracer ?? trace.getTracer('@semaphile/otel', '0.3.0');
+  const meter = options.meter ?? metrics.getMeter('@semaphile/otel', '0.3.0');
   const events = meter.createCounter('semaphile.client.events', {
     description: 'Observed local lifecycle events',
   });
