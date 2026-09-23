@@ -4,6 +4,12 @@ created: 2026-09-23T13:24:37-05:00
 type: chore
 import_issue: SEM-2
 import_issue_url: https://github.com/semaphile/semaphile/issues/2
+identity:
+  schema: 1
+  key: SEM-2
+  folder: SEM-2-redis-messaging-release
+  branch: "SEM-2-redis-messaging-release"
+  workspace: SEM-2-redis-messaging-release
 ---
 
 # Add Redis Messaging to the Release Line
