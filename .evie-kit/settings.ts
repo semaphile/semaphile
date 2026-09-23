@@ -31,6 +31,12 @@ export const settings = (ctx: SettingsContext) => ({
     ".envrc.local",
   ],
   tools: {
+    // This project's own herdr session — never the ambient socket
+    // (corrected 2026-09-22 after the first bootstrap landed seats in
+    // another project's session).
+    herdr: {
+      session: "semaphile",
+    },
     review: {
       "claude-code": {
         model: "opus",
