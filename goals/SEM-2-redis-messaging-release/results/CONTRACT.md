@@ -1,6 +1,6 @@
 # Section 20 verification map
 
-Product source: `ce00f9b9c40da52f72988295d578264582e7f55a`.
+Product source: `59127e4cd50bb6c19a6ec0f1e2e03790ea4cebf9`.
 The static audit compares section 20 byte for byte with pinned feature
 `5b565ac9bef4ff569ac0e21726947fec279323e6`. No DECIDED clause was changed.
 The table groups adjacent clauses without removing any obligation. Source
@@ -15,7 +15,7 @@ Full commands, runtime identities and raw receipt locations are in GATES.md.
 | Native-free shared lifecycle and database/namespace/store identity | messaging/shared-client.mjs late cancelled claim; redis/messaging-package.mjs installed imports; messaging.ts key construction and connection validation; fault missing-state case. |
 | Automatic reconnect/wait resumption, bounded queue and operation time | redis/messaging-faults.mjs outage queue, silent dispatched reply, silent startup and idle-wait reconnect cases. messaging.ts/messaging-connection.ts retain defaults 1000, 30000 ms and 500 ms exponential backoff capped at 10000 ms with jitter. |
 | No blind replay; explicit uncertain mutation outcome | messaging-faults.mjs lost-send reply plus explicit dedupe resolution; lost-claim reply; uncertain renewal and silent dispatched timeout. |
-| Revalidate identity/format/settings; missing/replaced state terminal | messaging-faults.mjs missing-store refusal; connection.validate reads persisted identity/config after handshake and reconnect; Lua pre-write validation refuses mismatch. |
+| Revalidate identity/format/settings; missing/replaced state terminal | messaging-faults.mjs missing-store refusal; connection recovery reads persisted identity/config after handshake and reconnect; Lua pre-write validation refuses mismatch. |
 | Renewal/cleanup priority; subscribe-before-check; computed expiry instead of inbox polling | messaging-connection.ts priority queue/publish wake; messaging-sockets.ts handshake subscribes before admission; messaging-receiver.ts wait timing. Fault/client regressions cover queued cancellation, expiry cleanup and listener renewal. |
 | Confirmed claim deadline survives disconnection; cancellation at expiry; uncertain renew cannot extend | messaging-faults.mjs lost claim, skewed clock, uncertain renewal and immediately lost renewal cases; shared-client listener/watchdog regression cases. |
 | Separately renewable presence with 30-second default | messaging.ts/shared-client.ts presence defaults and register/heartbeat lifecycle; messaging primitive/listener and Redis independent-client/broadcast cases. |
@@ -37,9 +37,9 @@ Full commands, runtime identities and raw receipt locations are in GATES.md.
 `verify-source.py` asserts all four export maps equal the pinned feature's maps
 with `./http-policy` removed. It checks exact 0.3.0 Semaphile peers and unchanged
 third-party version/resolved/integrity triples against pinned main. Installed
-checks reject the proxy package and OTel http-policy import and reject proxy CLI
+checks reject the proxy package and core/http-policy and core/http-policy.js imports and reject proxy CLI
 routing. Core's existing private http-policy implementation remains part of its
-preexisting HTTP client; it is not the excluded public OTel/proxy feature.
+preexisting HTTP client; it is not the excluded public core policy/proxy feature.
 
 ## Proxy-reference inventory
 

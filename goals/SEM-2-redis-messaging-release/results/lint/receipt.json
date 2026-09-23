@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "timestamp": "2026-09-23T22:44:48.533Z",
+  "timestamp": "2026-09-23T23:23:01.340Z",
   "branch": "SEM-2-redis-messaging-release",
-  "commit": "3dfbcf9526f47f015a4cab4d85e0026acae38dd5",
-  "tree": "08f3edfc755f0f868e17239424cbf35f917d2a32",
+  "commit": "25e315859b8e54f598d86353ebfe9df8fe309689",
+  "tree": "ffa1235820ec3235a4026dc2ea4edf5338ba31b6",
   "dirty": false,
   "mode": "goal",
   "goal": {
@@ -104,6 +104,7 @@
       "packages/redis/package-lock.json",
       "packages/redis/package.json",
       "packages/redis/src/messaging-actions.lua",
+      "packages/redis/src/messaging-admission.ts",
       "packages/redis/src/messaging-connection.ts",
       "packages/redis/src/messaging-delivery.lua",
       "packages/redis/src/messaging-input.ts",
@@ -113,7 +114,8 @@
       "packages/redis/src/messaging-sockets.ts",
       "packages/redis/src/messaging-transport.ts",
       "packages/redis/src/messaging-wire-types.ts",
-      "packages/redis/src/messaging.ts"
+      "packages/redis/src/messaging.ts",
+      "tools/check-docs.mjs"
     ],
     "changeSetDeleted": [],
     "sampleDiagnostics": []
@@ -122,7 +124,7 @@
     "configured": true,
     "gated": true,
     "state": "passed",
-    "reason": "zero in-diff open findings after compute task 7f734be5-5f79-42ec-9b2f-fa82d05423da (commit 3dfbcf95, tree 08f3edfc)",
+    "reason": "zero in-diff open findings after compute task 1a42ca18-3940-4a9a-8c54-019b61dcf427 (commit 25e31585, tree ffa12358)",
     "configChanged": true,
     "inScopePaths": [
       "packages/core/package-lock.json",
@@ -165,6 +167,7 @@
       "packages/redis/package-lock.json",
       "packages/redis/package.json",
       "packages/redis/src/messaging-actions.lua",
+      "packages/redis/src/messaging-admission.ts",
       "packages/redis/src/messaging-connection.ts",
       "packages/redis/src/messaging-delivery.lua",
       "packages/redis/src/messaging-input.ts",
@@ -176,7 +179,7 @@
       "packages/redis/src/messaging-wire-types.ts",
       "packages/redis/src/messaging.ts"
     ],
-    "scopeFingerprint": "0ccdc67e4492db46fad3f6a76513746599bcaefe8b8ea80c75e86265175d1de2",
+    "scopeFingerprint": "a980f69a45e14a1846a9ef1e036475cc78c6a1d9f97fcc397b479099040c9eae",
     "scope": {
       "sources": [
         "packages"
@@ -199,7 +202,7 @@
     "scanProjectKey": "semaphile-SEM-2-redis-messaging-release",
     "evidence": "goals/SEM-2-redis-messaging-release/results/lint/sonar-evidence.json",
     "reused": false,
-    "ceTaskId": "7f734be5-5f79-42ec-9b2f-fa82d05423da",
+    "ceTaskId": "1a42ca18-3940-4a9a-8c54-019b61dcf427",
     "scanState": "passed",
     "inDiffOpen": 0,
     "outsideDiffOpen": 71,

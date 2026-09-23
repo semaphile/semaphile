@@ -3,13 +3,13 @@
   "producedBy": "gate",
   "state": "passed",
   "scanProjectKey": "semaphile-SEM-2-redis-messaging-release",
-  "commit": "3dfbcf9526f47f015a4cab4d85e0026acae38dd5",
-  "tree": "08f3edfc755f0f868e17239424cbf35f917d2a32",
+  "commit": "25e315859b8e54f598d86353ebfe9df8fe309689",
+  "tree": "ffa1235820ec3235a4026dc2ea4edf5338ba31b6",
   "dirty": false,
   "base": "main",
   "baseCommit": "3ec254e25a56daab0e2546f75cd38804df40f44c",
-  "scopeFingerprint": "0ccdc67e4492db46fad3f6a76513746599bcaefe8b8ea80c75e86265175d1de2",
-  "ceTaskId": "7f734be5-5f79-42ec-9b2f-fa82d05423da",
+  "scopeFingerprint": "a980f69a45e14a1846a9ef1e036475cc78c6a1d9f97fcc397b479099040c9eae",
+  "ceTaskId": "1a42ca18-3940-4a9a-8c54-019b61dcf427",
   "issuesTotal": 71,
   "inDiffOpen": 0,
   "outsideDiffOpen": 71,
@@ -49,7 +49,7 @@
       "rule": "typescript:S3776",
       "severity": "CRITICAL",
       "file": "packages/messaging/src/listener.ts",
-      "line": 119,
+      "line": 121,
       "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
       "inDiff": false,
       "changedFile": true
@@ -658,5 +658,5 @@
     }
   ],
   "qualityGate": "ERROR",
-  "timestamp": "2026-09-23T22:44:48.532Z"
+  "timestamp": "2026-09-23T23:23:01.338Z"
 }
