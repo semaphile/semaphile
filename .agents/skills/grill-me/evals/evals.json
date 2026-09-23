@@ -1,0 +1,19 @@
+{
+  "skill_name": "grill-me",
+  "notes": "Staging contract (EVA-36 pinned protocol): run each arm in an ISOLATED system-temp workspace, never in-repo — an in-repo run resolves .claude/skills/grill-me to the LIVE skill for every arm (the EVA-5 contamination). The runner copies the fixture in `files` to the workspace root (bare filename) and installs the arm-under-test's SKILL.md at .claude/skills/grill-me/SKILL.md, so the path in the prompt always refers to the workspace's own copy. Grading is deterministic (structural assertions, no judge calls); the reference grader and A/B runner live in goals/EVA-36-grill-explain-first/results/ab/.",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "You are mid-refinement on the draft plan in release-metadata-plan.md (in your working directory). This workspace has the grill-me skill installed at .claude/skills/grill-me/SKILL.md — read it and apply its interview discipline to the plan's open decision. This harness is NON-INTERACTIVE: do not use any interactive question tool and do not wait for a reply. Instead, write your complete first interview turn to a file named question.md: first, everything you would say to the user before asking the question, as normal markdown prose (fence any sample documents however you like); then the picker, as the FINAL fenced ```json code block in the file, of the shape {\"question\": \"...\", \"options\": [{\"label\": \"...\", \"description\": \"...\"}]} with 2-4 options, recommended option first.",
+      "expected_output": "question.md holds one interview turn whose prose fully introduces the pipeline jargon (manifest, descriptor, provenance) and walks a concrete narrative scenario through each option BEFORE a slim decision-only picker; no option description introduces a term for the first time.",
+      "files": ["evals/files/release-metadata-plan.md"],
+      "expectations": [
+        "The final fenced JSON block in question.md is a picker with a question string and 2-4 options, each carrying a label and a description — and it is the only picker-shaped block in the file",
+        "All three seeded terms (manifest, descriptor, provenance) are introduced in the prose before the picker — including every one the picker itself uses",
+        "The prose before the picker is a real explanation of at least 100 words, not a one-or-two-sentence rationale",
+        "The prose walks a concrete narrative scenario through the options — at least two scenario markers: either connectives ('if you pick ...', 'suppose ...', 'when you later ...') or actor-action narration ('the publisher writes ...', 'a consumer fetches ...'); term definitions alone do not satisfy this",
+        "No option description introduces a seeded term that the prose never mentioned"
+      ]
+    }
+  ]
+}

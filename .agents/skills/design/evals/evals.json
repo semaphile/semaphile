@@ -1,0 +1,86 @@
+{
+  "skill_name": "design",
+  "notes": "EVA-229 step 1A suite (pre-launch amendment 2, gate 10). Six evals: two on what /design SAYS, four on `evie-kit design doctor` behavior against fixtures. Graded by script where mechanical (grade_runs.py beside this file, the EVA-5 pattern); the with-skill arm must pass every expectation, the without-skill arm is run once and recorded.",
+  "evals": [
+    {
+      "id": 1,
+      "name": "explain-three-layers-and-attribution",
+      "prompt": "/design",
+      "fixture": "project-ready",
+      "expected_output": "An explanation naming the three layers (upfront design decisions, design gates inside goals, the method), stating that step 1A ships the verified pinned instrument and `evie-kit design doctor`, naming what is NOT yet available (the migrated review lanes / step 1B, onboarding, gates), and crediting both impeccable (Paul Bakaus, Apache-2.0) and intent (CC0).",
+      "expectations": [
+        "Names all three layers: upfront design decisions, design gates inside goals, and the method",
+        "States what step 1A ships (the verified pinned impeccable instrument and/or `evie-kit design doctor`)",
+        "Names at least one thing not yet available (step 1B lanes, onboarding, gates, preview, or live mode)",
+        "Credits impeccable (pbakaus/impeccable or Paul Bakaus, Apache-2.0)",
+        "Credits intent (ghaida/intent, CC0)"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "instrument-absent-points-at-setup",
+      "prompt": "/design is impeccable set up in this project?",
+      "fixture": "project-no-identity",
+      "expected_output": "Runs doctor (or inspects the project), reports that no committed identity exists, points at `evie-kit setup` as the cure, and does not claim that any design review, audit or critique ran.",
+      "expectations": [
+        "States that the instrument identity (.evie-kit/design/instrument.json) is absent or the instrument is not set up",
+        "Points at `evie-kit setup` as the cure",
+        "Does not claim a design review, audit, critique or detect scan ran"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "doctor-matching-identity-reports-identity",
+      "prompt": "/design run the design doctor here and tell me the resolved identity",
+      "fixture": "project-ready",
+      "expected_output": "Runs `evie-kit design doctor`, reports exit 0, and relays the resolved identity: CLI version 4.1.0, engine digest (0d48b6e1… on darwin-arm64 or the fixture's), playbook closure digest.",
+      "expectations": [
+        "Runs `evie-kit design doctor` (the command appears in the transcript)",
+        "Reports the CLI version from the identity (4.1.0)",
+        "Reports the engine digest prefix from the doctor output",
+        "Reports the playbook closure digest prefix from the doctor output",
+        "Reports exit code 0 / READY"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "doctor-altered-playbook-refuses-naming-file",
+      "prompt": "/design run the design doctor here",
+      "fixture": "project-altered-playbook",
+      "expected_output": "Runs doctor; reports the playbooks row failed, names the mismatched file (reference/audit.md), relays the removal cure, and reports a nonzero exit.",
+      "expectations": [
+        "Runs `evie-kit design doctor`",
+        "Reports the playbooks row as failed / NOT READY",
+        "Names the mismatched file (reference/audit.md)",
+        "Reports a nonzero exit code (1)",
+        "Relays the cure (remove the named store directory and re-acquire) rather than deleting anything itself"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "doctor-mise-absent-skipped-never-green",
+      "prompt": "/design run the design doctor here",
+      "fixture": "project-mise-absent",
+      "expected_output": "Runs doctor with mise unavailable on PATH; reports the mise and cli rows as skipped (not ok), reports exit 2 / UNVERIFIED, and does not describe the instrument as fully ready.",
+      "expectations": [
+        "Runs `evie-kit design doctor`",
+        "Reports the mise row as skipped (not green/ok)",
+        "Reports exit code 2 or the UNVERIFIED verdict",
+        "Does not describe the instrument as fully ready"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "acquire-offline-unavailable-with-cure",
+      "prompt": "/design acquire the design instrument here (this machine has no network)",
+      "fixture": "project-cold-offline",
+      "expected_output": "Runs `evie-kit design acquire --offline` (or acquire, which fails with network refused); reports the assets unavailable with the rerun cure, and confirms nothing partial was published to the store.",
+      "expectations": [
+        "Runs `evie-kit design acquire`",
+        "Reports the acquisition as unavailable / failed",
+        "Relays the cure (re-run with network access)",
+        "States or shows that nothing partial was published (the store has no identity directory)"
+      ]
+    }
+  ]
+}

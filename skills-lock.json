@@ -2,47 +2,52 @@
   "version": 1,
   "skills": {
     "adhd": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "8d34ff2e8a88a8eeac3bd6727d8ad94979cfe99a5770fb7cf29db4f60fc6750c"
     },
     "design": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "a1a9c0f6f1134f9b72d2d1c3c17e1e9a7d7f0948f6dc6753c2e3a24484b2a83a"
     },
     "domain-modeling": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "aa3bfba57f37bf0841d4779881aaff649f97cb97d56f9c6e7f54d3c951e2ed3e"
     },
     "gdocs": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "b956ceeaef8b57d0b39276d6d980e36550af2ea6c2b29655719de7dcc3d952af"
     },
+    "goals": {
+      "source": "../../evie-platform/evie-kit",
+      "sourceType": "local",
+      "computedHash": "e6c6a13195c8d18e0d1c19e916fc860e53f2952a9fac8b04a2211cdd33eae486"
+    },
     "grill-me": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "b2cd9f09ca95022c65adb2e4e696a44ef29931d52cb3272f951ccb2b85aa13b8"
     },
     "handoff": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "2eadd5317c67b5d0ad5d2b8d8d7aa40b3d1899b201489d7c4bd468b301564961"
     },
     "humanizer": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "f04c814b2bd8ca5d328189ab52852a1d7347779e38ed1f949934ec1ffb75e600"
     },
     "notion": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "1add11ca6d378fdc029abcbeaa564e624d107cf931624a4511ceed3e6f17de11"
     },
     "research": {
-      "source": "/Users/openclaw/src/evie-platform/evie-kit",
+      "source": "../../evie-platform/evie-kit",
       "sourceType": "local",
       "computedHash": "b30295b7d21d8771bf574aa6f41961fa08ae6a9141248113d384a112fea6334b"
     }

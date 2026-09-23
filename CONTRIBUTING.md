@@ -96,6 +96,15 @@ explicit flags, because inspection deliberately avoids interpreting escaped TOML
 keys. Check this build boundary with
 `node conformance/typescript/native-build-options.mjs`.
 
+## Agent tooling
+
+`.claude/skills/` and `.agents/skills/` contain agent skills from evie-kit, the
+goal-lifecycle toolkit the maintainers use to plan and review work. They are
+copied into the repository so Claude Code and Codex sessions can load them.
+The skills call the `evie-kit` command, and public access to evie-kit is still
+pending, so they may not work without it. Building, testing and contributing to
+semaphile do not depend on them.
+
 ## Documentation and changes
 
 Public documentation lives in `docs/`, root guides and package READMEs. Historical
