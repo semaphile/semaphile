@@ -125,10 +125,11 @@ export class MessagingReceiver {
       }
       first = false;
       const version = this.connection.version;
-      const opDeadline =
-        timeout === 0
-          ? undefined
-          : Math.min(deadline, performance.now() + this.connection.options.operationTimeoutMs);
+      const opDeadline = operationDeadline(
+        timeout,
+        deadline,
+        this.connection.options.operationTimeoutMs,
+      );
       const reply = await this.waitReceive(
         recipient,
         options,
@@ -154,6 +155,10 @@ export class MessagingReceiver {
       await this.awaitChange(version, reply, deadline, signal);
     }
   }
+}
+
+function operationDeadline(timeout: number | undefined, deadline: number, duration: number) {
+  return timeout === 0 ? undefined : Math.min(deadline, performance.now() + duration);
 }
 
 function waitTiming(args: Args) {
