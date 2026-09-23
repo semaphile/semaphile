@@ -10,6 +10,26 @@ identity:
   workspace: SEM-2-redis-messaging-release
 promoted: 2026-09-23T16:36:19-05:00
 issue_url: https://github.com/semaphile/semaphile/issues/2
+review:
+  wave: true
+  rounds:
+    goal:
+      soft: 2
+      hard: 4
+    results:
+      soft: 2
+      hard: 4
+  engines:
+    goal: [codex]
+    results: [fable, claude-code, sonarqube, coderabbit]
+  models:
+    claude-code: claude-opus-5-5
+    codex: gpt-6-astra
+    fable: claude-fable-5-1
+execution:
+  model: gpt-6-astra
+  runtime: codex
+plan_accepted: 2026-09-23T17:02:09-05:00
 ---
 
 # Add Redis Messaging to the Release Line
