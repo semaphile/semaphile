@@ -206,6 +206,11 @@ export class MessagingConnection extends MessagingSockets {
       job.reject(error);
     }
   }
+  waitAfterTimeout(version: number, deadline: number | undefined, signal: AbortSignal) {
+    // A queued job can expire just after recovery. Ready sockets can admit a
+    // fresh operation; waiting for another notification would miss retained work.
+    return this.ready ? Promise.resolve() : this.wait(version, deadline, signal);
+  }
   wait(version: number, deadline: number | undefined, signal: AbortSignal): Promise<void> {
     if (this.failure) {
       return Promise.reject(this.failure);

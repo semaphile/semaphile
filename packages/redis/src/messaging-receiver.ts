@@ -84,7 +84,7 @@ export class MessagingReceiver {
         }
         // No mutation was dispatched. Block for a notification/reconnect or the
         // caller's deadline instead of turning operation timeouts into polling.
-        await this.connection.wait(
+        await this.connection.waitAfterTimeout(
           version,
           Number.isFinite(deadline) ? deadline : undefined,
           signal,
