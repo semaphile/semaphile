@@ -129,6 +129,7 @@ export class MessageSubscription {
     const active = this.active(options.signal, deadline);
     let timer: ReturnType<typeof setTimeout> | undefined;
     let abort: (() => void) | undefined;
+    let expired = false;
     try {
       await new Promise<void>((resolve, reject) => {
         abort = () =>
@@ -140,7 +141,10 @@ export class MessageSubscription {
         active.signal.addEventListener('abort', abort, { once: true });
         if (deadline !== undefined) {
           timer = setTimeout(
-            () => reject(new MessagingError('TIMEOUT', 'Subscription wait expired')),
+            () => {
+              expired = true;
+              reject(new MessagingError('TIMEOUT', 'Subscription wait expired'));
+            },
             Math.max(0, deadline - Date.now()),
           );
         }
@@ -168,7 +172,7 @@ export class MessageSubscription {
         error instanceof MessagingError &&
         error.code === 'TIMEOUT' &&
         deadline !== undefined &&
-        Date.now() >= deadline
+        (expired || Date.now() >= deadline)
       ) {
         return null;
       }

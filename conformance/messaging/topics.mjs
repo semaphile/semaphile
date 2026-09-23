@@ -153,7 +153,14 @@ try {
       return original(...args);
     };
     const started = performance.now();
-    assert.equal(await sub.wait({ timeoutMs: 10 }), null);
+    const wallTime = Date.now,
+      frozenTime = wallTime();
+    Date.now = () => frozenTime;
+    try {
+      assert.equal(await sub.wait({ timeoutMs: 10 }), null);
+    } finally {
+      Date.now = wallTime;
+    }
     assert.ok(performance.now() - started < 65);
     const before = touches,
       abort = new AbortController();
