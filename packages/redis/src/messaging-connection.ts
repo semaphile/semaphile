@@ -43,7 +43,9 @@ export class MessagingConnection extends MessagingSockets {
       return { ...reply, value };
     } catch (error) {
       await this.close();
-      throw error;
+      throw error instanceof MessagingError
+        ? error
+        : new MessagingError('UNAVAILABLE', 'Redis connection failed');
     }
   }
   private async recover(): Promise<void> {
@@ -76,7 +78,7 @@ export class MessagingConnection extends MessagingSockets {
           this.dispose();
           if (
             error instanceof MessagingError &&
-            ['STATE_LOST', 'FORMAT', 'CONFIG_MISMATCH'].includes(error.code)
+            ['STATE_LOST', 'FORMAT', 'CONFIG_MISMATCH', 'ACCESS'].includes(error.code)
           ) {
             this.fatal(error);
             throw error;

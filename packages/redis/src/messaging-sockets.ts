@@ -1,4 +1,4 @@
-import { createClient } from '@redis/client';
+import { createClient, ErrorReply } from '@redis/client';
 import { MessagingError } from '@semaphile/messaging/client';
 import { readFileSync } from 'node:fs';
 const script = ['messaging-records.lua', 'messaging-delivery.lua', 'messaging-actions.lua']
@@ -63,7 +63,14 @@ export abstract class MessagingSockets {
         },
         (error) => {
           finish();
-          reject(error);
+          reject(
+            error instanceof ErrorReply &&
+              /^(NOPERM|NOAUTH|WRONGPASS)\b|user executing the script can't run this command/.test(
+                error.message,
+              )
+              ? new MessagingError('ACCESS', error.message)
+              : error,
+          );
         },
       );
       if (this.stop.signal.aborted) {
@@ -156,7 +163,11 @@ export abstract class MessagingSockets {
         }),
         deadline,
       );
-    } catch {
+    } catch (error) {
+      // A permission refusal is a definitive server reply, not a lost result.
+      if (error instanceof MessagingError && error.code === 'ACCESS') {
+        throw error;
+      }
       if (this.command === client) {
         this.broken();
       }

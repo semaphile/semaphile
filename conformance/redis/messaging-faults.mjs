@@ -494,6 +494,87 @@ try {
       await listener.close();
     }
   });
+  await test('an uncertain listener claim is explicit and stays fenced until expiry', async () => {
+    const store = randomUUID();
+    const c = await open({ config: { claimTtlMs: 1000, retryDelayMs: 1 } }, store);
+    const peer = await openRedisMessaging({
+      url: redis.url,
+      namespace,
+      store,
+      onReadinessWarning: () => {},
+    });
+    clients.push(peer);
+    await c.createMailbox('q');
+    await c.send({ to: 'q', body: 'lost-claim' });
+    const errors = [];
+    let calls = 0;
+    dropAction = 'receive';
+    const stopped = c.listen('q', () => calls++, { onError: (error) => errors.push(error) });
+    await assert.rejects(
+      stopped.done,
+      (error) => error instanceof AggregateError && error.errors[0].code === 'UNCERTAIN',
+    );
+    assert.equal(calls, 0);
+    assert.equal(errors.length, 1);
+    assert.deepEqual(await peer.receive('q'), [], 'an uncertain claim was immediately stolen');
+    await peer.send({ to: 'q', body: 'fresh' });
+    const deliveries = [];
+    let received;
+    const completed = new Promise((resolve) => {
+      received = resolve;
+    });
+    const restarted = peer.listen('q', (delivery) => {
+      deliveries.push([delivery.message.body, delivery.attempt]);
+      if (deliveries.length === 2) {
+        received();
+      }
+    });
+    try {
+      await Promise.race([
+        completed,
+        delay(3000).then(() => {
+          throw new Error('Explicit listener restart did not recover both deliveries');
+        }),
+      ]);
+      assert.deepEqual(deliveries, [
+        ['fresh', 1],
+        ['lost-claim', 2],
+      ]);
+    } finally {
+      await restarted.close();
+    }
+  });
+  await test('an old subscription snapshot cannot turn transport uncertainty into retirement', async () => {
+    const store = randomUUID();
+    const c = await open({}, store);
+    const peer = await openRedisMessaging({
+      url: redis.url,
+      namespace,
+      store,
+      onReadinessWarning: () => {},
+    });
+    clients.push(peer);
+    const old = await c.subscribe('kept-alive', {
+      topics: ['kept-alive'],
+      inactivityTtlMs: 1800,
+    });
+    const fresh = await peer.subscription('kept-alive');
+    const keeper = fresh.listen(() => {});
+    try {
+      await delay(2000);
+      assert.ok(old.info.expiresAt < Date.now());
+      assert.ok((await peer.subscription('kept-alive')).info.expiresAt > Date.now());
+    } finally {
+      await keeper.close();
+    }
+    dropAction = 'subscription-touch';
+    await assert.rejects(old.wait({ timeoutMs: 3000 }), (error) => error.code === 'UNCERTAIN');
+    await c.info();
+    await peer.publish({ topic: 'kept-alive', body: 'still-live' });
+    const delivery = await old.wait({ timeoutMs: 3000 });
+    assert.equal(delivery.message.body, 'still-live');
+    await peer.ack(delivery.receipt);
+  });
   await test('event retention trims oldest records without scanning history on info', async () => {
     const c = await open({ config: { maxEvents: 3 } });
     for (let i = 0; i < 8; i++) {

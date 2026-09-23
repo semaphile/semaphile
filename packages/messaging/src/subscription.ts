@@ -74,10 +74,16 @@ export class MessageSubscription {
         }
       },
       (error) => {
-        if (transportInterrupted(error)) {
-          schedule(this.confirmed ?? this.info);
+        const known = this.confirmed ?? this.info;
+        if (
+          transportInterrupted(error) &&
+          (!known.inactivityTtlMs || this.client.remaining(known, known.expiresAt!) > 0)
+        ) {
+          schedule(known);
           return;
         }
+        // An expired snapshot cannot prove retirement: another worker may have
+        // renewed it. Preserve the transport failure until the server confirms.
         controller.abort(error);
         throw error;
       },
@@ -158,7 +164,12 @@ export class MessageSubscription {
         signal: active.signal,
       });
     } catch (error) {
-      if (error instanceof MessagingError && error.code === 'TIMEOUT' && deadline !== undefined) {
+      if (
+        error instanceof MessagingError &&
+        error.code === 'TIMEOUT' &&
+        deadline !== undefined &&
+        Date.now() >= deadline
+      ) {
         return null;
       }
       throw error;

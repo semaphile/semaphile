@@ -183,10 +183,38 @@ try {
       operationTimeoutMs: 2000,
       onReadinessWarning: () => {},
     }),
-    /NOPERM/,
+    (error) => error.code === 'ACCESS',
   );
   console.log('PASS missing notification-channel permission prevents startup');
-  console.log('RESULT 6/6 passed');
+  const revoked = await account('revoked-eval');
+  const live = await openRedisMessaging({
+    url: revoked,
+    namespace,
+    store,
+    onReadinessWarning: () => {},
+  });
+  const subscriptions = async () =>
+    Number((await admin.info('commandstats')).match(/cmdstat_subscribe:calls=(\d+)/)?.[1] ?? 0);
+  const before = await subscriptions();
+  try {
+    for (const command of ['eval', 'time']) {
+      await admin.sendCommand(['ACL', 'SETUSER', new URL(revoked).username, '-' + command]);
+      await assert.rejects(live.info(), (error) => error.code === 'ACCESS');
+      await assert.rejects(
+        openRedisMessaging({ url: revoked, namespace, store, onReadinessWarning: () => {} }),
+        (error) => error.code === 'ACCESS',
+      );
+      await admin.sendCommand(['ACL', 'SETUSER', new URL(revoked).username, '+' + command]);
+      await live.info();
+    }
+    assert.equal(await subscriptions(), before + 2, 'permission refusal reconnected live sockets');
+  } finally {
+    await live.close();
+  }
+  console.log(
+    'PASS revoked EVAL/TIME is definitive ACCESS without reconnecting established sockets',
+  );
+  console.log('RESULT 7/7 passed');
 } finally {
   for (const c of connections) {
     c.destroy();

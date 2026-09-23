@@ -258,6 +258,18 @@ extends the locally confirmed claim deadline. Handlers receive cancellation when
 ownership can no longer be confirmed. Missing or replaced store identity is a
 terminal `STATE_LOST` error; reconnect cannot silently initialize a replacement.
 
+An uncertain dispatched claim also stops a listener: `done` rejects and
+`onError` receives the failure. Observe that result and explicitly start a new
+listener when ready to continue. The lost claim remains fenced until its
+confirmed deadline; a new listener cannot immediately take it over. Other
+already-running handlers keep their confirmed claim deadlines. An idle wait
+whose claim was never dispatched resumes automatically after reconnect.
+
+If a temporary subscription handle has an old expiry snapshot and its initial
+activity refresh fails, activation reports the transport error. A different
+worker may have kept the subscription alive; only a server response establishes
+retirement. Retry activation explicitly after the connection recovers.
+
 Startup warns when persistence and eviction settings are unsafe or cannot be
 inspected. `readiness: 'strict'` requires AOF enabled, `appendfsync always`,
 `no-appendfsync-on-rewrite no`, healthy AOF writes, and `maxmemory-policy noeviction`.
