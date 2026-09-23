@@ -27,9 +27,27 @@ local function checktype(k, expected)
   local actual = redis.call('TYPE', k).ok
   if actual ~= 'none' and actual ~= expected then refuse('STATE_LOST', 'Unexpected store key type') end
 end
-checktype(root, 'hash')
-local meta_raw = redis.call('HGET', root, 'meta')
-local meta = meta_raw and cjson.decode(meta_raw) or nil
+local function errorReply(value, fallback)
+  local message=type(value)=='table' and value.err or tostring(value)
+  local code,detail=message:match('^([A-Z_]+):(.*)$')
+  if not code then
+    if message:find('NOPERM',1,true) or message:find('permissions',1,true) then code='ACCESS'
+    elseif message:find('WRONGTYPE',1,true) then code='STATE_LOST'
+    else code=fallback or 'STORE' end
+  end
+  return encode({ok=false,code=code,message=detail or message})
+end
+local loaded,meta_raw,meta=pcall(function()
+  checktype(root,'hash')
+  local raw=redis.call('HGET',root,'meta')
+  if not raw then return nil,nil end
+  local value=cjson.decode(raw)
+  if type(value)~='table' or type(value.config)~='table' or type(value.identity)~='string' or type(value.bytes)~='number' then
+    refuse('STATE_LOST','Invalid messaging metadata')
+  end
+  return raw,value
+end)
+if not loaded then return errorReply(meta_raw,'STATE_LOST') end
 local config
 local changes, indexes, touched, cache = {}, {}, {}, {}
 local bytes = meta and meta.bytes or 0
@@ -44,7 +62,13 @@ local function read(bucket, id)
 end
 local function cost(bucket, value)
   if not value then return 0 end
-  if bucket == 'deliveries' and (value.state == 'pending' or value.state == 'claimed') then return 8192 end
+  if bucket == 'deliveries' then
+    if value.state == 'pending' or value.state == 'claimed' then return 8192 end
+    -- Logical accounting counts bounded UTF-8 error bytes, not JSON escaping.
+    -- The pending reservation must cover every permitted terminal transition.
+    local error = value.error
+    return #encode(value) + 512 - (error and #encode(error) or 0) + (error and #error or 0)
+  end
   return #encode(value) + 512
 end
 local function put(bucket, id, value)
@@ -209,11 +233,13 @@ local function cleanup(pressure)
   return progressed
 end
 local function trimEvents()
-  local order=range('event-order',-math.huge,math.huge)
-  local excess=#order-config.maxEvents
-  for i,id in ipairs(order) do
-    if i <= excess or bytes > config.maxContentBytes then
-      put('events',id,nil); zput('event-order',id,nil)
+  local excess=count('event-order')-config.maxEvents
+  while excess>0 or bytes>config.maxContentBytes do
+    local order=range('event-order',-math.huge,math.huge,math.min(256,math.max(1,excess)))
+    if #order==0 then break end
+    for _,id in ipairs(order) do
+      if excess<=0 and bytes<=config.maxContentBytes then break end
+      put('events',id,nil); zput('event-order',id,nil); excess=excess-1
     end
   end
 end

@@ -195,6 +195,19 @@ try {
       c.subscriptionCommand = original;
     }
   });
+  await test('failed deliveries cannot be retried into a retired subscription generation', async () => {
+    const c = await open({ maxAttempts: 1 });
+    const sub = await c.subscribe('retired-retry', { topics: ['retry'] });
+    await c.publish({ topic: 'retry', body: 'failed' });
+    const delivery = await sub.wait({ timeoutMs: 1000 });
+    await c.fail(delivery.receipt, 'failed handler');
+    await sub.remove();
+    await c.subscribe('retired-retry', { topics: ['retry'] });
+    await assert.rejects(c.retry(delivery.id), (error) =>
+      ['REFUSED', 'STALE'].includes(error.code),
+    );
+    assert.equal((await c.history())[0].deliveries[0].state, 'failed');
+  });
   console.log(`RESULT ${passed}/${passed} passed`);
 } finally {
   await Promise.allSettled(clients.map((c) => c.close()));

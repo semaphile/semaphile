@@ -336,6 +336,179 @@ try {
     assert.equal(d.message.body, 'replacement');
     await c.ack(d.receipt);
   });
+  await test('a listener survives an outage longer than operation timeout without cancelling another claim', async () => {
+    const store = randomUUID();
+    const c = await open({ operationTimeoutMs: 120, config: { claimTtlMs: 3000 } }, store);
+    const peer = await openRedisMessaging({
+      url: redis.url,
+      namespace,
+      store,
+      onReadinessWarning: () => {},
+    });
+    clients.push(peer);
+    await c.createMailbox('q');
+    let started, release, received, activeSignal;
+    const active = new Promise((resolve) => {
+      started = resolve;
+    });
+    const held = new Promise((resolve) => {
+      release = resolve;
+    });
+    const resumed = new Promise((resolve) => {
+      received = resolve;
+    });
+    const errors = [];
+    const listener = c.listen(
+      'q',
+      async (delivery, context) => {
+        if (delivery.message.body === 'held') {
+          activeSignal = context.signal;
+          started();
+          await held;
+        } else {
+          received();
+        }
+      },
+      { concurrency: 2, onError: (error) => errors.push(error) },
+    );
+    try {
+      await peer.send({ to: 'q', body: 'held' });
+      await active;
+      await delay(30);
+      offline = true;
+      for (const socket of connections) {
+        socket.destroy();
+      }
+      await peer.send({ to: 'q', body: 'after-recovery' });
+      await delay(400);
+      assert.equal(activeSignal.aborted, false, 'idle slot timeout cancelled a confirmed claim');
+      offline = false;
+      await Promise.race([
+        resumed,
+        delay(2500).then(() => {
+          throw new Error('Listener did not recover');
+        }),
+      ]);
+      assert.equal(activeSignal.aborted, false);
+      assert.deepEqual(errors, []);
+    } finally {
+      offline = false;
+      release();
+      await listener.close();
+    }
+  });
+  await test('lost cleanup reply does not misclassify an undispatched send as uncertain', async () => {
+    const c = await open();
+    await c.createMailbox('q');
+    dropAction = 'sweep';
+    await c.send({ to: 'q', body: 'after cleanup' });
+    const deliveries = await c.receive('q');
+    assert.equal(deliveries.length, 1);
+    assert.equal(deliveries[0].message.body, 'after cleanup');
+    await c.ack(deliveries[0].receipt);
+  });
+  await test('escaped terminal error text fits the reserved delivery budget', async () => {
+    const c = await open({ config: { maxAttempts: 1, maxContentBytes: 20000 } });
+    await c.createMailbox('q');
+    await c.send({ to: 'q', body: 'small' });
+    const [delivery] = await c.receive('q');
+    assert.equal((await c.fail(delivery.receipt, '\0'.repeat(4096))).status, 'released');
+    const history = await c.history();
+    assert.equal(history[0].deliveries[0].state, 'failed');
+    assert.equal(history[0].deliveries[0].error, '\0'.repeat(4096));
+  });
+  await test('wrong-type or malformed store metadata is terminal instead of uncertain', async () => {
+    for (const corruption of ['wrong-type', 'malformed']) {
+      const store = randomUUID();
+      const c = await open({}, store);
+      const root = messagingKey(namespace, store);
+      if (corruption === 'wrong-type') {
+        await admin.del(root);
+        await admin.set(root, 'replacement');
+      } else {
+        await admin.hSet(root, 'meta', '{invalid');
+      }
+      await assert.rejects(c.agents(), (error) => error.code === 'STATE_LOST');
+      await assert.rejects(
+        c.send({ to: 'q', body: 'no recreation' }),
+        (error) => error.code === 'STATE_LOST',
+      );
+      await c.close();
+    }
+  });
+  await test('subscription waits and confirmed inactivity survive transient refresh failures', async () => {
+    const store = randomUUID();
+    const c = await open({ operationTimeoutMs: 100, config: { claimTtlMs: 3000 } }, store);
+    const peer = await openRedisMessaging({
+      url: redis.url,
+      namespace,
+      store,
+      onReadinessWarning: () => {},
+    });
+    clients.push(peer);
+    const durable = await c.subscribe('durable-outage', { topics: ['durable-outage'] });
+    const temporary = await c.subscribe('temporary-outage', {
+      topics: ['temporary-outage'],
+      inactivityTtlMs: 2400,
+    });
+    let started, release, activeSignal;
+    const active = new Promise((resolve) => {
+      started = resolve;
+    });
+    const held = new Promise((resolve) => {
+      release = resolve;
+    });
+    const listener = temporary.listen(
+      async (_delivery, context) => {
+        activeSignal = context.signal;
+        started();
+        await held;
+      },
+      { onError: () => {} },
+    );
+    try {
+      await peer.publish({ topic: 'temporary-outage', body: 'held' });
+      await active;
+      offline = true;
+      for (const socket of connections) {
+        socket.destroy();
+      }
+      const waiting = durable.wait({ timeoutMs: 4000 });
+      await peer.publish({ topic: 'durable-outage', body: 'retained' });
+      await delay(1100);
+      assert.equal(
+        activeSignal.aborted,
+        false,
+        'refresh error shortened confirmed subscription lifetime',
+      );
+      offline = false;
+      const delivery = await waiting;
+      assert.equal(delivery.message.body, 'retained');
+      await peer.ack(delivery.receipt);
+      assert.equal(activeSignal.aborted, false);
+    } finally {
+      offline = false;
+      release();
+      await listener.close();
+    }
+  });
+  await test('event retention trims oldest records without scanning history on info', async () => {
+    const c = await open({ config: { maxEvents: 3 } });
+    for (let i = 0; i < 8; i++) {
+      await c.append({ kind: 'audit', payload: String(i) });
+    }
+    assert.deepEqual(
+      (await c.events()).map((event) => event.payload),
+      ['5', '6', '7'],
+    );
+    const calls = async () =>
+      Number(
+        (await admin.info('commandstats')).match(/cmdstat_zrangebyscore:calls=(\d+)/)?.[1] ?? 0,
+      );
+    const before = await calls();
+    await c.info();
+    assert.equal(await calls(), before, 'read-only info scanned retained event history');
+  });
   console.log(`RESULT ${passed}/${passed} passed`);
 } finally {
   offline = false;

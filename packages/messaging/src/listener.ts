@@ -110,8 +110,10 @@ export class MessageListener {
       }
       this.stopping = true;
       this.waiting.abort();
-      for (const controller of this.active) {
-        controller.abort(error);
+      if (!transportLoss(error)) {
+        for (const controller of this.active) {
+          controller.abort(error);
+        }
       }
       throw error;
     }
@@ -198,10 +200,7 @@ export class MessageListener {
               expirySource = result;
               schedule();
             } catch (error) {
-              if (
-                error instanceof MessagingError &&
-                ['UNCERTAIN', 'UNAVAILABLE', 'TIMEOUT', 'QUEUE_FULL'].includes(error.code)
-              ) {
+              if (transportLoss(error)) {
                 // Transport loss cannot extend or shorten confirmed ownership.
                 // Retry renewal on its computed timer; the original watchdog stays authoritative.
                 schedule();
@@ -284,4 +283,11 @@ export class MessageListener {
     }
     return this.closing;
   }
+}
+
+function transportLoss(error: unknown): boolean {
+  return (
+    error instanceof MessagingError &&
+    ['UNCERTAIN', 'UNAVAILABLE', 'TIMEOUT', 'QUEUE_FULL'].includes(error.code)
+  );
 }

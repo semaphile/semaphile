@@ -121,11 +121,11 @@ local function execute()
   refuse('INPUT','Unknown messaging action')
 end
 local ok,value=pcall(execute)
-if not ok then
-  local code,message=tostring(value):match('^([A-Z_]+):(.*)$')
-  return encode({ok=false,code=code or 'STORE',message=message or 'Messaging operation failed'})
+if not ok then return errorReply(value) end
+if config then
+  local trimmed,reason=pcall(trimEvents)
+  if not trimmed then return errorReply(reason) end
 end
-if config then trimEvents() end
 if config and bytes>config.maxContentBytes then return encode({ok=false,code='REFUSED',message='maxContentBytes reached'}) end
 if request.action=='append' and not read('events',tostring(value)) then
   return encode({ok=false,code='REFUSED',message='Event cannot fit within maxContentBytes'})
@@ -137,7 +137,7 @@ local final=encode(meta)
 local function permitted(...)
   if not redis.acl_check_cmd(...) then refuse('ACCESS','Messaging write permission denied') end
 end
-local preflight_ok=pcall(function()
+local preflight_ok,preflight_error=pcall(function()
   for bucket,rows in pairs(changes) do
     checktype(key(bucket),'hash')
     for id,raw in pairs(rows) do
@@ -153,7 +153,7 @@ local preflight_ok=pcall(function()
   for recipient in pairs(touched) do permitted('PUBLISH',key('notify'),recipient) end
   if final~=meta_raw then permitted('HSET',root,'meta',final) end
 end)
-if not preflight_ok then return encode({ok=false,code='ACCESS',message='Messaging mutation preflight failed'}) end
+if not preflight_ok then return errorReply(preflight_error,'ACCESS') end
 for recipient in pairs(touched) do redis.call('PUBLISH',key('notify'),recipient) end
 for bucket,rows in pairs(changes) do
   for id,raw in pairs(rows) do

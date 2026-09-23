@@ -167,8 +167,11 @@ try {
   );
   console.log('PASS denied CONFIG/INFO inspection warns in warn mode and rejects strict startup');
   const rootOnly = await account('root-only', [`~${key}`]);
+  const rootRestricted = await raw(rootOnly);
+  await assert.rejects(rootRestricted.hGet(key + ':messages', 'missing'), /NOPERM/);
   await assert.rejects(
     openRedisMessaging({ url: rootOnly, namespace, store, onReadinessWarning: () => {} }),
+    (error) => error.code === 'ACCESS',
   );
   console.log('PASS a root-key grant alone cannot read computed store keys');
   const noChannel = await account('no-channel', [`~${key}`, `~${key}:*`], []);
@@ -180,6 +183,7 @@ try {
       operationTimeoutMs: 2000,
       onReadinessWarning: () => {},
     }),
+    /NOPERM/,
   );
   console.log('PASS missing notification-channel permission prevents startup');
   console.log('RESULT 6/6 passed');

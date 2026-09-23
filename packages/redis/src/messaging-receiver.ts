@@ -67,6 +67,7 @@ export class MessagingReceiver {
     deadline: number,
     opDeadline: number | undefined,
     signal: AbortSignal,
+    version: number,
   ) {
     let reply: MessagingWireReply<{ deliveries: Delivery[]; deadline: number | null }>;
     try {
@@ -77,8 +78,18 @@ export class MessagingReceiver {
         signal,
       );
     } catch (error) {
-      if (error instanceof MessagingError && error.code === 'TIMEOUT' && opDeadline === deadline) {
-        return undefined;
+      if (error instanceof MessagingError && error.code === 'TIMEOUT' && opDeadline !== undefined) {
+        if (performance.now() >= deadline) {
+          return undefined;
+        }
+        // No mutation was dispatched. Block for a notification/reconnect or the
+        // caller's deadline instead of turning operation timeouts into polling.
+        await this.connection.wait(
+          version,
+          Number.isFinite(deadline) ? deadline : undefined,
+          signal,
+        );
+        return null;
       }
       throw error;
     }
@@ -118,7 +129,17 @@ export class MessagingReceiver {
         timeout === 0
           ? undefined
           : Math.min(deadline, performance.now() + this.connection.options.operationTimeoutMs);
-      const reply = await this.waitReceive(recipient, options, deadline, opDeadline, signal);
+      const reply = await this.waitReceive(
+        recipient,
+        options,
+        deadline,
+        opDeadline,
+        signal,
+        version,
+      );
+      if (reply === null) {
+        continue;
+      }
       if (!reply) {
         return { value: null, now: 0, sent: 0, received: 0 };
       }

@@ -1,3 +1,4 @@
+import { admit } from './messaging-admission.js';
 import { appendInput, subscriptionInput, claimInput } from './messaging-input.js';
 // Adapt atomic Redis operations to the shared listener/telemetry lifecycle.
 import { EventEmitter } from 'node:events';
@@ -96,28 +97,8 @@ export class RedisMessagingTransport extends EventEmitter {
     );
     return r.value.progress;
   }
-  private async admit(
-    action: string,
-    input: object,
-    deadline: number,
-  ): Promise<MessagingWireReply> {
-    await this.sweep(deadline);
-    for (;;) {
-      try {
-        return await this.connection.request(action, input, deadline);
-      } catch (error) {
-        if (
-          !(error instanceof MessagingError) ||
-          error.code !== 'REFUSED' ||
-          !['maxMessages reached', 'maxContentBytes reached', 'Recipient full'].includes(
-            error.message,
-          ) ||
-          !(await this.sweep(deadline, error.message !== 'Recipient full'))
-        ) {
-          throw error;
-        }
-      }
-    }
+  private admit(action: string, input: object, deadline: number, signal: AbortSignal) {
+    return admit(this.connection, this.sweep.bind(this), action, input, deadline, signal);
   }
   private async execute(
     action: string,
@@ -146,13 +127,14 @@ export class RedisMessagingTransport extends EventEmitter {
           .update(JSON.stringify([action, envelope]))
           .digest('hex');
         input = { id: randomUUID(), envelope, trace, fingerprint };
-        return this.admit(action, input, deadline);
+        return this.admit(action, input, deadline, signal);
       }
       case 'receive': {
         const reply = await this.receiver.receive(
           name(args.recipient),
           this.receiver.receiveOptions(args.options ?? {}),
           deadline,
+          signal,
         );
         return { ...reply, value: reply.value.deliveries };
       }
@@ -172,6 +154,7 @@ export class RedisMessagingTransport extends EventEmitter {
             ttl: this.connection.options.sessionTimeoutMs,
           },
           deadline,
+          signal,
         );
         this.owners.add(id);
         this.schedulePresence();
@@ -191,6 +174,7 @@ export class RedisMessagingTransport extends EventEmitter {
           claimInput(action, args),
           deadline,
           true,
+          signal,
         );
       case 'retry':
         text(args.deliveryId, 'deliveryId');
@@ -198,13 +182,13 @@ export class RedisMessagingTransport extends EventEmitter {
       case 'history':
       case 'events':
         historyOptions(args, action === 'events');
-        await this.sweep(deadline);
+        await this.sweep(deadline, false, signal);
         break;
       case 'append':
         input = appendInput(args);
         break;
       case 'agents':
-        await this.sweep(deadline);
+        await this.sweep(deadline, false, signal);
         break;
       case 'subscribe':
         input = subscriptionInput(args);
@@ -225,7 +209,7 @@ export class RedisMessagingTransport extends EventEmitter {
         throw new MessagingError('INPUT', 'Unknown messaging action');
     }
     if (['create', 'subscribe'].includes(action)) {
-      return this.admit(action, input, deadline);
+      return this.admit(action, input, deadline, signal);
     }
     return this.connection.request(
       action,

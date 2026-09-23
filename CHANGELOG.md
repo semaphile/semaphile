@@ -15,6 +15,13 @@ pilot artifacts, not published GitHub releases.
   limiter formats remain unchanged. Ordinary opens never migrate.
 - Require matching 0.3.0 Semaphile peers. HTTP/MCP proxy packages are excluded.
   This candidate is distinct from the historical unpublished proxy checkpoints.
+- Redis limiter users must install matching `@semaphile/core` explicitly; core is
+  now an optional Redis peer so messaging-only consumers can remain native-free.
+- Known unported fixes: feature commits `1b56123` and `c9ac5cc` changed collector
+  observer fencing and retry/export isolation. This messaging extraction retains
+  the 0.2.0 collector behavior, including the risk that a stale collector sharing
+  an identifier can affect a replacement registration. Review those fixes before
+  publication; they are outside this candidate's messaging scope.
 
 ## [0.2.0] - 2026-09-13
 

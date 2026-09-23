@@ -10,6 +10,7 @@ import type {
 /** A generation-fenced view of a durable subscription; close never deletes its queue. */
 export class MessageSubscription {
   private readonly stopped = new AbortController();
+  private confirmed?: SubscriptionInfo;
   constructor(
     private readonly client: MessagingClient,
     readonly info: Readonly<SubscriptionInfo>,
@@ -54,7 +55,13 @@ export class MessageSubscription {
       );
       timer = setTimeout(
         () => {
-          void this.touch(signal, deadline).then(schedule, (error) => controller.abort(error));
+          void this.touch(signal, deadline).then(schedule, (error) => {
+            if (transportInterrupted(error)) {
+              schedule(value);
+            } else {
+              controller.abort(error);
+            }
+          });
         },
         Math.max(1, Math.min(Math.floor(value.inactivityTtlMs / 3), remaining)),
       );
@@ -67,6 +74,10 @@ export class MessageSubscription {
         }
       },
       (error) => {
+        if (transportInterrupted(error)) {
+          schedule(this.confirmed ?? this.info);
+          return;
+        }
         controller.abort(error);
         throw error;
       },
@@ -83,11 +94,16 @@ export class MessageSubscription {
     };
   }
   private touch(signal?: AbortSignal, deadline?: number): Promise<SubscriptionInfo> {
-    return this.client.subscriptionCommand(
-      'subscription-touch',
-      { name: this.info.name, id: this.info.id, deadline },
-      signal,
-    );
+    return this.client
+      .subscriptionCommand<SubscriptionInfo>(
+        'subscription-touch',
+        { name: this.info.name, id: this.info.id, deadline },
+        signal,
+      )
+      .then((value) => {
+        this.confirmed = value;
+        return value;
+      });
   }
   async receive(options: ReceiveOptions = {}) {
     if (this.stopped.signal.aborted) {
@@ -190,4 +206,11 @@ export class MessageSubscription {
   close(): void {
     this.stopped.abort();
   }
+}
+
+function transportInterrupted(error: unknown): boolean {
+  return (
+    error instanceof MessagingError &&
+    ['UNCERTAIN', 'UNAVAILABLE', 'TIMEOUT', 'QUEUE_FULL'].includes(error.code)
+  );
 }

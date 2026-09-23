@@ -146,17 +146,20 @@ export abstract class MessagingSockets {
     const before = this.anchor
       ? Math.floor(this.anchor.now + deadline - this.anchor.received)
       : undefined;
+    const client = this.command;
     let raw: unknown;
     try {
       raw = await this.response(
-        this.command.withCommandOptions({ timeout }).eval(script, {
+        client.withCommandOptions({ timeout }).eval(script, {
           keys: [this.options.key],
           arguments: [JSON.stringify({ action, input, identity: this.identity, before })],
         }),
         deadline,
       );
     } catch {
-      this.broken();
+      if (this.command === client) {
+        this.broken();
+      }
       throw new MessagingError(
         'UNCERTAIN',
         'Redis operation was dispatched but its outcome is unknown',

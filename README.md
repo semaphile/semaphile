@@ -54,8 +54,8 @@ whole lifetime. Separate projects can share an explicit local store path; they
 don't need a common parent process or an orchestrator-owned session.
 
 For rate limits across machines, an optional Redis backend supplies shared
-admission through one authoritative Redis endpoint. Messaging currently stays
-local.
+admission through one authoritative Redis endpoint. The unreleased 0.3.0 source
+also supports [Redis messaging](docs/redis-messaging.md).
 
 ## Try it
 

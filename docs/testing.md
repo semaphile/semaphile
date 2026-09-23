@@ -180,14 +180,21 @@ remain inside the repository `.tmp` directory.
 
 ## Redis messaging and durable topics (unreleased)
 
-The messaging/topic increment is verified on macOS arm64 with Node 26.7.0 and
+The historical feature-branch messaging/topic increment was verified on macOS
+arm64 with Node 26.7.0 and
 Bun 1.4.2, and Linux x64 with Node 22.23.0 and Bun 1.4.2. Redis tests use a real
 Redis 8.4.0 server: a local process on macOS and isolated Docker containers on
-Linux. The final matrix covers 109 messaging scenarios and 152 Redis scenarios
+Linux. That historical matrix covered 109 messaging scenarios and 152 Redis scenarios
 per runtime/platform pairing. The Redis count includes the existing limiter
 regressions as well as messaging, topic, fault, CLI, OTel and installed-consumer
-checks. The final inspection increment replaces the four-scenario CLI suite with
+checks. The historical final inspection increment replaced the four-scenario CLI suite with
 five scenarios; it and installed consumers were rerun on all four pairings.
+
+The integrated 0.3.0 candidate is checked separately with Node 22.21.1 on
+macOS, Node 22.23.0 on Linux, and Bun 1.4.2 on both. Its runner adds restricted
+Redis credentials and computed-key/channel ACL checks. Candidate counts and exact
+archive identities are recorded with the release handoff; historical counts do
+not establish correctness of those source or archive bytes.
 
 Six additional cross-host scenarios cover all four Node/Bun requester/relay
 pairings, an acknowledged AOF-backed message surviving an actual Redis restart,

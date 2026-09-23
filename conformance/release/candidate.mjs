@@ -24,8 +24,11 @@ function run(command, args, cwd = root, env = process.env, expected = 0) {
 }
 const names = ['core', 'redis', 'messaging', 'otel'];
 const paths = names.map((name) => resolve(archives, `semaphile-${name}-0.3.0.tgz`));
+const originalHashes = new Map();
 for (const path of paths) {
-  console.log(`archive=${path} sha256=${sha(await readFile(path))}`);
+  const hash = sha(await readFile(path));
+  originalHashes.set(path, hash);
+  console.log(`archive=${path} sha256=${hash}`);
 }
 const app = join(root, 'app'),
   old = join(root, 'old');
@@ -81,7 +84,7 @@ assert.equal(await limiter.schedule(()=>42),42);await limiter.close();
 const memory=await openMemoryLimiter({key:'installed',config:{maxConcurrent:1}});assert.equal(await memory.schedule(()=>43),43);await memory.close();
 const bus=await openMessaging({path:'./messages'});const sub=await bus.subscribe('consumer',{topics:['event']});
 await bus.publish({topic:'event',body:'installed'});const d=await sub.wait({timeoutMs:2000});assert.equal(d.message.body,'installed');await bus.ack(d.receipt);await bus.close();
-for(const path of ['@semaphile/proxy','@semaphile/otel/http-policy'])await assert.rejects(import(path));
+for(const path of ['@semaphile/proxy','@semaphile/core/http-policy','@semaphile/core/http-policy.js'])await assert.rejects(import(path));
 `,
 );
 run(process.execPath, ['--no-warnings', 'local.mjs'], app);
@@ -218,6 +221,8 @@ try {
   await redis.close();
 }
 for (const path of paths) {
-  console.log(`unchangedArchive=${path} sha256=${sha(await readFile(path))}`);
+  const hash = sha(await readFile(path));
+  assert.equal(hash, originalHashes.get(path), 'Candidate archive changed during test');
+  console.log(`unchangedArchive=${path} sha256=${hash}`);
 }
 console.log('RESULT 5/5 passed');

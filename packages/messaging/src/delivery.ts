@@ -233,6 +233,10 @@ export function retry(store: Database, id: string): void {
   if (!row.envelope || (row.expires_at !== null && row.expires_at <= Date.now())) {
     refusal('Message body unavailable or expired; send a new message');
   }
+  requireSubscription(store, row.recipient);
+  if (!store.db.prepare('SELECT name FROM mailboxes WHERE name=?').get(row.recipient)) {
+    refusal('Delivery destination no longer exists');
+  }
   const count = Number(
     store.db
       .prepare(

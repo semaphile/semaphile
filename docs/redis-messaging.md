@@ -173,7 +173,7 @@ Use `--inactivity-ttl MS` when creating a temporary subscription. `receive`,
 The deployment conformance recipe uses one unprivileged OS account per host
 with two independent project configurations and distinct Redis users. Separate
 OS users, separate homes, and private-file isolation remain unverified; see the
-[deferred validation record](../goals/SEM-2-redis-messaging-release/references/deferred-os-account-validation.md).
+[deferred validation record](https://github.com/semaphile/semaphile/issues/2).
 Redis credentials restrict a store's keys and notification channel. Participants
 within that store cooperate: ACLs do not isolate individual message fields,
 mailboxes, or recipients from another authorized participant.
@@ -295,3 +295,8 @@ removes its HTTP/MCP proxy surface. Stop its clients, preserve the original
 archives and closed stores, and check the stored messaging format before opening
 with the candidate. A 1.2 store does not need a 1.1-to-1.2 upgrade. This is not a
 general 0.4.0 downgrade promise or a relabeling of its archives.
+
+Presence has its own renewable session lifetime. If an outage exceeds that
+lifetime, the old registration remains offline after reconnect; inspect `agents()`
+and register again when the application is ready. Reconnect does not recreate
+expired presence or replay a lost registration mutation.
