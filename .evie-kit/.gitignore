@@ -1,0 +1,9 @@
+handoffs/
+settings.local.*
+credentials.ts*
+runs/
+conventions/*.local.md
+.migration-*.journal.json
+.migration-*.lock
+settings.ts.pending-*
+settings.*.migrated-*

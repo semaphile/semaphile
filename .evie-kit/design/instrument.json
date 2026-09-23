@@ -1,0 +1,142 @@
+{
+  "schema": 1,
+  "instrument": "impeccable",
+  "selected": "2026-09-19",
+  "release_commit": "73a6f51a540bc3938a2c40677d074c70b81fa5a0",
+  "upstream": "https://github.com/pbakaus/impeccable",
+  "cli": {
+    "package": "impeccable",
+    "version": "4.1.0",
+    "tag": "cli-v4.1.0",
+    "commit": "73a6f51a540bc3938a2c40677d074c70b81fa5a0",
+    "registry": "https://registry.npmjs.org",
+    "tarball_sha512": "hnfdoUK/Xg3qPtL0/5xzh92qKOtmREOZloCmFgnC1nYh3M81ihwCQEL2QWKntYl8qg1OG+jQ7wubR634PgTDIw==",
+    "launcher": {
+      "path": "cli/bin/cli.js",
+      "sha256": "6ba6a0e7871c0161984c1c0cbb3518efe126b53decf1a0ec546ed40099fbd2d3"
+    },
+    "node_floor": "22.18.0"
+  },
+  "engine": {
+    "version": "0.1.5",
+    "tag": "engine-v0.1.5",
+    "commit": "112703d5bf2469574758e0ddc5baf8e03c958f58",
+    "probe": "impeccable-engine 0.1.5",
+    "release_base": "https://github.com/pbakaus/impeccable/releases/download",
+    "platforms": {
+      "darwin-arm64": {
+        "asset": "impeccable-darwin-arm64",
+        "sha256": "0d48b6e16aa97664fdbe607d5da9ae320e389a1843e0ff1328f8c2530530320d",
+        "size": 12762240,
+        "npm_package": "@impeccable/cli-darwin-arm64",
+        "verified": "runtime"
+      },
+      "darwin-x64": {
+        "asset": "impeccable-darwin-x64",
+        "sha256": "153971b0c00719dff9ebac13370cb7dbbbe12838b696fbaf3f7ab0b1b3726b52",
+        "size": 14400568,
+        "npm_package": "@impeccable/cli-darwin-x64",
+        "verified": "metadata"
+      },
+      "linux-arm64": {
+        "asset": "impeccable-linux-arm64",
+        "sha256": "bc4fa28bc8ccbb018795a99a4ece95ada898a6f1885f14281389d0e6ef2a2f98",
+        "size": 13356720,
+        "npm_package": "@impeccable/cli-linux-arm64",
+        "verified": "metadata"
+      },
+      "linux-x64": {
+        "asset": "impeccable-linux-x64",
+        "sha256": "cf5231a4b1ae66996c85b033800b1dad0797e590eae2f21ef2579430af187f19",
+        "size": 16089424,
+        "npm_package": "@impeccable/cli-linux-x64",
+        "verified": "metadata"
+      },
+      "windows-x64": {
+        "asset": "impeccable-windows-x64.exe",
+        "sha256": "477e544fc8880a5e82e427490cb9a5f5adab480c0e02966d33fd50772b531c71",
+        "size": 14720392,
+        "npm_package": "@impeccable/cli-windows-x64",
+        "verified": "metadata"
+      }
+    }
+  },
+  "playbooks": {
+    "version": "4.3.0",
+    "tag": "skill-v4.3.0",
+    "commit": "73a6f51a540bc3938a2c40677d074c70b81fa5a0",
+    "bundle": {
+      "asset": "universal.zip",
+      "url": "https://github.com/pbakaus/impeccable/releases/download/skill-v4.3.0/universal.zip",
+      "sha256": "6c7710c11832710947425cf83233cdb64603796241f755e250a3b81fd6c012e5",
+      "size": 15619182,
+      "signature": {
+        "asset": "universal.zip.sig.json",
+        "schema": 1,
+        "key_id": "release-2026-09"
+      }
+    },
+    "root": ".claude/skills/impeccable",
+    "closure_sha256": "979b925779f444eea3212926e665edec883b0a7a7f2642a7ade554c0afcd2a6c",
+    "files": {
+      "SKILL.md": "d47c378022611e840d9e58530f41145e4a30bc46e20715b3fed8335808b733d2",
+      "reference/adapt.md": "ec58806f16fc7ba29bccef08f2e158cd00be077ce05d45e943a59bd26dc6dc55",
+      "reference/adapt.native.md": "17c583cf8ad41266ea1e787b666b9d91fe13469d3d0f6af57c08e0146f9b17ac",
+      "reference/android.md": "058f81f256134841875fd3183e06b37a023de0c877fd2b9eecd97011640791fe",
+      "reference/animate.md": "94b4ce6299fea93d9f256b2d25705961a76bc5ea940c56db4145686ebc99df1b",
+      "reference/audit.md": "57402ef6fd9d0745f8c60d778f77da83a8b16edf751fa1013598a0f6e5f0f541",
+      "reference/audit.native.md": "fe91fcf28638f95577af481a50edaf339d6c9a3ad3b9fa477bc81c116b8bc392",
+      "reference/bolder.md": "4879f38b23d0a251a63cbb0327e660296194cd2e71eb4da3236c6ebfe5807746",
+      "reference/clarify.md": "6c382f8283756e8a693d832b750f7e4cbff1ca5bdcc3825b2b4ef4da9f21876a",
+      "reference/colorize.md": "d1fbd55074abb2251bdaa03749d34acc42c38e46e47549f18f5848df57d43c42",
+      "reference/craft-floor.md": "96e2e6bd4fcf9a2c6da65fb029f96d9176308fae2efd9d8653d3b8d838960e07",
+      "reference/craft.md": "9205e222bc6565b37fb504ceec93233c2d2a456802b69d16e6b1c44723907c4c",
+      "reference/critique.md": "c9284892cb1f21aaeaf93fdf2e9e7a679d05e0baa8ddf309a79a9790d262ad38",
+      "reference/degraded/asset-producer.md": "ad389ab12800738b0e5c97618278b7a824654b25990166ec9f389caa5c3386ca",
+      "reference/degraded/documenter.md": "bcc05ea92faebb5c74037a9d4263a5ce9a56f5ab07c8ab3c59ee704d8cade745",
+      "reference/degraded/finish-reviewer.md": "5f24c5a97b4ffcabc7c432b064cfdd04c7a2ad52f52e765be648dc0aadab8f38",
+      "reference/degraded/manual-edit-applier.md": "5fae7f8a2fc3ddd49ad0a413446dc44daedef5b6b7de5eb935bd2fbfad646d58",
+      "reference/delight.md": "56500b1f9d2fcec8324d7f448d813048b5831a46d3feeb1055bd3eb17ec3660f",
+      "reference/distill.md": "b2f60e0154bf0e687badc46d8c8420e2118a9a6e21162050722be779dc02cb6d",
+      "reference/doctor.md": "d6a1fa1689642a6db9027493747d7ed54f9e0cae660472022c0a0a8dfdead3f4",
+      "reference/document.md": "87b3db688c7963898bda8096f7868fed05ec5a0a80d14298e8b906b70cdf9c42",
+      "reference/extract.md": "bfc51972fbf387566dc9e29c8b1af479a66ab401fdbce659fae9e6a5a9d85316",
+      "reference/harden.md": "8a1c872773996dfa1c1eb765ac7ed8e8d41f99d4f12f090b4725b694e85eaa62",
+      "reference/hooks.md": "f597742c8e5562263d3bce725cb55e920d8c2c60223f41a632d523ca30cdd12b",
+      "reference/init.md": "78c236dadb7e70337dc9dfa67e65fc15b7abed137ad320c16410ddfa7aec34f9",
+      "reference/ios.md": "40c87038b5f75147a5952a96237acf312a327bf70c1bcd8e0a5f064625ae9668",
+      "reference/layout.md": "64802d14087fc96b38ef3881fef8098b36068d07f3b942031637b18eef3dd2af",
+      "reference/live-setup.md": "6e7e3b7c4cf331cdb43f4546c164acd6c45a267ce3289dcfa87e13202d98c747",
+      "reference/live.md": "b4def5b57733b6ba233570bd5691a536901f8b15479fc0111a2cde56224d0e1a",
+      "reference/new-work.md": "df4f14df1daaad1606b682995f649da19a85debf264092447b3b7ddb8b4bc1ce",
+      "reference/onboard.md": "9a2c08ee2516d2ee87129e7ebe6a0895f9990c9852d1f6fa7e70be9a6a88a659",
+      "reference/operate.md": "a9d2203acd45ca33a13d5c68b02b23ed512425ac15f0e8438318ed124b43729d",
+      "reference/optimize.md": "6d368b679a0ed1815812815de65863b5840d419589dfbda06224c01149240287",
+      "reference/overdrive.md": "a9856cb40da6519b1334bcfc75a4fbe83bef39ca86ee6f3effcb2a96794c627c",
+      "reference/polish.md": "b8d49a3cab3428d9f351502e9c2c5802cef187e0d2af626ef3e1cd1837fd06bf",
+      "reference/quieter.md": "ee6d6d127c1c2ab3526d529a8e3698be2185b5e346ac617f37501de2c0698b97",
+      "reference/routing.md": "af34b8af89edb10e228c0482754423f48238fce816eceb8703b8781c130da54e",
+      "reference/shape.md": "a55f016c046cb6a27c55bd7f346375aeb506a755c4fbca19a5f92dbd42309c23",
+      "reference/typeset.md": "696c15f96d49a03091b71a408151a3297521f7a8231b98ca9b1103667a0b5f89",
+      "reference/visualize.md": "82a5e564563333aabb7ab4d2f8c26c785dfe2c2416ac6e9f30cba31440676194",
+      "scripts/VERSION": "800cf1c0392b24de7c0a1c6ea6778ecb433dec71c49a150bce96a98477527b2f",
+      "scripts/command-metadata.json": "6bdbc3f745ceee15e10b050f109ce42bbeb53ab3c3b5239257de1d596654dee7",
+      "scripts/data/font-index-failures.json": "835f19a0a3812f3652dd6979a2ce5597f654fd01f26e1b420b92d5f42b997ce4",
+      "scripts/data/font-index.json": "47edbdfaf27073c47033d1ac7dfee881be49e2dcbda7671d1157300481dde6da"
+    },
+    "excluded": [
+      "scripts/impeccable",
+      "scripts/impeccable.cmd",
+      "scripts/live-browser.js",
+      "scripts/live-browser-dom.js",
+      "scripts/live-browser-ignores.js",
+      "scripts/live-browser-session.js",
+      "scripts/modern-screenshot.umd.js",
+      "scripts/.impeccable/hook.cache.json"
+    ]
+  },
+  "provenance": {
+    "adapter": null,
+    "review_prompt": null
+  }
+}

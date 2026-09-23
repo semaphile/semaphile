@@ -14,3 +14,7 @@ releases/
 **/target/
 .scannerwork/
 .sonar/
+# evie-kit: credential stores and scratch stay untracked (EVA-156)
+!.scratch/
+.scratch/*
+!.scratch/.gitkeep

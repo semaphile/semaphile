@@ -1,0 +1,18 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "baseUrl": ".",
+    "paths": {
+      "@evie-kit/notion": ["../../../packages/notion/src/index.ts"],
+      "@evie-kit/notion/basic-memory": [
+        "../../../packages/notion/src/basic-memory/index.ts"
+      ],
+      "@evie-kit/research/*": ["../../../packages/research/src/*"]
+    }
+  },
+  "include": ["*.ts"]
+}

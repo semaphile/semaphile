@@ -1,0 +1,20 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 0,
+  "workspaces": {
+    "": {
+      "name": "semaphile-development",
+      "dependencies": {
+        "@evie-kit/cli": "link:@evie-kit/cli",
+      },
+      "devDependencies": {
+        "prettier": "3.9.6",
+      },
+    },
+  },
+  "packages": {
+    "@evie-kit/cli": ["@evie-kit/cli@link:@evie-kit/cli", { "bin": { "evie-kit": "./src/evie-kit.ts", "evie-agent": "./src/legacyBin.ts" } }],
+
+    "prettier": ["prettier@3.9.6", "", { "bin": "bin/prettier.cjs" }, "sha512-OpN0zzVdiaiAhxpuuj5efpIS4sY9j7bY6uR5mnj5yPzGkdkjNKSJeUThPb60Jw29QuAZgA4o+/iB49kFiaBX6g=="],
+  }
+}

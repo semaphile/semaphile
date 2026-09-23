@@ -1,0 +1,13 @@
+# Runtime pins for this project (written by `evie-kit setup`).
+#
+# mise walks up from the current directory, so this file governs the
+# repo AND every worktree under it — which is the point: the evie-kit
+# toolchain needs to control the runtime it is invoked on rather than
+# inherit whichever global install a machine happens to carry.
+#
+# `mise install` materializes these. `evie-kit onboard` refuses when
+# the bun that actually resolves here is older than the pin.
+
+[tools]
+bun = "1.4.2"
+"npm:impeccable" = "4.1.0"

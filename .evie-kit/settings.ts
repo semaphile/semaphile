@@ -41,10 +41,11 @@ export const settings = (ctx: SettingsContext) => ({
     // the goals skill reads these — never a hardcoded team. The ACTIVE
     // tracker is whichever tools.tracker.* sub-block is defined (both
     // defined errors at load).
-    // tracker: {               // exactly ONE sub-block — linear or github
-    //   linear: { team: "YOUR-TEAM-KEY", project: "Your Project Name" },
-    //   github: { repo: "owner/repo", keyPrefix: "gh" },  // repo default: the origin remote
-    // },
+    tracker: {
+      // GitHub issues on the project's own org (decided 2026-09-22);
+      // ambient `gh` auth carries the token, keys render SEM-<n>.
+      github: { repo: "semaphile/semaphile", keyPrefix: "SEM" },
+    },
   },
   // Draft-phase git policy (EVA-62): by default drafts stay LOCAL — plain
   // files in the draft worktree, nothing committed or pushed until
