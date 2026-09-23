@@ -31,6 +31,16 @@ export const settings = (ctx: SettingsContext) => ({
     ".envrc.local",
   ],
   tools: {
+    lint: Object.fromEntries(
+      ["packages/", "conformance/", "tools/"].map((root) => [
+        root,
+        {
+          linter: "command" as const,
+          command: ["packages/core/node_modules/.bin/oxlint"],
+          args: ["--config", ".oxlintrc.json", "--deny-warnings"],
+        },
+      ]),
+    ),
     // This project's own herdr session — never the ambient socket
     // (corrected 2026-09-22 after the first bootstrap landed seats in
     // another project's session).
