@@ -85,6 +85,8 @@ const open = async (extra = {}, store = randomUUID()) => {
 let passed = 0;
 const test = async (name, fn) => {
   await fn();
+  // Earlier cases must not create a reconnect storm during the next outage.
+  await Promise.all(clients.splice(0).map((client) => client.close()));
   passed++;
   console.log('PASS ' + name);
 };
