@@ -65,7 +65,7 @@ export abstract class MessagingSockets {
           finish();
           reject(
             error instanceof ErrorReply &&
-              /^(NOPERM|NOAUTH|WRONGPASS)\b|user executing the script can't run this command/.test(
+              /^(NOPERM|NOAUTH|WRONGPASS)\b|^ERR ACL failure in script:|user executing the script can't run this command/.test(
                 error.message,
               )
               ? new MessagingError('ACCESS', error.message)
