@@ -1,0 +1,11 @@
+# Codex host metadata for the `goal` skill (EVA-210 decision 12): the
+# portable Agent Skills core lives in ../SKILL.md; this file carries
+# only what Codex reads beside it.
+interface:
+  display_name: "Goal executor"
+  short_description: "Acknowledge, drive, pause, and lock an evie-kit goal as its executor"
+  default_prompt: "Read the evie-kit goal instruction file I was pointed at and follow it: acknowledge the arm identity first, then drive the goal to its green gates."
+policy:
+  allow_implicit_invocation: true
+dependencies:
+  tools: []

@@ -134,3 +134,29 @@ docs/blocking.md         per-platform blocking-lock mechanism
 .scratch/docs/PROGRESS.md         completion markers
 packages/, clients/, conformance/   implementations and tests
 ```
+
+<!-- evie-kit:codex-executor:begin -->
+
+## evie-kit goal sessions (managed block — do not edit by hand)
+
+If `.evie-kit/handoffs/launch-record.json` exists in this checkout and
+its `sessionId` names YOUR session (or its `runtime` is `codex` and no
+session id is recorded yet), you are an evie-kit GOAL EXECUTOR: load the
+`$goal` skill (`.agents/skills/goal/SKILL.md`) before doing anything
+else, and follow its acknowledgement step — run
+`bun node_modules/@evie-kit/cli/src/evie-kit.ts goals arm ack --file <the
+instruction file you were pointed at>` first. The skill also carries the
+pause protocol, the compaction chain, the lock sequence, and the git
+guard: a denied git command is the fence, not a bug — never merge or
+push a protected branch. If the record names a different session, you
+are a critic or an orchestrator in the same project; the executor rules
+above are not yours.
+
+Two supervising sessions exist here (ADR 0022): a PLANNER, which drafts and grills goals and never records itself, and ONE ORCHESTRATOR per project, which launches executors, receives lock reports and lands merges. Only when the user designates THIS session as the orchestrator, run `bun node_modules/@evie-kit/cli/src/evie-kit.ts goals bind orchestrator` once at the start of the session to record its seat — every goal it launches phones its lock report home to that seat. An orchestrator started with `goals spawn orchestrator` is recorded already and needs no bind. Load the `goals` skill for the lifecycle either way. On Codex the lifecycle's pickers render only in
+Default mode with the `default_mode_request_user_input` feature enabled
+(`evie-kit setup --codex-executor` sets it); an empty picker answer is
+silence, never consent.
+
+House prose style: write every piece of prose in this repository by `.evie-kit/conventions/writing-style.md` (the tracked house voice) plus its gitignored addendum `.evie-kit/conventions/writing-style.local.md`, which wins on contradiction; read both at every writing seam (drafting, review gates, tracker comments, handoffs). Lint tuning lives in settings, never in that pair.
+
+<!-- evie-kit:codex-executor:end -->

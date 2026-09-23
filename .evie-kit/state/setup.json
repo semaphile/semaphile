@@ -1,0 +1,61 @@
+{
+  "about": "Setup answer manifest: the recorded wizard decisions (never secrets) that keep `evie-kit setup` reruns silent. Machine-generated; never edit by hand. Explainer: `evie-kit docs upgrade-never-set-up`.",
+  "version": 1,
+  "answers": {
+    "runtimes": {
+      "value": [
+        "claude-code"
+      ],
+      "explicit": false
+    },
+    "skills": {
+      "value": [
+        "adhd",
+        "design",
+        "domain-modeling",
+        "gdocs",
+        "goals",
+        "grill-me",
+        "handoff",
+        "humanizer",
+        "notion",
+        "research"
+      ],
+      "explicit": false,
+      "catalog": [
+        "adhd",
+        "design",
+        "domain-modeling",
+        "gdocs",
+        "goals",
+        "grill-me",
+        "handoff",
+        "humanizer",
+        "notion",
+        "research"
+      ]
+    },
+    "copy": {
+      "value": false,
+      "explicit": false
+    },
+    "hooks": {
+      "value": true,
+      "explicit": false
+    },
+    "reviewTools": {
+      "value": {
+        "claude-code": true
+      },
+      "explicit": false
+    },
+    "tracker": {
+      "value": "github",
+      "explicit": false
+    },
+    "codexExecutor": {
+      "value": true,
+      "explicit": true
+    }
+  }
+}

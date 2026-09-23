@@ -5,106 +5,114 @@
     "hook-script:preflight": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "hooks": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "output-style:house-style.md": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "pointer": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:adhd": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:design": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:domain-modeling": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:gdocs": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
+    },
+    "skill:claude-code:goals": {
+      "wiring": "copy",
+      "epoch": 1,
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
+      "dirty": true,
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:grill-me": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:handoff": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:humanizer": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:notion": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     },
     "skill:claude-code:research": {
       "wiring": "copy",
       "epoch": 1,
-      "version": "2026.9.15",
-      "commit": "d814261d1711d6b8f7713f06ba1158b613a82312",
+      "version": "2026.9.16",
+      "commit": "0dce28ef631dc5d23333e75bd7a0aac83e59d1b6",
       "dirty": true,
-      "recorded": "2026-09-23T03:00:55.054Z"
+      "recorded": "2026-09-23T04:45:37.669Z"
     }
   }
 }

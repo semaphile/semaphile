@@ -18,3 +18,6 @@ releases/
 !.scratch/
 .scratch/*
 !.scratch/.gitkeep
+
+# evie-kit goal and draft worktrees (machine-local)
+.worktrees/
