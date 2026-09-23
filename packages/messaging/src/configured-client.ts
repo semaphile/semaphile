@@ -11,13 +11,13 @@ export async function openConfiguredMessaging(
     let backend: { openRedisMessaging: (options: unknown) => Promise<MessagingClient> };
     try {
       backend = (await import(moduleName)) as typeof backend;
-    } catch (cause) {
-      const error = new MessagingError(
+    } catch (error) {
+      const failure = new MessagingError(
         'CONFIG',
         'Install matching @semaphile/redis to use Redis messaging',
       );
-      error.cause = cause;
-      throw error;
+      failure.cause = error;
+      throw failure;
     }
     return backend.openRedisMessaging(options);
   }
