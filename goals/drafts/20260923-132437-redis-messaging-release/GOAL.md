@@ -2,6 +2,8 @@
 status: draft
 created: 2026-09-23T13:24:37-05:00
 type: chore
+import_issue: SEM-2
+import_issue_url: https://github.com/semaphile/semaphile/issues/2
 ---
 
 # Add Redis Messaging to the Release Line
