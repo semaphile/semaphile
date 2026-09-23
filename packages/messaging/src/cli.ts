@@ -2,7 +2,7 @@
 // Parse before opening workers; every command then shares signal and close cleanup.
 import { dirname, resolve, join } from 'node:path';
 import { poolCommand } from './pool-cli.js';
-import { openClient } from './client.js';
+import { openConfiguredMessaging } from './configured-client.js';
 import { findConfig, messagingOptions } from './settings.js';
 import { init, info, upgradeMessaging } from './admin.js';
 import { MessagingError } from './config.js';
@@ -58,6 +58,29 @@ async function main(): Promise<void> {
     return;
   }
   if (group === 'info') {
+    if (
+      ['redis-url-env', 'namespace', 'messaging-store', 'readiness'].some(
+        (key) => get(key) !== undefined,
+      )
+    ) {
+      const resolved = await messagingOptions({
+        store: get('store'),
+        redisUrlEnv: get('redis-url-env'),
+        namespace: get('namespace'),
+        messagingStore: get('messaging-store'),
+        readiness: get('readiness') as 'warn' | 'strict' | undefined,
+      });
+      if (resolved.open.backend !== 'redis') {
+        throw new MessagingError('INPUT', 'Redis selector required');
+      }
+      const client = await openConfiguredMessaging({ ...resolved.open, inspect: true });
+      try {
+        output(await client.info());
+      } finally {
+        await client.close();
+      }
+      return;
+    }
     output(await info({ store: get('store') }));
     return;
   }
@@ -69,8 +92,18 @@ async function main(): Promise<void> {
   if (mismatch !== undefined && mismatch !== 'warn' && mismatch !== 'error') {
     throw new MessagingError('INPUT', 'Invalid --config-mismatch');
   }
-  const resolved = await messagingOptions({ store: get('store'), configMismatch: mismatch });
+  const resolved = await messagingOptions({
+    store: get('store'),
+    configMismatch: mismatch,
+    redisUrlEnv: get('redis-url-env'),
+    namespace: get('namespace'),
+    messagingStore: get('messaging-store'),
+    readiness: get('readiness') as 'warn' | 'strict' | undefined,
+  });
   if (action === 'upgrade') {
+    if (resolved.open.backend === 'redis') {
+      throw new MessagingError('INPUT', 'Offline upgrade applies only to SQLite');
+    }
     output(await upgradeMessaging({ path: resolved.open.path }));
     return;
   }
@@ -86,7 +119,7 @@ async function main(): Promise<void> {
   const telemetryProject = resolved.project;
   const sdk = await commandTelemetry(args, telemetryProject);
   const run = async () => {
-    const client = await openClient({
+    const client = await openConfiguredMessaging({
       ...resolved.open,
       telemetry: sdk
         ? {

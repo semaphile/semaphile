@@ -1,3 +1,4 @@
+import { TOPICS_SCHEMA } from './topics-schema.js';
 // Administrative inspection takes the existing gate but never creates schemas,
 // participants or leases. SQLite may recover a hot journal after a writer crash.
 import { parentPort, workerData } from 'node:worker_threads';
@@ -26,6 +27,7 @@ try {
           ![
             'semaphile-messaging/1.0',
             'semaphile-messaging/1.1',
+            'semaphile-messaging/1.2',
             'semaphile-sqlite-poc/1.4',
           ].includes(String(row.format))
         ) {
@@ -45,15 +47,18 @@ try {
               throw new Error('Stop registered clients before offline upgrade');
             }
           }
-          if (row.format === 'semaphile-messaging/1.0') {
+          if (row.format !== 'semaphile-messaging/1.2') {
             db.exec('PRAGMA synchronous=FULL; BEGIN IMMEDIATE;');
             try {
-              db.exec('ALTER TABLE messages ADD COLUMN trace TEXT;');
+              if (row.format === 'semaphile-messaging/1.0') {
+                db.exec('ALTER TABLE messages ADD COLUMN trace TEXT;');
+              }
+              db.exec(TOPICS_SCHEMA);
               db.prepare('UPDATE config SET format=? WHERE singleton=1').run(
-                'semaphile-messaging/1.1',
+                'semaphile-messaging/1.2',
               );
               db.exec('COMMIT');
-              row.format = 'semaphile-messaging/1.1';
+              row.format = 'semaphile-messaging/1.2';
             } catch (error) {
               if (db.isTransaction) {
                 db.exec('ROLLBACK');

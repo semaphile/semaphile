@@ -5,6 +5,17 @@ released together. Before 1.0, minor releases may include breaking changes;
 patch releases contain compatible fixes. Earlier CalVer snapshots were private
 pilot artifacts, not published GitHub releases.
 
+## [0.3.0] - Unreleased messaging candidate
+
+- Add native-free Redis messaging with bounded reconnect, uncertain mutation
+  outcomes, confirmed claim deadlines, and persistence readiness checks.
+- Add durable topic subscriptions on SQLite and Redis, native-free agent payload
+  validators, and explicit Redis CLI/config selectors.
+- Advance SQLite messaging to format 1.2 through an explicit offline upgrade;
+  limiter formats remain unchanged. Ordinary opens never migrate.
+- Require matching 0.3.0 Semaphile peers. HTTP/MCP proxy packages are excluded.
+  This candidate is distinct from the historical unpublished proxy checkpoints.
+
 ## [0.2.0] - 2026-09-13
 
 ### Added

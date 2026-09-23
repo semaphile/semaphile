@@ -7,9 +7,13 @@ export const help = `Usage: semaphile init [--directory PATH]
        semaphile pool <status|drain|wait|acknowledge|resume> [--name NAME | --store PATH]
        semaphile message <command> [--store PATH] [options]
 Commands: create, register, agents, send, receive, wait, listen, ack, release,
-          renew, retry, history, events, append, upgrade
+          renew, retry, history, events, append, upgrade, subscribe, subscriptions,
+          unsubscribe, publish
 Addressing: --name NAME (create/register), --to NAME|* (send), --as NAME (receive/listen)
-Payload: --body TEXT | --body-file FILE; --dedupe-key KEY; --correlation ID
+Topics: subscribe --name NAME --topics TOPIC[,TOPIC] [--inactivity-ttl MS]
+        publish --topic TOPIC; receive/wait/listen --subscription NAME
+Redis messages: --redis-url-env VAR --namespace NAME --messaging-store NAME
+Payload: --body TEXT | --body-file FILE (- reads stdin); --dedupe-key KEY; --correlation ID
 Claims: --receipt-file FILE or --delivery-id ID --claim-id ID
 Handlers: listen --as NAME -- EXECUTABLE [ARG ...]
 Telemetry: --otel | --no-otel (optional @semaphile/otel addon)
@@ -22,6 +26,11 @@ All successful results are JSON. Exit 2=timeout, 3=cancelled, 4=store/config,
 5=protocol/input refusal. --store overrides nearest semaphile.json discovery.`;
 const stringOptions = [
   'store',
+  'messaging-store',
+  'readiness',
+  'subscription',
+  'topics',
+  'inactivity-ttl',
   'pool',
   'pool-config',
   'redis-url-env',
@@ -104,6 +113,10 @@ export function validateAction(action: string, { get }: Arguments): void {
   if (
     ![
       'upgrade',
+      'subscribe',
+      'subscriptions',
+      'unsubscribe',
+      'publish',
       'create',
       'agents',
       'register',
@@ -126,8 +139,18 @@ export function validateAction(action: string, { get }: Arguments): void {
     action === 'events' &&
     stringOptions.some(
       (key) =>
-        !['store', 'config-mismatch', 'after', 'limit', 'topic', 'since'].includes(key) &&
-        get(key) !== undefined,
+        ![
+          'store',
+          'redis-url-env',
+          'namespace',
+          'messaging-store',
+          'readiness',
+          'config-mismatch',
+          'after',
+          'limit',
+          'topic',
+          'since',
+        ].includes(key) && get(key) !== undefined,
     )
   ) {
     throw new MessagingError(

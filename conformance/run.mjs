@@ -40,6 +40,13 @@ const suites = {
     'backend-regression',
   ],
   redis: [
+    'messaging-acl',
+    'messaging',
+    'messaging-topics',
+    'messaging-faults',
+    'messaging-cli',
+    'messaging-otel',
+    'messaging-package',
     'backend-order',
     'primitive',
     'recovery',
@@ -52,6 +59,9 @@ const suites = {
   ],
   administration: ['pool-cli'],
   messaging: [
+    'shared-client',
+    'agent-messages',
+    'topics',
     'upgrade',
     'trace-store',
     'telemetry',

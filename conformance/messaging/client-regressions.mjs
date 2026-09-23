@@ -32,6 +32,15 @@ async function scenario(label, config, fn) {
     await c.close();
   }
 }
+await scenario(
+  'history rejects non-object options rather than broadening the query',
+  {},
+  async (c) => {
+    for (const options of [null, [], 0, false]) {
+      await assert.rejects(c.history(options));
+    }
+  },
+);
 await scenario('invalid handler fails before claiming or consuming an attempt', {}, async (c) => {
   await c.send({ to: 'a', body: 'protected' });
   assert.throws(

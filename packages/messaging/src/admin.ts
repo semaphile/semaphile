@@ -1,8 +1,8 @@
 import { Worker } from 'node:worker_threads';
 import { writeFile, mkdir, access } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { openClient } from './client.js';
-import { loadConfig, normalizePoolConfig } from './settings.js';
+import { openConfiguredMessaging } from './configured-client.js';
+import { loadConfig, messagingOptions, normalizePoolConfig } from './settings.js';
 import type { ProjectConfig } from './settings.js';
 import { MessagingError, normalize } from './config.js';
 export interface StoreInfo {
@@ -59,11 +59,8 @@ export async function init(
     throw new MessagingError('CONFIG_MISMATCH', 'Existing config selects a different directory');
   }
   if (project.value.messaging) {
-    const client = await openClient({
-      path: project.messagingPath,
-      config: project.value.messaging.config,
-      configMismatch: 'error',
-    });
+    const resolved = await messagingOptions({ cwd, configMismatch: 'error' });
+    const client = await openConfiguredMessaging(resolved.open);
     await client.close();
   }
   if (Object.keys(project.value.pools ?? {}).length) {
@@ -112,7 +109,7 @@ export async function info(
   }
   const project = await loadConfig(options.cwd);
   const stores: { name: string; path: string; expected: unknown }[] = [];
-  if (project.value.messaging) {
+  if (project.value.messaging && project.value.messaging.backend !== 'redis') {
     stores.push({
       name: 'messaging',
       path: project.messagingPath,
@@ -127,6 +124,25 @@ export async function info(
     });
   }
   const result = [];
+  if (project.value.messaging?.backend === 'redis') {
+    const resolved = await messagingOptions({ cwd: options.cwd });
+    if (resolved.open.backend === 'redis') {
+      const client = await openConfiguredMessaging({ ...resolved.open, inspect: true });
+      try {
+        result.push({
+          name: 'messaging',
+          backend: 'redis',
+          namespace: resolved.open.namespace,
+          store: resolved.open.store,
+          expected: normalize(project.value.messaging.config),
+          differences: client.differences,
+          ...((await client.info()) as object),
+        });
+      } finally {
+        await client.close();
+      }
+    }
+  }
   for (const store of stores) {
     try {
       await access(join(store.path, 'state.sqlite'));

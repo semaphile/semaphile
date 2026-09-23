@@ -1,3 +1,4 @@
+import { requireSubscription } from './topics.js';
 // Claim transitions are conditional on the current attempt, never merely on
 // message identity. The coordinator holds the store gate throughout each call.
 import { randomUUID } from 'node:crypto';
@@ -167,6 +168,13 @@ export function claim(
   text(receipt.claimId, 'claimId');
   const row = rowFor(store, receipt.deliveryId),
     now = Date.now();
+  if (row?.state === 'claimed') {
+    try {
+      requireSubscription(store, row.recipient);
+    } catch {
+      return { status: 'stale' };
+    }
+  }
   if (
     (action === 'ack' || action === 'renew') &&
     row?.state === 'acked' &&

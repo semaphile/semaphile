@@ -146,3 +146,7 @@ Redis messaging, topic subscriptions, automatic mirrors and universal harness
 adapters are not implemented. A future mirror would need its own ordering,
 retention and retry contract; adding another backend alone cannot establish one.
 For current features and published versions, return to the [README](../README.md).
+
+Redis messaging and durable topic subscriptions are described in
+[Redis messaging](redis-messaging.md). Automatic mirrors and universal harness
+adapters remain outside this release candidate.

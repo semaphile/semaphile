@@ -1,6 +1,6 @@
 {
   "name": "@semaphile/redis",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -13,6 +13,10 @@
     "./observation": {
       "types": "./dist/observation.d.ts",
       "import": "./dist/observation.js"
+    },
+    "./messaging": {
+      "types": "./dist/messaging.d.ts",
+      "import": "./dist/messaging.js"
     }
   },
   "files": [
@@ -32,10 +36,12 @@
     "typescript": "5.9.3",
     "oxlint": "1.82.0",
     "oxlint-tsgolint": "7.0.2001",
-    "@semaphile/core": "file:../core"
+    "@semaphile/core": "file:../core",
+    "@semaphile/messaging": "file:../messaging"
   },
   "peerDependencies": {
-    "@semaphile/core": "0.2.0"
+    "@semaphile/core": "0.3.0",
+    "@semaphile/messaging": "0.3.0"
   },
   "license": "MIT",
   "description": "Redis-backed shared rate limiting for agents across processes and machines.",
@@ -57,5 +63,13 @@
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
+  },
+  "peerDependenciesMeta": {
+    "@semaphile/messaging": {
+      "optional": true
+    },
+    "@semaphile/core": {
+      "optional": true
+    }
   }
 }

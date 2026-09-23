@@ -15,5 +15,25 @@
     "typescript/no-floating-promises": "error",
     "typescript/no-misused-promises": "error",
     "curly": ["error", "all"]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["conformance/typescript/consumer.ts"],
+      "rules": {
+        "no-unused-vars": "off",
+        "no-unused-expressions": "off",
+        "typescript/consistent-type-imports": "off",
+        "unicorn/no-thenable": "off"
+      }
+    },
+    {
+      "files": [
+        "conformance/typescript/fixtures/backend.ts",
+        "conformance/typescript/fixtures/participant.ts"
+      ],
+      "rules": {
+        "typescript/no-explicit-any": "off"
+      }
+    }
+  ]
 }

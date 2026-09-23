@@ -1,7 +1,7 @@
 import { markMessageFailure, markMessageCancelled } from './telemetry.js';
 import { listenerDefaults } from './validation.js';
 import { MessagingError, integer, mode } from './config.js';
-import type { MessagingClient } from './client.js';
+import type { MessagingClient } from './shared-client.js';
 import type { Delivery, Handler, ListenerOptions, ClaimResult } from './types.js';
 /** Owns local handlers, not the durable queue. Closing never drains a mailbox. */
 export class MessageListener {
@@ -124,7 +124,7 @@ export class MessageListener {
       await this.client.release(delivery.receipt);
       return;
     }
-    if (Date.now() >= delivery.claimExpiresAt) {
+    if (this.client.remaining(delivery, delivery.claimExpiresAt) <= 0) {
       markMessageFailure();
       this.report(new MessagingError('STALE', 'Claim expired before handler dispatch'), delivery);
       return;
@@ -139,6 +139,7 @@ export class MessageListener {
       settled = false,
       lost = false;
     let expiresAt = delivery.claimExpiresAt;
+    let expirySource: Delivery | ClaimResult = delivery;
     const lose = (error: unknown) => {
       if (lost || settled) {
         return;
@@ -155,7 +156,7 @@ export class MessageListener {
       if (finished || settled || lost) {
         return;
       }
-      const remaining = expiresAt - Date.now();
+      const remaining = this.client.remaining(expirySource, expiresAt);
       if (remaining <= 0) {
         lose(new MessagingError('STALE', 'Handler claim expired'));
         return;
@@ -174,7 +175,7 @@ export class MessageListener {
               if (finished || settled || lost) {
                 return;
               }
-              if (Date.now() >= delivery.handlingExpiresAt) {
+              if (this.client.remaining(delivery, delivery.handlingExpiresAt) <= 0) {
                 lose(new MessagingError('STALE', 'Maximum handling duration reached'));
                 return;
               }
@@ -194,9 +195,19 @@ export class MessageListener {
                 return;
               }
               expiresAt = result.expiresAt!;
+              expirySource = result;
               schedule();
             } catch (error) {
-              lose(error);
+              if (
+                error instanceof MessagingError &&
+                ['UNCERTAIN', 'UNAVAILABLE', 'TIMEOUT', 'QUEUE_FULL'].includes(error.code)
+              ) {
+                // Transport loss cannot extend or shorten confirmed ownership.
+                // Retry renewal on its computed timer; the original watchdog stays authoritative.
+                schedule();
+              } else {
+                lose(error);
+              }
             }
           })();
         },

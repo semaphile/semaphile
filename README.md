@@ -138,15 +138,15 @@ broadcasts, stdin input, receipts, retention, and delivery semantics.
 
 ## Choose where coordination lives
 
-| Backend | Coordinates                          | Requires                                    | Messaging                          |
-| ------- | ------------------------------------ | ------------------------------------------- | ---------------------------------- |
-| Memory  | Callers in one JavaScript runtime    | A shared pool key; no native addon          | No                                 |
-| SQLite  | Independent processes on one machine | The same local store path; no broker        | Yes, in a separate messaging store |
-| Redis   | Processes on different machines      | The same Redis endpoint, namespace and pool | Not yet                            |
+| Backend | Coordinates                          | Requires                                    | Messaging                               |
+| ------- | ------------------------------------ | ------------------------------------------- | --------------------------------------- |
+| Memory  | Callers in one JavaScript runtime    | A shared pool key; no native addon          | No                                      |
+| SQLite  | Independent processes on one machine | The same local store path; no broker        | Yes, in a separate messaging store      |
+| Redis   | Processes on different machines      | The same Redis endpoint, namespace and pool | Yes, in the unreleased source increment |
 
 Use `@semaphile/core/memory` for memory pools and `@semaphile/redis` for Redis.
 Install only what you need; messaging works independently of the limiter.
-[Redis setup](packages/redis/README.md) · [Memory and SQLite API](packages/core/README.md)
+[Redis setup](packages/redis/README.md) · [Redis messaging and topics](docs/redis-messaging.md) · [Memory and SQLite API](packages/core/README.md)
 
 ## The hard parts Semaphile handles
 

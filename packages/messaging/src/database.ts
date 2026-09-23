@@ -10,7 +10,8 @@ import type { Native, NativeContext, NativeFile } from './native.js';
 import { contentBytes, trimEvents } from './storage.js';
 import { differences, MessagingError, normalize } from './config.js';
 import type { Difference, StoreConfig } from './types.js';
-export const FORMAT = 'semaphile-messaging/1.1';
+import { TOPICS_SCHEMA } from './topics-schema.js';
+export const FORMAT = 'semaphile-messaging/1.2';
 export class Database {
   native: NativeContext = new (
     createRequire(import.meta.url)(nativePath()) as Native
@@ -71,6 +72,7 @@ export class Database {
             CREATE INDEX message_deliveries ON deliveries(message_seq);
             CREATE TABLE events(seq INTEGER PRIMARY KEY AUTOINCREMENT,at INTEGER NOT NULL,kind TEXT NOT NULL,agent TEXT,subject TEXT,topic TEXT,payload TEXT);
           `);
+            this.db.exec(TOPICS_SCHEMA);
             this.db
               .prepare('INSERT INTO config VALUES(1,?,?)')
               .run(FORMAT, JSON.stringify(expected));

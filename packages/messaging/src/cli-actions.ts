@@ -1,6 +1,16 @@
 import { validateTrace } from './trace.js';
 import type { Receipt } from './types.js';
 import { readFile } from 'node:fs/promises';
+async function readInput(file: string): Promise<string> {
+  if (file !== '-') {
+    return readFile(file, 'utf8');
+  }
+  const chunks: Buffer[] = [];
+  for await (const chunk of process.stdin) {
+    chunks.push(Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString('utf8');
+}
 import type { MessagingClient } from './client.js';
 import type { messagingOptions } from './settings.js';
 import { MessagingError, mode, text } from './config.js';
@@ -29,8 +39,8 @@ async function sendMessage(context: Context): Promise<void> {
     throw new MessagingError('INPUT', 'Supply exactly one of --body and --body-file');
   }
   const message: SendOptions = {
-    to: required('to'),
-    body: get('body') ?? (await readFile(required('body-file'), 'utf8')),
+    to: context.action === 'publish' ? '*' : required('to'),
+    body: get('body') ?? (await readInput(required('body-file'))),
     sender: get('sender'),
     dedupeKey: get('dedupe-key'),
     correlationId: get('correlation'),
@@ -40,7 +50,11 @@ async function sendMessage(context: Context): Promise<void> {
     expiresInMs: numeric('expires-in'),
     ackMode: get('ack-mode') ? mode(get('ack-mode')) : undefined,
   };
-  output(await client.send(message));
+  output(
+    context.action === 'publish'
+      ? await client.publish({ ...message, topic: required('topic') })
+      : await client.send(message),
+  );
 }
 async function settleClaim(context: Context, action: 'ack' | 'release' | 'renew'): Promise<void> {
   const {
@@ -52,7 +66,7 @@ async function settleClaim(context: Context, action: 'ack' | 'release' | 'renew'
   if (get('receipt-file') === undefined) {
     raw = { deliveryId: required('delivery-id'), claimId: required('claim-id') };
   } else {
-    const contents = await readFile(required('receipt-file'), 'utf8');
+    const contents = await readInput(required('receipt-file'));
     try {
       raw = JSON.parse(contents);
     } catch {
@@ -98,11 +112,34 @@ export async function execute(context: Context): Promise<void> {
     case 'register':
       await register(context);
       break;
+    case 'publish':
     case 'send':
       await sendMessage(context);
       break;
+    case 'subscribe': {
+      const sub = await client.subscribe(required('name'), {
+        topics: required('topics').split(','),
+        inactivityTtlMs: numeric('inactivity-ttl'),
+      });
+      output(sub.info);
+      break;
+    }
+    case 'subscriptions':
+      output(await client.subscriptions());
+      break;
+    case 'unsubscribe':
+      await (await client.subscription(required('name'))).remove();
+      output({ removed: required('name') });
+      break;
     case 'receive':
-      output(await client.receive(required('as'), receiveOptions));
+      if (get('subscription') && get('as')) {
+        throw new MessagingError('INPUT', 'Choose --as or --subscription');
+      }
+      output(
+        get('subscription')
+          ? await (await client.subscription(get('subscription')!)).receive(receiveOptions)
+          : await client.receive(required('as'), receiveOptions),
+      );
       break;
     case 'wait':
       await waitForMessage(context);

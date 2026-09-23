@@ -4,6 +4,26 @@ Semaphile 0.2.0 is an experimental MIT-licensed release. All four packages share
 one version and use exact matching Semaphile peer versions. See the
 [changelog](../CHANGELOG.md) for features and compatibility boundaries.
 
+## Messaging-only 0.3.0 candidate
+
+The current source prepares four matching 0.3.0 packages with Redis messaging
+and durable topics. It is not published by this goal. HTTP/MCP proxies remain
+excluded. Existing checkpoint/0.3.0 and checkpoint/0.4.0 refs and archives retain
+their historical proxy identities and must not be overwritten.
+
+Candidate archives live in the primary checkout under
+`releases/candidates/redis-messaging/0.3.0/<source>/`, with their tested source,
+SHA-256 hashes, and native manifests. Build both targets from that source,
+collect them, then pack once and test the same four archives on both hosts under
+Node and Bun. Never substitute a repacked archive without new verification.
+
+After landing, the orchestrator/owner compares the merged source to the tested
+candidate, establishes final release identity, and reruns affected source and
+exact-archive checks if either source or bytes changed. Candidate evidence alone
+does not establish final publication readiness. Publication remains an owner
+action. See [deployment and upgrade guidance](redis-messaging.md) for the
+single-OS-account verification boundary and the explicit SQLite 1.2 upgrade.
+
 ## Install from npm
 
 All four `0.2.0` packages are public on npm:

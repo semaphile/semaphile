@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { mkdir, mkdtemp, writeFile, readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
-import { openMessaging, commandHandler } from '../../packages/messaging/dist/src/index.js';
+import {
+  openMessaging as openLocalMessaging,
+  commandHandler,
+} from '../../packages/messaging/dist/src/index.js';
 import { createMessagingInstrumentation } from '../../packages/otel/dist/messaging.js';
 const require = createRequire(new URL('../../packages/otel/package.json', import.meta.url));
 const { context, trace, propagation, SpanStatusCode } = require('@opentelemetry/api');
@@ -21,6 +24,23 @@ const telemetry = {
   baggageAllowlist: ['tenant'],
   instrumentation: createMessagingInstrumentation({ tracer, baggageAllowlist: ['tenant'] }),
 };
+const remote = process.argv.includes('--redis');
+let redis;
+let openMessaging = openLocalMessaging;
+if (remote) {
+  const { server } = await import('../redis/harness.mjs');
+  redis = await server();
+  const { openRedisMessaging } = await import('../../packages/redis/dist/messaging.js');
+  openMessaging = (options) =>
+    openRedisMessaging({
+      url: redis.url,
+      namespace: 'otel',
+      store: root,
+      config: options.config,
+      telemetry: options.telemetry,
+      onReadinessWarning: () => {},
+    });
+}
 const client = await openMessaging({
   path: join(root, 'store'),
   config: { retryDelayMs: 1 },
@@ -156,6 +176,18 @@ try {
 } finally {
   await listener?.close({ cancel: true });
   await client.close();
+  await redis?.close();
   await provider.shutdown();
 }
-console.log('RESULT 3/3 passed');
+
+const { MessageTelemetry } = await import('../../packages/messaging/dist/src/telemetry.js');
+const invalidDiagnostics = [];
+const invalid = new MessageTelemetry({
+  baggageAllowlist: ['x'.repeat(129)],
+  onDiagnostic: (event) => invalidDiagnostics.push(event.kind),
+});
+assert.deepEqual(invalid.baggageAllowlist, []);
+assert.deepEqual(invalidDiagnostics, ['trace-dropped']);
+console.log('PASS invalid baggage allowlist emits a payload-free diagnostic');
+
+console.log('RESULT 4/4 passed');

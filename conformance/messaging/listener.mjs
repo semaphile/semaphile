@@ -53,11 +53,15 @@ await scenario('renewal preserves claim beyond original deadline', async (c) => 
   });
   await c.send({ to: 'a', body: 'x' });
   await handled.promise;
-  await pause(400);
-  assert.deepEqual(await c.receive('a'), []);
-  assert.equal((await c.renew(receipt)).status, 'renewed');
-  finish.resolve();
-  await listener.close();
+  try {
+    await pause(400);
+    assert.deepEqual(await c.receive('a'), []);
+    assert.equal((await c.renew(receipt)).status, 'renewed');
+  } finally {
+    // A failed assertion must not strand the handler and hide the failure in close.
+    finish.resolve();
+    await listener.close();
+  }
   assert.equal((await c.history())[0].deliveries[0].state, 'acked');
 });
 await scenario('manual acknowledgment may follow handler return', async (c) => {

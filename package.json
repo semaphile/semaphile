@@ -6,7 +6,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check:docs": "node tools/check-docs.mjs",
-    "build": "npm run --prefix packages/core build && npm run --prefix packages/redis build && npm run --prefix packages/otel build && npm run --prefix packages/messaging build",
+    "build": "npm run --prefix packages/core build && npm run --prefix packages/messaging build && npm run --prefix packages/redis build && npm run --prefix packages/otel build",
     "lint": "npm run --prefix packages/core lint && npm run --prefix packages/redis lint && packages/core/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings tools/*.mjs conformance/run.mjs conformance/typescript/fixtures/*.mjs && npm run --prefix packages/messaging lint && packages/messaging/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings conformance/messaging/*.mjs && npm run --prefix packages/otel lint && packages/core/node_modules/.bin/oxlint --config .oxlintrc.json --deny-warnings conformance/otel/*.mjs && bun node_modules/@evie-kit/cli/src/evie-kit.ts lint run",
     "lint:types": "npm run --prefix packages/core lint:types && npm run --prefix packages/redis lint:types && npm run --prefix packages/messaging lint:types && npm run --prefix packages/otel lint:types",
     "typecheck": "npm run --prefix packages/core typecheck && npm run --prefix packages/redis typecheck && npm run --prefix packages/messaging typecheck && npm run --prefix packages/otel typecheck",
