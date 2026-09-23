@@ -1,3 +1,4 @@
+import { appendInput, subscriptionInput, claimInput } from './messaging-input.js';
 // Adapt atomic Redis operations to the shared listener/telemetry lifecycle.
 import { EventEmitter } from 'node:events';
 import { createHash, randomUUID } from 'node:crypto';
@@ -9,23 +10,18 @@ import {
   historyOptions,
   name,
   text,
-  mode,
-  integer,
 } from '@semaphile/messaging/client';
 import type {
   MessagingCommand,
   StoreConfig,
   SendOptions,
-  Delivery,
-  ReceiveOptions,
-  Receipt,
   ClaimResult,
 } from '@semaphile/messaging/client';
-import type { MessagingConnection } from './messaging-connection.js';
-import { type MessagingWireReply } from './messaging-connection.js';
+import type { MessagingConnection, MessagingWireReply } from './messaging-connection.js';
+import { MessagingReceiver } from './messaging-receiver.js';
 type Args = Record<string, unknown>;
-const aborted = () => new MessagingError('ABORTED', 'Wait cancelled');
 export class RedisMessagingTransport extends EventEmitter {
+  private readonly receiver: MessagingReceiver;
   private readonly controllers = new Map<number, AbortController>();
   private readonly pending = new Set<Promise<void>>();
   private readonly owners = new Set<string>();
@@ -37,6 +33,12 @@ export class RedisMessagingTransport extends EventEmitter {
     private readonly config: StoreConfig,
   ) {
     super();
+    this.receiver = new MessagingReceiver(
+      connection,
+      config,
+      () => this.closing,
+      (deadline, pressure, signal) => this.sweep(deadline, pressure, signal),
+    );
     // Keep the transport alive for close cleanup after a terminal store failure.
     connection.onFatal = () => {};
   }
@@ -117,120 +119,13 @@ export class RedisMessagingTransport extends EventEmitter {
       }
     }
   }
-  private receiveOptions(value: unknown): ReceiveOptions {
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      throw new MessagingError('INPUT', 'Invalid receive options');
-    }
-    const o = value as ReceiveOptions;
-    const result: ReceiveOptions = {
-      max: integer(o.max ?? 1, 'max', 1, 1000),
-      claimTtlMs: integer(o.claimTtlMs ?? this.config.claimTtlMs, 'claimTtlMs'),
-      maxHandlingMs: integer(o.maxHandlingMs ?? this.config.maxHandlingMs, 'maxHandlingMs'),
-      ackMode: mode(o.ackMode ?? 'manual'),
-    };
-    const modes = o.acceptedAckModes ?? [result.ackMode!];
-    if (!Array.isArray(modes) || !modes.length) {
-      throw new MessagingError('INPUT', 'acceptedAckModes cannot be empty');
-    }
-    result.acceptedAckModes = modes.map(mode);
-    return result;
-  }
-  private async receive(
-    recipient: string,
-    options: ReceiveOptions,
-    deadline: number,
-    signal?: AbortSignal,
-  ) {
-    try {
-      await this.sweep(deadline, false, signal);
-    } catch (error) {
-      // Cleanup never grants a delivery. Cancellation here is still definitive.
-      if (signal?.aborted) {
-        throw aborted();
-      }
-      if (!(error instanceof MessagingError) || error.code !== 'UNCERTAIN') {
-        throw error;
-      }
-      // No claim was dispatched. Queue the first claim behind reconnection;
-      // do not replay the uncertain cleanup command.
-    }
-    return this.connection.request<{ deliveries: Delivery[]; deadline: number | null }>(
-      'receive',
-      { recipient, options, claimId: randomUUID() },
-      deadline,
-      false,
-      signal,
-    );
-  }
-  private async wait(
-    args: Args,
-    signal: AbortSignal,
-  ): Promise<MessagingWireReply<Delivery | null>> {
-    const recipient = name(args.recipient),
-      options = this.receiveOptions(args.options ?? {});
-    options.max = 1;
-    const timeout =
-      args.timeoutMs === undefined ? undefined : integer(args.timeoutMs, 'timeoutMs', 0);
-    const deadline =
-      timeout === undefined
-        ? Infinity
-        : performance.now() + (timeout === 0 ? 0 : Math.max(0, Number(args.deadline) - Date.now()));
-    let first = true;
-    for (;;) {
-      if (signal.aborted || this.closing) {
-        throw aborted();
-      }
-      if (!first && performance.now() >= deadline) {
-        return { value: null, now: 0, sent: 0, received: 0 };
-      }
-      first = false;
-      const version = this.connection.version;
-      const opDeadline =
-        timeout === 0
-          ? undefined
-          : Math.min(deadline, performance.now() + this.connection.options.operationTimeoutMs);
-      let reply: MessagingWireReply<{ deliveries: Delivery[]; deadline: number | null }>;
-      try {
-        reply = await this.receive(
-          recipient,
-          options,
-          opDeadline ?? performance.now() + this.connection.options.operationTimeoutMs,
-          signal,
-        );
-      } catch (error) {
-        if (
-          error instanceof MessagingError &&
-          error.code === 'TIMEOUT' &&
-          opDeadline === deadline
-        ) {
-          return { value: null, now: 0, sent: 0, received: 0 };
-        }
-        throw error;
-      }
-      const delivery = reply.value.deliveries[0];
-      // A raced grant is returned even when cancelled: shared-client releases it.
-      if (delivery) {
-        return { ...reply, value: delivery };
-      }
-      if (timeout === 0 || performance.now() >= deadline) {
-        return { ...reply, value: null };
-      }
-      const due =
-        reply.value.deadline === null ? Infinity : reply.sent + reply.value.deadline - reply.now;
-      await this.connection.wait(
-        version,
-        Number.isFinite(Math.min(deadline, due)) ? Math.min(deadline, due) : undefined,
-        signal,
-      );
-    }
-  }
   private async execute(
     action: string,
     args: Args,
     signal: AbortSignal,
   ): Promise<MessagingWireReply> {
     if (action === 'wait') {
-      return this.wait(args, signal);
+      return this.receiver.wait(args, signal);
     }
     const deadline = Math.min(
       performance.now() + this.connection.options.operationTimeoutMs,
@@ -254,9 +149,9 @@ export class RedisMessagingTransport extends EventEmitter {
         return this.admit(action, input, deadline);
       }
       case 'receive': {
-        const reply = await this.receive(
+        const reply = await this.receiver.receive(
           name(args.recipient),
-          this.receiveOptions(args.options ?? {}),
+          this.receiver.receiveOptions(args.options ?? {}),
           deadline,
         );
         return { ...reply, value: reply.value.deliveries };
@@ -290,21 +185,13 @@ export class RedisMessagingTransport extends EventEmitter {
       case 'ack':
       case 'release':
       case 'renew':
-      case 'fail': {
-        const receipt = args.receipt as Receipt;
-        text(receipt?.deliveryId, 'deliveryId');
-        text(receipt?.claimId, 'claimId');
-        if (action === 'renew' && args.value !== undefined) {
-          integer(args.value, 'claimTtlMs');
-        }
-        if (action === 'fail') {
-          input = {
-            ...args,
-            value: Buffer.from(String(args.value)).subarray(0, 4096).toString('utf8'),
-          };
-        }
-        return this.connection.request<ClaimResult>(action, input, deadline, true);
-      }
+      case 'fail':
+        return this.connection.request<ClaimResult>(
+          action,
+          claimInput(action, args),
+          deadline,
+          true,
+        );
       case 'retry':
         text(args.deliveryId, 'deliveryId');
         break;
@@ -313,41 +200,15 @@ export class RedisMessagingTransport extends EventEmitter {
         historyOptions(args, action === 'events');
         await this.sweep(deadline);
         break;
-      case 'append': {
-        text(args.kind, 'kind');
-        for (const field of ['agent', 'subject', 'topic']) {
-          if (args[field] !== undefined) {
-            text(args[field], field);
-          }
-        }
-        if (args.payload !== undefined) {
-          text(args.payload, 'payload', 16384);
-        }
-        input = Object.fromEntries(
-          ['kind', 'agent', 'subject', 'topic', 'payload']
-            .filter((k) => args[k] !== undefined)
-            .map((k) => [k, args[k]]),
-        );
+      case 'append':
+        input = appendInput(args);
         break;
-      }
       case 'agents':
         await this.sweep(deadline);
         break;
-      case 'subscribe': {
-        text(args.name, 'subscription name', 128);
-        if (!Array.isArray(args.topics) || !args.topics.length) {
-          throw new MessagingError('INPUT', 'topics must be nonempty');
-        }
-        const topics = [...new Set(args.topics.map((t) => text(t, 'topic')))].sort();
-        if (topics.length !== args.topics.length) {
-          throw new MessagingError('INPUT', 'topics must be unique');
-        }
-        if (args.inactivityTtlMs !== undefined) {
-          integer(args.inactivityTtlMs, 'inactivityTtlMs');
-        }
-        input = { ...args, topics, id: randomUUID() };
+      case 'subscribe':
+        input = subscriptionInput(args);
         break;
-      }
       case 'subscription-get':
       case 'subscription-touch':
       case 'subscription-remove':

@@ -48,18 +48,7 @@ export function send(
   ) {
     refusal('Use publication for subscription destinations');
   }
-  const recipients = publication
-    ? publicationRecipients(store, input.topic!)
-    : input.to === '*'
-      ? [
-          ...new Set(
-            presence
-              .agents()
-              .filter((a) => a.online)
-              .map((a) => a.name),
-          ),
-        ].sort((a, b) => (a < b ? -1 : Number(a > b)))
-      : [input.to];
+  const recipients = recipientsFor(store, presence, input, publication);
   if (!recipients.length) {
     refusal('Broadcast has no online recipients');
   }
@@ -143,4 +132,26 @@ export function send(
     }
     throw error;
   }
+}
+
+function recipientsFor(
+  store: Database,
+  presence: Presence,
+  input: SendOptions,
+  publication: boolean,
+): string[] {
+  if (publication) {
+    return publicationRecipients(store, input.topic!);
+  }
+  if (input.to !== '*') {
+    return [input.to];
+  }
+  return [
+    ...new Set(
+      presence
+        .agents()
+        .filter((a) => a.online)
+        .map((a) => a.name),
+    ),
+  ].sort((a, b) => (a < b ? -1 : Number(a > b)));
 }

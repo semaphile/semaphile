@@ -102,69 +102,7 @@ export function topicCommand(
   const name = text(input.name, 'subscription name', 128),
     previous = get(store, name);
   if (action === 'subscribe') {
-    const options = input as unknown as SubscriptionOptions;
-    if (!Array.isArray(options.topics) || !options.topics.length) {
-      throw new MessagingError('INPUT', 'topics must be nonempty');
-    }
-    const topics = [...new Set(options.topics.map((t) => text(t, 'topic')))].sort();
-    if (topics.length !== options.topics.length) {
-      throw new MessagingError('INPUT', 'topics must be unique');
-    }
-    const inactivityTtlMs =
-      options.inactivityTtlMs === undefined
-        ? undefined
-        : integer(options.inactivityTtlMs, 'inactivityTtlMs');
-    if (
-      previous?.state === 'active' &&
-      (previous.expiresAt === undefined || previous.expiresAt > Date.now())
-    ) {
-      if (
-        JSON.stringify(previous.topics) !== JSON.stringify(topics) ||
-        previous.inactivityTtlMs !== inactivityTtlMs
-      ) {
-        throw new MessagingError('CONFIG_MISMATCH', 'Subscription options differ');
-      }
-      return previous;
-    }
-    if (previous) {
-      retire(store, previous, 'Subscription inactivity expired');
-    }
-    const id = randomUUID(),
-      now = Date.now();
-    const s: SubscriptionInfo = {
-      id,
-      name,
-      topics,
-      recipient: RESERVED + id,
-      state: 'active',
-      createdAt: now,
-      ...(inactivityTtlMs === undefined
-        ? {}
-        : { inactivityTtlMs, expiresAt: now + inactivityTtlMs }),
-    };
-    store.mutate([], () =>
-      cleanup(
-        store,
-        contentBytes(store) +
-          Buffer.byteLength(JSON.stringify(s)) +
-          topics.reduce(
-            (sum, topic) => sum + Buffer.byteLength(topic) + Buffer.byteLength(name) + 256,
-            0,
-          ) +
-          2048 >
-          store.config.maxContentBytes,
-      ),
-    );
-    store.ensureNotify(s.recipient);
-    return store.mutate([s.recipient], () => {
-      persist(store, s);
-      store.db.prepare('INSERT INTO mailboxes VALUES(?,?)').run(s.recipient, now);
-      for (const topic of topics) {
-        store.db.prepare('INSERT INTO subscription_topics VALUES(?,?)').run(topic, name);
-      }
-      event(store, { kind: 'subscription-created', subject: id });
-      return s;
-    });
+    return createSubscription(store, name, input, previous);
   }
   if (!previous || (input.id !== undefined && previous.id !== input.id)) {
     throw new MessagingError('STALE', 'Subscription generation missing');
@@ -182,4 +120,75 @@ export function topicCommand(
     store.mutate([], () => persist(store, previous));
   }
   return previous;
+}
+
+function createSubscription(
+  store: Database,
+  name: string,
+  input: Record<string, unknown>,
+  previous?: SubscriptionInfo,
+): SubscriptionInfo {
+  const options = input as unknown as SubscriptionOptions;
+  if (!Array.isArray(options.topics) || !options.topics.length) {
+    throw new MessagingError('INPUT', 'topics must be nonempty');
+  }
+  const topics = [...new Set(options.topics.map((t) => text(t, 'topic')))].sort((a, b) =>
+    a < b ? -1 : Number(a > b),
+  );
+  if (topics.length !== options.topics.length) {
+    throw new MessagingError('INPUT', 'topics must be unique');
+  }
+  const inactivityTtlMs =
+    options.inactivityTtlMs === undefined
+      ? undefined
+      : integer(options.inactivityTtlMs, 'inactivityTtlMs');
+  if (
+    previous?.state === 'active' &&
+    (previous.expiresAt === undefined || previous.expiresAt > Date.now())
+  ) {
+    if (
+      JSON.stringify(previous.topics) !== JSON.stringify(topics) ||
+      previous.inactivityTtlMs !== inactivityTtlMs
+    ) {
+      throw new MessagingError('CONFIG_MISMATCH', 'Subscription options differ');
+    }
+    return previous;
+  }
+  if (previous) {
+    retire(store, previous, 'Subscription inactivity expired');
+  }
+  const id = randomUUID(),
+    now = Date.now();
+  const s: SubscriptionInfo = {
+    id,
+    name,
+    topics,
+    recipient: RESERVED + id,
+    state: 'active',
+    createdAt: now,
+    ...(inactivityTtlMs === undefined ? {} : { inactivityTtlMs, expiresAt: now + inactivityTtlMs }),
+  };
+  store.mutate([], () =>
+    cleanup(
+      store,
+      contentBytes(store) +
+        Buffer.byteLength(JSON.stringify(s)) +
+        topics.reduce(
+          (sum, topic) => sum + Buffer.byteLength(topic) + Buffer.byteLength(name) + 256,
+          0,
+        ) +
+        2048 >
+        store.config.maxContentBytes,
+    ),
+  );
+  store.ensureNotify(s.recipient);
+  return store.mutate([s.recipient], () => {
+    persist(store, s);
+    store.db.prepare('INSERT INTO mailboxes VALUES(?,?)').run(s.recipient, now);
+    for (const topic of topics) {
+      store.db.prepare('INSERT INTO subscription_topics VALUES(?,?)').run(topic, name);
+    }
+    event(store, { kind: 'subscription-created', subject: id });
+    return s;
+  });
 }

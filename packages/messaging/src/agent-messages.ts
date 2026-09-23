@@ -52,7 +52,7 @@ function optional(input: Record<string, unknown>, key: string): string | undefin
   if (input[key] !== undefined && typeof input[key] !== 'string') {
     invalid(key);
   }
-  return input[key] as string | undefined;
+  return input[key];
 }
 /** Return a validated independent payload; diagnostics never contain the payload. */
 export function validateAgentMessage(value: unknown): AgentMessage {
