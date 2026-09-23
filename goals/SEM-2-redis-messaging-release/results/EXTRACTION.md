@@ -71,7 +71,7 @@ covered by the existing root format check.
 
 ## Evidence status
 
-Extraction and tests are in progress. This record is not gate completion.
+Extraction checks and the source/archive matrices pass; see GATES.md. Blind review remains in progress, so this record is not completion.
 
 ## Static extraction checks
 - core: third-party lock identities unchanged; exports equal pinned feature minus http-policy.
