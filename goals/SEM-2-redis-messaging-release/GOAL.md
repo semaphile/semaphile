@@ -1,5 +1,5 @@
 ---
-status: promoted
+status: started
 created: 2026-09-23T13:24:37-05:00
 type: chore
 identity:
@@ -30,6 +30,7 @@ execution:
   model: gpt-6-astra
   runtime: codex
 plan_accepted: 2026-09-23T17:02:09-05:00
+started: 2026-09-23T17:03:11-05:00
 ---
 
 # Add Redis Messaging to the Release Line
