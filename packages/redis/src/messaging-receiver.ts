@@ -85,17 +85,25 @@ export class MessagingReceiver {
 
     return reply;
   }
+  private async awaitChange(
+    version: number,
+    reply: MessagingWireReply<{ deliveries: Delivery[]; deadline: number | null }>,
+    deadline: number,
+    signal: AbortSignal,
+  ): Promise<void> {
+    const due =
+      reply.value.deadline === null ? Infinity : reply.sent + reply.value.deadline - reply.now;
+    await this.connection.wait(
+      version,
+      Number.isFinite(Math.min(deadline, due)) ? Math.min(deadline, due) : undefined,
+      signal,
+    );
+  }
   async wait(args: Args, signal: AbortSignal): Promise<MessagingWireReply<Delivery | null>> {
     const recipient = name(args.recipient),
       options = this.receiveOptions(args.options ?? {});
     options.max = 1;
-    const timeout =
-      args.timeoutMs === undefined ? undefined : integer(args.timeoutMs, 'timeoutMs', 0);
-    let deadline = Infinity;
-    if (timeout !== undefined) {
-      const remaining = timeout === 0 ? 0 : Math.max(0, Number(args.deadline) - Date.now());
-      deadline = performance.now() + remaining;
-    }
+    const { timeout, deadline } = waitTiming(args);
     let first = true;
     for (;;) {
       if (signal.aborted || this.isClosing()) {
@@ -122,13 +130,18 @@ export class MessagingReceiver {
       if (timeout === 0 || performance.now() >= deadline) {
         return { ...reply, value: null };
       }
-      const due =
-        reply.value.deadline === null ? Infinity : reply.sent + reply.value.deadline - reply.now;
-      await this.connection.wait(
-        version,
-        Number.isFinite(Math.min(deadline, due)) ? Math.min(deadline, due) : undefined,
-        signal,
-      );
+      await this.awaitChange(version, reply, deadline, signal);
     }
   }
+}
+
+function waitTiming(args: Args) {
+  const timeout =
+    args.timeoutMs === undefined ? undefined : integer(args.timeoutMs, 'timeoutMs', 0);
+  let deadline = Infinity;
+  if (timeout !== undefined) {
+    const remaining = timeout === 0 ? 0 : Math.max(0, Number(args.deadline) - Date.now());
+    deadline = performance.now() + remaining;
+  }
+  return { timeout, deadline };
 }

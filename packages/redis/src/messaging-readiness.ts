@@ -24,7 +24,7 @@ export async function checkReadiness(
       !Array.isArray(pairs) ||
       !pairs.every((value): value is string => typeof value === 'string')
     ) {
-      throw new Error('Invalid Redis configuration reply');
+      throw new TypeError('Invalid Redis configuration reply');
     }
     const config: Record<string, string> = {};
     for (let i = 0; i < pairs.length; i += 2) {
@@ -44,7 +44,7 @@ export async function checkReadiness(
     }
     const info = await response(command.sendCommand(['INFO', 'persistence']), deadline);
     if (typeof info !== 'string') {
-      throw new Error('Invalid Redis persistence reply');
+      throw new TypeError('Invalid Redis persistence reply');
     }
     if (!/^aof_last_write_status:ok\r?$/m.test(info)) {
       issues.push('AOF health is not verified');

@@ -80,14 +80,17 @@ export class MessagingClientTransport {
     if (reply.error) {
       call.reject(new MessagingError(reply.code ?? 'STORE', reply.error));
     } else {
-      if (reply.clock && reply.value && typeof reply.value === 'object') {
-        for (const value of Array.isArray(reply.value) ? reply.value : [reply.value]) {
-          if (value && typeof value === 'object') {
-            this.clocks.set(value, reply.clock);
-          }
+      this.recordClock(reply);
+      call.resolve(reply.value);
+    }
+  }
+  private recordClock(reply: MessagingReply): void {
+    if (reply.clock && reply.value && typeof reply.value === 'object') {
+      for (const value of Array.isArray(reply.value) ? reply.value : [reply.value]) {
+        if (value && typeof value === 'object') {
+          this.clocks.set(value, reply.clock);
         }
       }
-      call.resolve(reply.value);
     }
   }
   /** Private transport; callbacks always execute in the caller's runtime. */
