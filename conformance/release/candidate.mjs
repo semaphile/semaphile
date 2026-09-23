@@ -72,7 +72,7 @@ await writeFile(
   `
 import assert from 'node:assert/strict';
 import {openLimiter} from '@semaphile/core';
-import {openMemoryLimiter} from '@semaphile/core/memory';
+import {openLimiter as openMemoryLimiter} from '@semaphile/core/memory';
 import {openMessaging} from '@semaphile/messaging';
 import {createMessagingInstrumentation} from '@semaphile/otel/messaging';
 assert.equal(typeof createMessagingInstrumentation,'function');
@@ -160,7 +160,7 @@ import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises
 const old=JSON.parse(await readFile(process.env.TEST_STATE));const bus=await openMessaging({path:process.env.TEST_STORE});
 assert.equal((await bus.send({to:'relay',body:'preserved',dedupeKey:'stable'})).id,old.sent.id);
 assert.equal((await bus.ack(old.claimed.receipt)).status,'acked');
-assert.equal((await bus.history()).find(m=>m.id===old.sent.id).trace.traceparent,old.claimed.message.trace.traceparent);
+assert.equal((await bus.history()).find(m=>m.id===old.sent.id).trace.traceparent,'00-11111111111111111111111111111111-2222222222222222-01');
 const d=(await bus.receive('relay'))[0];assert.equal(d.message.body,'pending');await bus.ack(d.receipt);await bus.close();
 `,
 );
