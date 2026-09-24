@@ -50,8 +50,11 @@ class Peer {
       if (message.id) {
         const pending = this.requests.get(message.id);
         this.requests.delete(message.id);
-        if (message.error) pending?.reject(new Error(message.error));
-        else pending?.resolve(message.value);
+        if (message.error) {
+          pending?.reject(new Error(message.error));
+        } else {
+          pending?.resolve(message.value);
+        }
       } else {
         this.queue.push(message);
         this.observer?.();
@@ -67,8 +70,9 @@ class Peer {
       });
       this.child.on('close', (code, signal) => {
         this.ended = true;
-        for (const pending of this.requests.values())
+        for (const pending of this.requests.values()) {
           pending.reject(new Error('participant exited: ' + this.errors));
+        }
         this.requests.clear();
         this.observer?.();
         resolveExit({ code, signal });
@@ -115,7 +119,9 @@ class Peer {
     return this.request(action, extra).value;
   }
   async close() {
-    if (this.ended) return;
+    if (this.ended) {
+      return;
+    }
     await this.call('close');
     assert.deepEqual(await within(this.exit, 'close exit'), { code: 0, signal: null }, this.errors);
   }
@@ -372,7 +378,11 @@ try {
   process.exitCode = 1;
   console.log(`RESULT ${passed}/${tests.length} passed; remaining cases not completed`);
 } finally {
-  for (const peer of peers) if (!peer.ended) peer.child.kill('SIGKILL');
+  for (const peer of peers) {
+    if (!peer.ended) {
+      peer.child.kill('SIGKILL');
+    }
+  }
   await Promise.all(
     [...peers].map((peer) =>
       within(peer.exit, 'cleanup').catch((error) => {

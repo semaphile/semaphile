@@ -21,3 +21,6 @@ Package references: [SQLite](../packages/core/README.md) and
 [messaging library and CLI](../packages/messaging/README.md).
 
 See [releases](releases.md) for installing verified archives and the maintainer release process.
+
+[Redis messaging and topics](redis-messaging.md) explains cross-project mailboxes,
+durable subscriptions, agent payloads, failure behavior and the SQLite 1.2 upgrade.

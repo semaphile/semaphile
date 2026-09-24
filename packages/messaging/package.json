@@ -1,6 +1,6 @@
 {
   "name": "@semaphile/messaging",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "engines": {
     "node": ">=22.18.0"
@@ -9,6 +9,14 @@
     ".": {
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
+    },
+    "./client": {
+      "types": "./dist/src/shared.d.ts",
+      "import": "./dist/src/shared.js"
+    },
+    "./agent-messages": {
+      "types": "./dist/src/agent-messages.d.ts",
+      "import": "./dist/src/agent-messages.js"
     }
   },
   "files": [
@@ -34,9 +42,9 @@
     "semaphile": "dist/src/cli.js"
   },
   "peerDependencies": {
-    "@semaphile/core": "0.2.0",
-    "@semaphile/redis": "0.2.0",
-    "@semaphile/otel": "0.2.0"
+    "@semaphile/core": "0.3.0",
+    "@semaphile/redis": "0.3.0",
+    "@semaphile/otel": "0.3.0"
   },
   "peerDependenciesMeta": {
     "@semaphile/core": {

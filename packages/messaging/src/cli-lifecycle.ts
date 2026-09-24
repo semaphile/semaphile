@@ -43,16 +43,25 @@ export async function register(context: Context): Promise<void> {
 export async function waitForMessage(context: Context): Promise<void> {
   const {
     client,
-    args: { required, numeric },
+    args: { get, required, numeric },
     receiveOptions,
     controller,
   } = context;
 
-  const delivery = await client.wait(required('as'), {
+  if (get('subscription') && get('as')) {
+    throw new MessagingError('INPUT', 'Choose --as or --subscription');
+  }
+  const receiver = get('subscription')
+    ? await client.subscription(get('subscription')!)
+    : undefined;
+  const waitOptions = {
     ...receiveOptions,
     timeoutMs: numeric('timeout'),
     signal: controller.signal,
-  });
+  };
+  const delivery = receiver
+    ? await receiver.wait(waitOptions)
+    : await client.wait(required('as'), waitOptions);
   if (delivery === null) {
     process.exitCode = 2;
   } else {
@@ -62,7 +71,7 @@ export async function waitForMessage(context: Context): Promise<void> {
 export async function listen(context: Context): Promise<void> {
   const {
     client,
-    args: { required, numeric, command },
+    args: { get, required, numeric, command },
     resolved,
     receiveOptions,
     controller,
@@ -75,8 +84,12 @@ export async function listen(context: Context): Promise<void> {
       'Supply a handler command after -- or configure messaging.handler',
     );
   }
-  const listener = client.listen(
-    required('as'),
+  if (get('subscription') && get('as')) {
+    throw new MessagingError('INPUT', 'Choose --as or --subscription');
+  }
+  const sub = get('subscription') ? await client.subscription(get('subscription')!) : undefined;
+  const start = sub ? sub.listen.bind(sub) : client.listen.bind(client, required('as'));
+  const listener = start(
     commandHandler(executable, {
       cwd: resolved.project ? dirname(resolved.project.file) : undefined,
     }),

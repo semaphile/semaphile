@@ -533,8 +533,8 @@ fresh blind reviews per increment. No package publication is authorized.
 Implement @semaphile/messaging as a TypeScript library and `semaphile message`
 CLI. A common directory may contain independent pools/<name>/ and messaging/
 stores, each with its own gate and database. Pool formats and mismatch rules
-remain unchanged. Topics, Redis messaging, runtime-specific adapters, live
-reconfiguration and cross-store transactions are deferred.
+remain unchanged. Section 20 adds Redis messaging and durable topics. Runtime-specific adapters,
+live reconfiguration and cross-store transactions remain deferred.
 
 ### Delivery and presence
 
@@ -724,3 +724,81 @@ collector election/restart or OTLP logs are included in this increment.
 Collector engineering: add a nonblocking native gate acquisition for observation
 and collector registration. Busy gates produce a failed sample, not a blocking
 wait or an admission retry loop. Keep all SQLite/native work on a worker thread.
+
+## 20. Redis messaging and durable topics (DECIDED, 2026-09-14)
+
+Owner approved implementation after interview. Redis messaging takes precedence
+over the proposed secrets proxy. Redis is an alternative authoritative store,
+not a SQLite mirror. Its runtime must load neither SQLite nor a native addon and
+requires no local coordination files. One authenticated/TLS-capable endpoint is
+supported; Cluster routing, Sentinel discovery and offline replication are deferred.
+Retain the existing messaging delivery, retention, mismatch, tracing and receipt
+contract, including acknowledgment as durable acceptance rather than completion.
+
+### Redis connections and readiness
+
+Add @semaphile/redis/messaging using a native-free shared messaging lifecycle.
+Identify stores by database, namespace and store name. Recover connections and
+resume waits automatically. Bound queued commands (default 1000) and operation
+time (default 30 seconds). Reconnect with 500 ms exponential backoff capped at
+10 seconds with bounded jitter. Never blindly replay dispatched mutations whose
+reply was lost; report an explicit uncertain outcome. Validate persisted store
+identity, format and settings after reconnect. Missing/replaced state is terminal,
+never an invitation to recreate it. Prioritize renewal/cleanup over ordinary work.
+Subscription-before-check and computed expiry timers replace periodic inbox polls.
+Preserve confirmed claim deadlines across disconnection and signal cooperative
+cancellation at expiry; an uncertain renewal cannot extend local ownership.
+Presence is a separately renewable session, default 30 seconds.
+
+Warn by default when persistence/eviction settings are unsafe or uninspectable;
+optional strict startup rejects such settings. Strict requires AOF, always-flush,
+flushing during rewrite, healthy persistence and noeviction. Never configure the
+server automatically or equate this startup check with infrastructure durability.
+
+### Durable topic subscriptions on both backends
+
+Add named subscriptions with exact topic-name filters, inspection, listing,
+removal, and publication. Each subscription owns an independent delivery queue;
+workers sharing it compete for deliveries. Atomically snapshot subscriptions at
+publication, with one delivery per matching subscription, or refuse the entire
+publication (including zero matches/full target). New subscriptions receive only
+future publications; existing subscriptions retain offline deliveries. Direct send
+and descriptive topic metadata never implicitly publish. Dedupe retains the
+original fanout snapshot. Existing message expiry, protected pending accounting,
+claim fencing, history and retry bounds apply to subscription deliveries.
+
+Subscriptions persist by default. Optional inactivity TTL retires temporary
+subscriptions, cancels pending/claimed deliveries and records an event. Connected
+listeners renew activity even while idle; publishing does not renew it. Retirement
+invalidates claims and signals cooperative cancellation, without promising to stop
+external effects. Recreating a name starts a new generation. Mutating existing
+subscription policy is not implicit: require identical normalized creation options.
+
+Advance SQLite messaging formatMinor to 2 (semaphile-messaging/1.2), with explicit
+offline upgrade preserving all prior data and rollback on failure. Ordinary opens
+never migrate. Limiter formats are unchanged. Redis has its own versioned format.
+
+### Shared agent payloads and interfaces
+
+Optional native-free versioned types/validators define question (required text,
+nonempty unique options with required id and label, optional example), answer
+(required selectedOptionId, optional notes), and turn-completed (required project,
+run, turn identity and outcome; optional summary). Validate answers against their
+question. Envelope fields carry correlation, reply destination, sender and expiry.
+Runtime UI, workflow execution and universal harness adapters remain application
+responsibilities. Question acceptance and a later correlated answer are distinct.
+
+Redis CLI/config selectors are explicit and mutually exclusive with SQLite path
+selectors. Credentials are environment references. Redis-only configuration must
+not require or create local storage. Keep current SQLite API/discovery compatible.
+
+### Verification (ENGINEERING)
+
+Implement in independently reviewed increments: native-free client boundary;
+Redis mailbox parity/recovery; subscriptions and SQLite upgrade; payloads/CLI/
+telemetry/documentation. Use indexed Redis records and atomic Lua state transitions
+with pre-write validation; no periodic polling. Run Node/Bun conformance on macOS
+and Linux and cross-host real Redis, covering uncertainty, renewal loss, restart,
+missing state, subscription fanout/expiry/capacity, dedupe, upgrade rollback and
+native-free installed consumers. Preserve receipts, review dispositions and prior
+limiter regressions. Publication and merging proxy branches are separate actions.

@@ -1,3 +1,4 @@
+import { expireSubscriptions, subscriptionDeadline, topicCommand } from './topics.js';
 import { parentPort, workerData } from 'node:worker_threads';
 import { Database, FORMAT } from './database.js';
 import { Presence } from './presence.js';
@@ -58,6 +59,7 @@ async function wait(
       let subscription: NativeSubscription | undefined;
       try {
         const result = store.locked(() => {
+          expireSubscriptions(store);
           presence.require(recipient);
           // Positive timeouts include RPC and gate delay. Zero means one check.
           if (timeoutMs !== 0 && callerDeadline !== undefined && Date.now() >= callerDeadline) {
@@ -68,7 +70,11 @@ async function wait(
           const computed = nextDeadline(store, recipient);
           return {
             delivery: deliveries[0] ?? null,
-            deadline: Math.min(computed ?? Infinity, callerDeadline ?? Infinity),
+            deadline: Math.min(
+              computed ?? Infinity,
+              callerDeadline ?? Infinity,
+              subscriptionDeadline(store, recipient) ?? Infinity,
+            ),
           };
         });
         if (result.delivery) {
@@ -93,6 +99,10 @@ async function wait(
 }
 function execute(action: string, args: Record<string, unknown>): unknown {
   const recipient = typeof args.recipient === 'string' ? args.recipient : '';
+  expireSubscriptions(store);
+  if (action === 'subscribe' || action === 'subscriptions' || action.startsWith('subscription-')) {
+    return topicCommand(store, action, args);
+  }
   switch (action) {
     case 'create':
       return presence.create(recipient);
@@ -145,13 +155,19 @@ function execute(action: string, args: Record<string, unknown>): unknown {
   }
 }
 // Each retry follows measured cleanup progress, with the gate released between batches.
-async function sendWithCleanup(args: Record<string, unknown>): Promise<unknown> {
+async function sendWithCleanup(
+  args: Record<string, unknown>,
+  publication = false,
+): Promise<unknown> {
   for (;;) {
     if (closing) {
       throw new MessagingError('CLOSED', 'Client closed');
     }
     try {
-      return store.locked(() => send(store, presence, args as unknown as SendOptions));
+      return store.locked(() => {
+        expireSubscriptions(store);
+        return send(store, presence, args as unknown as SendOptions, publication);
+      });
     } catch (error) {
       if (!(error instanceof MessagingError) || error.code !== 'CLEANUP_PROGRESS') {
         throw error;
@@ -184,8 +200,8 @@ async function dispatch(command: Command): Promise<void> {
       } finally {
         store.close();
       }
-    } else if (action === 'send') {
-      value = await sendWithCleanup(args);
+    } else if (action === 'send' || action === 'publish') {
+      value = await sendWithCleanup(args, action === 'publish');
     } else if (action === 'wait') {
       value = await wait(
         id,

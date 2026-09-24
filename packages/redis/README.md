@@ -1,6 +1,7 @@
 # @semaphile/redis — experimental Redis backend
 
-Version **0.1.0**. Install with the matching `@semaphile/core` peer package.
+Source version **0.3.0** (unreleased). Install matching Semaphile packages;
+the limiter entry uses the optional `@semaphile/core` peer.
 See the [release guide](https://github.com/semaphile/semaphile/blob/main/docs/releases.md) for installation and verified GitHub archives.
 
 ```ts
@@ -71,9 +72,9 @@ is provided. See [execution, HTTP and maintenance](https://github.com/semaphile/
 the shared APIs and replacement procedure. `create: false` on open atomically
 refuses absent state; the administrative CLI always uses this mode.
 
-The Redis runtime imports only `@semaphile/core/client`, which contains the
+The limiter runtime imports only `@semaphile/core/client`, which contains the
 shared callback lifecycle and config validation. It loads neither SQLite nor
-a native addon. From source, build core first using its README, then:
+a native addon. From source, build core and messaging first using their READMEs, then:
 
 ```sh
 npm ci --prefix packages/redis --ignore-scripts
@@ -87,3 +88,12 @@ The test harness starts an isolated local `redis-server` on macOS or a
 `redis:8.4.0-alpine` Docker container on Linux. It uses random loopback ports
 and repo-local `.tmp` stores. Cross-host evidence is recorded separately in
 [the testing guide](https://github.com/semaphile/semaphile/blob/main/docs/testing.md).
+
+## Redis messaging
+
+The unreleased `@semaphile/redis/messaging` entry provides durable mailboxes,
+subscriptions, receipts and history through the shared messaging client. Install
+the matching `@semaphile/messaging` peer. This entry loads no native code and
+automatically reconnects; its connection lifecycle differs from the limiter above.
+See [Redis messaging and topics](https://github.com/semaphile/semaphile/blob/main/docs/redis-messaging.md)
+for the API, CLI, readiness policy and failure guarantees.

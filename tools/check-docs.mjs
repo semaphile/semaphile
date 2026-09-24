@@ -11,7 +11,7 @@ const files = [
   'packages/messaging/README.md',
 ];
 for (const name of await readdir('docs', { recursive: true })) {
-  if (name.endsWith('.md')) {
+  if (name.endsWith('.md') && !name.startsWith('research/')) {
     files.push('docs/' + name);
   }
 }

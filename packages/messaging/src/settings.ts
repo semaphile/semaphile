@@ -2,8 +2,8 @@ import { readFile, access } from 'node:fs/promises';
 import { dirname, resolve, join } from 'node:path';
 import { constants } from 'node:fs';
 import { record, listenerDefaults } from './validation.js';
-import { MessagingError, normalize } from './config.js';
-import type { ListenerOptions, OpenOptions, StoreConfig } from './types.js';
+import { MessagingError, normalize, text, integer } from './config.js';
+import type { ListenerOptions, StoreConfig } from './types.js';
 export interface ProjectConfig {
   telemetry?: {
     enabled?: boolean;
@@ -31,9 +31,19 @@ export interface ProjectConfig {
     };
   };
   version: 1;
-  directory: string;
+  directory?: string;
   pools?: Record<string, Record<string, unknown>>;
   messaging?: {
+    backend?: 'sqlite' | 'redis';
+    redis?: {
+      urlEnv: string;
+      namespace: string;
+      store: string;
+      readiness?: 'warn' | 'strict';
+      operationTimeoutMs?: number;
+      maxPendingOperations?: number;
+      sessionTimeoutMs?: number;
+    };
     config?: Partial<StoreConfig>;
     clientDefaults?: { configMismatch?: 'warn' | 'error' };
     listenerDefaults?: Omit<ListenerOptions, 'signal' | 'onError'>;
@@ -47,7 +57,45 @@ export interface ResolvedConfig {
   value: ProjectConfig;
 }
 function validateMessaging(value: NonNullable<ProjectConfig['messaging']>): void {
-  record(value, 'messaging', ['config', 'clientDefaults', 'listenerDefaults', 'handler']);
+  record(value, 'messaging', [
+    'config',
+    'clientDefaults',
+    'listenerDefaults',
+    'handler',
+    'backend',
+    'redis',
+  ]);
+  if (value.backend !== undefined && !['sqlite', 'redis'].includes(value.backend)) {
+    throw new MessagingError('CONFIG', 'Invalid messaging backend');
+  }
+  if (value.backend === 'redis') {
+    const redis = record(value.redis, 'messaging redis', [
+      'urlEnv',
+      'namespace',
+      'store',
+      'readiness',
+      'operationTimeoutMs',
+      'maxPendingOperations',
+      'sessionTimeoutMs',
+    ]);
+    for (const key of ['urlEnv', 'namespace', 'store']) {
+      text(redis[key], key);
+    }
+    if (
+      redis.readiness !== undefined &&
+      redis.readiness !== 'warn' &&
+      redis.readiness !== 'strict'
+    ) {
+      throw new MessagingError('CONFIG', 'Invalid readiness');
+    }
+    for (const key of ['operationTimeoutMs', 'maxPendingOperations', 'sessionTimeoutMs']) {
+      if (redis[key] !== undefined) {
+        integer(redis[key], key);
+      }
+    }
+  } else if (value.redis !== undefined) {
+    throw new MessagingError('CONFIG', 'redis settings require backend redis');
+  }
   if (value.clientDefaults !== undefined) {
     record(value.clientDefaults, 'clientDefaults', ['configMismatch']);
   }
@@ -70,7 +118,12 @@ function validateMessaging(value: NonNullable<ProjectConfig['messaging']>): void
   }
 }
 async function validateProject(value: ProjectConfig): Promise<void> {
-  if (value?.version !== 1 || typeof value.directory !== 'string' || !value.directory) {
+  if (
+    value?.version !== 1 ||
+    (value.directory !== undefined && (typeof value.directory !== 'string' || !value.directory)) ||
+    (value.directory === undefined &&
+      (value.messaging?.backend !== 'redis' || Object.keys(value.pools ?? {}).length > 0))
+  ) {
     throw new MessagingError('CONFIG', 'Config requires version: 1 and a directory');
   }
   record(value, 'config', ['version', 'directory', 'pools', 'messaging', 'telemetry']);
@@ -193,35 +246,11 @@ async function discoverConfig(
       throw new MessagingError('CONFIG', `Unable to read valid JSON from ${file}`);
     }
     await validateProject(value);
-    const root = resolve(directory, value.directory);
+    const root = resolve(directory, value.directory ?? '.');
     return { file, directory: root, messagingPath: join(root, 'messaging'), value };
   }
 }
-export async function messagingOptions(
-  options: { store?: string; cwd?: string; configMismatch?: 'warn' | 'error' } = {},
-): Promise<{ open: OpenOptions; project?: ResolvedConfig }> {
-  if (options.store !== undefined) {
-    return {
-      open: {
-        path: resolve(options.cwd ?? process.cwd(), options.store),
-        configMismatch: options.configMismatch,
-      },
-    };
-  }
-  const project = await loadConfig(options.cwd);
-  if (!project.value.messaging) {
-    throw new MessagingError('CONFIG', 'Nearest semaphile.json does not configure messaging');
-  }
-  return {
-    project,
-    open: {
-      path: project.messagingPath,
-      config: project.value.messaging.config,
-      configMismatch:
-        options.configMismatch ?? project.value.messaging.clientDefaults?.configMismatch,
-    },
-  };
-}
+export { messagingOptions, type ConfiguredMessagingOptions } from './configured-options.js';
 
 export async function normalizePoolConfig(
   config: Record<string, unknown>,

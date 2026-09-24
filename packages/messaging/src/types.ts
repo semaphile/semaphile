@@ -142,3 +142,18 @@ export interface HandlerContext {
 export type Handler = (delivery: Delivery, context: HandlerContext) => unknown;
 
 export type EventHistoryOptions = Pick<HistoryOptions, 'after' | 'limit' | 'topic' | 'since'>;
+
+/** Exact topic filters; a name owns one durable queue across competing workers. */
+export interface SubscriptionOptions {
+  topics: string[];
+  inactivityTtlMs?: number;
+}
+export interface SubscriptionInfo extends SubscriptionOptions {
+  id: string;
+  name: string;
+  recipient: string;
+  state: 'active' | 'retired';
+  createdAt: number;
+  expiresAt?: number;
+}
+export type PublishOptions = Omit<SendOptions, 'to' | 'topic'> & { topic: string };

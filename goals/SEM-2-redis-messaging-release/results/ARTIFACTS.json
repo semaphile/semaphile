@@ -1,0 +1,50 @@
+{
+  "candidateSource": "800c8c53b8548250da6bf4a684bf796f1e9e1a73",
+  "created": "2026-09-23T23:58:17.069624+00:00",
+  "packages": [
+    {
+      "package": "@semaphile/core",
+      "version": "0.3.0",
+      "source": "800c8c53b8548250da6bf4a684bf796f1e9e1a73",
+      "path": "/Users/openclaw/src/divideby0/semaphile/releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/semaphile-core-0.3.0.tgz",
+      "sha256": "6f944338dbe1d5ce01170902d453e73d474a54e0f43f366b8ca1a303598f89eb",
+      "size": 794495
+    },
+    {
+      "package": "@semaphile/redis",
+      "version": "0.3.0",
+      "source": "800c8c53b8548250da6bf4a684bf796f1e9e1a73",
+      "path": "/Users/openclaw/src/divideby0/semaphile/releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/semaphile-redis-0.3.0.tgz",
+      "sha256": "bfdc9c5a678c90e6947674e0b1d5542cb8fcebc8fc7f0c7a68b789d555fcb640",
+      "size": 99332
+    },
+    {
+      "package": "@semaphile/messaging",
+      "version": "0.3.0",
+      "source": "800c8c53b8548250da6bf4a684bf796f1e9e1a73",
+      "path": "/Users/openclaw/src/divideby0/semaphile/releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/semaphile-messaging-0.3.0.tgz",
+      "sha256": "35d3a0e0bc262923a9ca2155e317eb8726efbb763a55609fb3473161a63808aa",
+      "size": 803299
+    },
+    {
+      "package": "@semaphile/otel",
+      "version": "0.3.0",
+      "source": "800c8c53b8548250da6bf4a684bf796f1e9e1a73",
+      "path": "/Users/openclaw/src/divideby0/semaphile/releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/semaphile-otel-0.3.0.tgz",
+      "sha256": "19a33a67d66abcc68bb0be3fce93e3f3dae86a5620fc80e3c882331e630dc3e4",
+      "size": 13250
+    }
+  ],
+  "native": [
+    {
+      "target": "darwin-arm64",
+      "sourceSha256": "da15662245c1ff88aff912cc25ecd58bcc36837d3a87922d2bf241d51e1bbd1f",
+      "binarySha256": "f5b36f25c4761ba5a8bb55718accf1e992ecb26059e5504a47feba86a0bcc5d3"
+    },
+    {
+      "target": "linux-x64",
+      "sourceSha256": "da15662245c1ff88aff912cc25ecd58bcc36837d3a87922d2bf241d51e1bbd1f",
+      "binarySha256": "b6ee14334da2db0522950b112b4d783ab8b1d21ff78b0babb13315dd7b7671ba"
+    }
+  ]
+}

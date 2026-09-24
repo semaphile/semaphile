@@ -22,7 +22,7 @@ await client.close();
 const downgrade = () => {
   const db = new DatabaseSync(join(path, 'state.sqlite'));
   db.exec(
-    "ALTER TABLE messages DROP COLUMN trace; UPDATE config SET format='semaphile-messaging/1.0';",
+    "DROP TABLE subscription_topics; DROP TABLE subscriptions; ALTER TABLE messages DROP COLUMN trace; UPDATE config SET format='semaphile-messaging/1.0';",
   );
   db.close();
 };
@@ -88,7 +88,7 @@ try {
 assert.equal((await inspectStore(path)).format, 'semaphile-messaging/1.0');
 assert.deepEqual(snapshot(), before);
 console.log('PASS interrupted offline ALTER rolls back and preserves old schema and records');
-assert.equal((await upgradeMessaging({ path })).format, 'semaphile-messaging/1.1');
+assert.equal((await upgradeMessaging({ path })).format, 'semaphile-messaging/1.2');
 assert.deepEqual(snapshot(), before);
 client = await openMessaging({ path });
 try {
@@ -104,8 +104,64 @@ try {
 } finally {
   await client.close();
 }
-assert.equal((await upgradeMessaging({ path })).format, 'semaphile-messaging/1.1');
+assert.equal((await upgradeMessaging({ path })).format, 'semaphile-messaging/1.2');
 console.log(
   'PASS upgrade preserves dedupe and valid receipts, rejects live registrations, and is idempotent',
 );
-console.log('RESULT 3/3 passed');
+// A 1.1 store already has trace columns. Preserve them and its valid receipts.
+client = await openMessaging({ path });
+await client.createMailbox('@subscription:legacy');
+const carrier = { traceparent: '00-11111111111111111111111111111111-2222222222222222-01' };
+await client.send({ to: '@subscription:legacy', body: 'trace survives', trace: carrier });
+const legacyClaim = (await client.receive('@subscription:legacy'))[0];
+await client.close();
+const db11 = new DatabaseSync(join(path, 'state.sqlite'));
+db11.exec(
+  "DROP TABLE subscription_topics; DROP TABLE subscriptions; UPDATE config SET format='semaphile-messaging/1.1';",
+);
+db11.close();
+const prior11 = snapshot();
+await assert.rejects(openMessaging({ path }), /Unsupported messaging store format/);
+await writeFile(
+  worker,
+  "import { writeSync } from 'node:fs';\n" +
+    (await readFile('packages/messaging/dist/src/inspect-worker.js', 'utf8')).replace(
+      'db.exec(TOPICS_SCHEMA);',
+      "db.exec(TOPICS_SCHEMA); writeSync(1, 'after-topics\\n'); process.kill(process.pid, 'SIGSTOP');",
+    ),
+);
+const child11 = spawn(process.execPath, ['--no-warnings', entry], {
+  stdio: ['ignore', 'pipe', 'inherit'],
+});
+const exited11 = once(child11, 'exit');
+try {
+  await Promise.race([
+    once(child11.stdout, 'data'),
+    exited11.then(() => {
+      throw Error('Upgrade exited before topic-schema crash');
+    }),
+  ]);
+  child11.kill('SIGKILL');
+  await exited11;
+} finally {
+  if (child11.exitCode === null && child11.signalCode === null) {
+    child11.kill('SIGKILL');
+    await exited11;
+  }
+}
+assert.equal((await inspectStore(path)).format, 'semaphile-messaging/1.1');
+assert.deepEqual(snapshot(), prior11);
+console.log('PASS interrupted topic-schema upgrade rolls back to usable 1.1 records');
+assert.equal((await upgradeMessaging({ path })).format, 'semaphile-messaging/1.2');
+assert.deepEqual(snapshot(), prior11);
+client = await openMessaging({ path });
+try {
+  assert.deepEqual((await client.history({ recipient: '@subscription:legacy' }))[0].trace, carrier);
+  assert.equal((await client.ack(legacyClaim.receipt)).status, 'acked');
+  const agent = await client.register('@subscription:legacy');
+  await client.unregister(agent.id);
+} finally {
+  await client.close();
+}
+console.log('PASS explicit 1.1 upgrade preserves existing records without adding trace twice');
+console.log('RESULT 5/5 passed');

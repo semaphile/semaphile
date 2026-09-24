@@ -1,35 +1,26 @@
+import { publicationRecipients } from './topics.js';
 import { validateTrace } from './trace.js';
 import { createHash, randomUUID } from 'node:crypto';
 import type { Database } from './database.js';
 import type { Presence } from './presence.js';
 import type { SendOptions, SendResult } from './types.js';
-import { integer, mode, refusal, text, MessagingError } from './config.js';
+import { refusal, MessagingError } from './config.js';
+import { validateEnvelope } from './envelope.js';
 import { expireMessages } from './delivery.js';
 import { cleanup, contentBytes, event } from './storage.js';
-function validateEnvelope(store: Database, input: SendOptions): SendOptions {
-  const envelope: SendOptions = { to: text(input.to, 'to', 128), body: input.body };
-  if (typeof input.body !== 'string' || Buffer.byteLength(input.body) > store.config.maxBodyBytes) {
-    refusal('body exceeds maxBodyBytes or is not text');
-  }
-  for (const key of ['sender', 'dedupeKey', 'correlationId', 'replyTo', 'topic', 'kind'] as const) {
-    if (input[key] !== undefined) {
-      envelope[key] = text(input[key], key);
-    }
-  }
-  if (input.expiresInMs !== undefined) {
-    envelope.expiresInMs = integer(input.expiresInMs, 'expiresInMs');
-  }
-  if (input.ackMode !== undefined) {
-    envelope.ackMode = mode(input.ackMode);
-  }
-  return envelope;
-}
-export function send(store: Database, presence: Presence, input: SendOptions): SendResult {
-  const envelope = validateEnvelope(store, input);
+export function send(
+  store: Database,
+  presence: Presence,
+  input: SendOptions,
+  publication = false,
+): SendResult {
+  const envelope = validateEnvelope(store.config, input);
   const trace = validateTrace(input.trace);
   const encodedTrace = trace ? JSON.stringify(trace) : null;
   const encoded = JSON.stringify(envelope),
-    fingerprint = createHash('sha256').update(encoded).digest('hex');
+    fingerprint = createHash('sha256')
+      .update(publication ? 'publication:' + encoded : encoded)
+      .digest('hex');
   const { db, config } = store;
   // Retry lookup precedes current recipient resolution: committed broadcasts
   // must never acquire new recipients when the sender retries an uncertain send.
@@ -51,17 +42,13 @@ export function send(store: Database, presence: Presence, input: SendOptions): S
       deduplicated: true,
     };
   }
-  const recipients =
-    input.to === '*'
-      ? [
-          ...new Set(
-            presence
-              .agents()
-              .filter((a) => a.online)
-              .map((a) => a.name),
-          ),
-        ].sort((a, b) => (a < b ? -1 : Number(a > b)))
-      : [input.to];
+  if (
+    !publication &&
+    store.db.prepare('SELECT 1 FROM subscriptions WHERE recipient=?').get(input.to)
+  ) {
+    refusal('Use publication for subscription destinations');
+  }
+  const recipients = recipientsFor(store, presence, input, publication);
   if (!recipients.length) {
     refusal('Broadcast has no online recipients');
   }
@@ -130,7 +117,12 @@ export function send(store: Database, presence: Presence, input: SendOptions): S
           "INSERT INTO deliveries(id,message_seq,recipient,state,attempts,available_at) VALUES(?,?,?,'pending',0,?)",
         ).run(randomUUID(), seq, recipient, now);
       }
-      event(store, { kind: 'sent', agent: envelope.sender, subject: id, topic: envelope.topic });
+      event(store, {
+        kind: publication ? 'published' : 'sent',
+        agent: envelope.sender,
+        subject: id,
+        topic: envelope.topic,
+      });
 
       return { id, seq, recipients, deduplicated: false };
     });
@@ -140,4 +132,26 @@ export function send(store: Database, presence: Presence, input: SendOptions): S
     }
     throw error;
   }
+}
+
+function recipientsFor(
+  store: Database,
+  presence: Presence,
+  input: SendOptions,
+  publication: boolean,
+): string[] {
+  if (publication) {
+    return publicationRecipients(store, input.topic!);
+  }
+  if (input.to !== '*') {
+    return [input.to];
+  }
+  return [
+    ...new Set(
+      presence
+        .agents()
+        .filter((a) => a.online)
+        .map((a) => a.name),
+    ),
+  ].sort((a, b) => (a < b ? -1 : Number(a > b)));
 }

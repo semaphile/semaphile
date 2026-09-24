@@ -143,6 +143,6 @@ pass('installed runtime coordinates native wake and hides private backend export
 const cli = join(app, 'node_modules/@semaphile/messaging/dist/src/cli.js');
 command(process.execPath, ['--no-warnings', cli, 'init'], app);
 const result = JSON.parse(command(process.execPath, ['--no-warnings', cli, 'info'], app));
-assert.equal(result.stores[0].format, 'semaphile-messaging/1.1');
+assert.equal(result.stores[0].format, 'semaphile-messaging/1.2');
 pass('installed CLI initializes and inspects a messaging-only project');
 console.log(`RESULT ${passed}/${passed} passed`);

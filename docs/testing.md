@@ -177,3 +177,48 @@ installed-package consumers; and messaging context/CLI export scenarios.
 and redelivery, and hook isolation. Run the same commands through modern Bun.
 Redis scenarios require local Redis on macOS or Docker on Linux. All test stores
 remain inside the repository `.tmp` directory.
+
+## Redis messaging and durable topics (unreleased)
+
+The historical feature-branch messaging/topic increment was verified on macOS
+arm64 with Node 26.7.0 and
+Bun 1.4.2, and Linux x64 with Node 22.23.0 and Bun 1.4.2. Redis tests use a real
+Redis 8.4.0 server: a local process on macOS and isolated Docker containers on
+Linux. That historical matrix covered 109 messaging scenarios and 152 Redis scenarios
+per runtime/platform pairing. The Redis count includes the existing limiter
+regressions as well as messaging, topic, fault, CLI, OTel and installed-consumer
+checks. The historical final inspection increment replaced the four-scenario CLI suite with
+five scenarios; it and installed consumers were rerun on all four pairings.
+
+The integrated 0.3.0 candidate is checked separately with Node 22.21.1 on
+macOS, Node 22.23.0 on Linux, and Bun 1.4.2 on both. Its runner adds restricted
+Redis credentials and computed-key/channel ACL checks. Candidate counts and exact
+archive identities are recorded with the release handoff; historical counts do
+not establish correctness of those source or archive bytes.
+
+Six additional cross-host scenarios cover all four Node/Bun requester/relay
+pairings, an acknowledged AOF-backed message surviving an actual Redis restart,
+and an already running waiter reconnecting after restart. Each run uses an
+isolated namespace/store, an explicitly bound Redis port, and an SSH tunnel for
+the macOS participant. The fixture is
+`conformance/redis/messaging-participant.mjs`; endpoint and store identities come
+from environment variables, with no machine-specific address in the source.
+
+The fault suite exercises lost and silent replies, bounded outage queues,
+undispatched cancellation, confirmed claim deadlines after renewal loss, missing
+store identity, local clock skew, write ACL refusal before any mutation, and
+expiry cleanup across multiple batches. Topic tests cover atomic fanout, retained
+dedupe snapshots, independent/competing subscribers, generation fencing,
+inactivity renewal, graceful shutdown and cancellation of queued refreshes.
+Migration tests interrupt both the 1.0 trace alteration and the 1.1 topic-schema
+upgrade, and verify retained traces, legacy mailbox names and receipts.
+
+Installed consumers typecheck and operate after removing SQLite implementation
+files, native binaries and the core package. Redis-only CLI configuration creates
+no local store directory. Existing messaging OTel conformance runs against Redis
+as well as SQLite. The root build, lint, type-aware lint, TypeScript checks,
+format check and public documentation checks also pass.
+
+These checks do not establish guarantees for Redis Cluster, Sentinel discovery,
+replica promotion or arbitrary hosted-service configurations. Read the
+[Redis messaging guide](redis-messaging.md) for readiness and durability boundaries.

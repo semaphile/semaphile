@@ -1,3 +1,4 @@
+import { requireSubscription } from './topics.js';
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -11,6 +12,9 @@ export class Presence {
   constructor(private readonly store: Database) {}
   create(recipient: string): void {
     name(recipient);
+    if (this.store.db.prepare('SELECT 1 FROM subscriptions WHERE recipient=?').get(recipient)) {
+      refusal('Reserved subscription mailbox');
+    }
     if (this.store.db.prepare('SELECT 1 FROM mailboxes WHERE name=?').get(recipient)) {
       return;
     }
@@ -28,6 +32,7 @@ export class Presence {
   }
   require(recipient: string): void {
     name(recipient);
+    requireSubscription(this.store, recipient);
     if (!this.store.db.prepare('SELECT 1 FROM mailboxes WHERE name=?').get(recipient)) {
       refusal(`Unknown mailbox: ${recipient}`);
     }
@@ -67,6 +72,9 @@ export class Presence {
     return dead.length;
   }
   register(recipient: string, metadata = '{}'): Agent {
+    if (this.store.db.prepare('SELECT 1 FROM subscriptions WHERE recipient=?').get(recipient)) {
+      refusal('Reserved subscription mailbox');
+    }
     this.require(recipient);
     text(metadata, 'metadata', 16384);
     this.reclaimDead();

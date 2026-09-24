@@ -55,6 +55,8 @@ export function contentBytes(store: Database): number {
       ELSE length(CAST(COALESCE(error,'') AS BLOB))+1024 END),0) FROM deliveries)
     +(SELECT COALESCE(SUM(length(CAST(metadata AS BLOB))+length(CAST(name AS BLOB))+1024),0) FROM agents)
     +(SELECT COALESCE(SUM(length(CAST(name AS BLOB))+256),0) FROM mailboxes)
+    +(SELECT COALESCE(SUM(length(CAST(value AS BLOB))+1024),0) FROM subscriptions)
+    +(SELECT COALESCE(SUM(length(CAST(topic AS BLOB))+length(CAST(name AS BLOB))+256),0) FROM subscription_topics)
     +(SELECT COALESCE(SUM(length(CAST(COALESCE(payload,'') AS BLOB))+length(CAST(kind AS BLOB))
       +length(CAST(COALESCE(agent,'') AS BLOB))+length(CAST(COALESCE(subject,'') AS BLOB))
       +length(CAST(COALESCE(topic,'') AS BLOB))+512),0) FROM events) AS bytes`,
@@ -91,6 +93,9 @@ export function cleanup(store: Database, pressure = false): void {
   }
   db.prepare(
     'DELETE FROM agents WHERE id IN (SELECT id FROM agents WHERE online=0 AND (? OR registered_at<=?) ORDER BY registered_at LIMIT 256)',
+  ).run(pressure ? 1 : 0, now - config.retainHistoryMs);
+  db.prepare(
+    'DELETE FROM subscriptions WHERE name IN (SELECT name FROM subscriptions WHERE retired_at IS NOT NULL AND (? OR retired_at<=?) ORDER BY retired_at LIMIT 256)',
   ).run(pressure ? 1 : 0, now - config.retainHistoryMs);
   // Even with tiny configured content bounds, completing work must remain possible.
   if (pressure) {

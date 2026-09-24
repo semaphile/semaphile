@@ -7,3 +7,8 @@ export { loadConfig, messagingOptions } from './settings.js';
 export type { ProjectConfig, ResolvedConfig } from './settings.js';
 export { init, info, inspectStore, upgradeMessaging } from './admin.js';
 export type { StoreInfo } from './admin.js';
+
+export { MessageSubscription } from './subscription.js';
+
+export { openConfiguredMessaging } from './configured-client.js';
+export type { ConfiguredMessagingOptions } from './settings.js';

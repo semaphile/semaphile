@@ -54,8 +54,8 @@ whole lifetime. Separate projects can share an explicit local store path; they
 don't need a common parent process or an orchestrator-owned session.
 
 For rate limits across machines, an optional Redis backend supplies shared
-admission through one authoritative Redis endpoint. Messaging currently stays
-local.
+admission through one authoritative Redis endpoint. The unreleased 0.3.0 source
+also supports [Redis messaging](docs/redis-messaging.md).
 
 ## Try it
 
@@ -138,15 +138,15 @@ broadcasts, stdin input, receipts, retention, and delivery semantics.
 
 ## Choose where coordination lives
 
-| Backend | Coordinates                          | Requires                                    | Messaging                          |
-| ------- | ------------------------------------ | ------------------------------------------- | ---------------------------------- |
-| Memory  | Callers in one JavaScript runtime    | A shared pool key; no native addon          | No                                 |
-| SQLite  | Independent processes on one machine | The same local store path; no broker        | Yes, in a separate messaging store |
-| Redis   | Processes on different machines      | The same Redis endpoint, namespace and pool | Not yet                            |
+| Backend | Coordinates                          | Requires                                    | Messaging                               |
+| ------- | ------------------------------------ | ------------------------------------------- | --------------------------------------- |
+| Memory  | Callers in one JavaScript runtime    | A shared pool key; no native addon          | No                                      |
+| SQLite  | Independent processes on one machine | The same local store path; no broker        | Yes, in a separate messaging store      |
+| Redis   | Processes on different machines      | The same Redis endpoint, namespace and pool | Yes, in the unreleased source increment |
 
 Use `@semaphile/core/memory` for memory pools and `@semaphile/redis` for Redis.
 Install only what you need; messaging works independently of the limiter.
-[Redis setup](packages/redis/README.md) · [Memory and SQLite API](packages/core/README.md)
+[Redis setup](packages/redis/README.md) · [Redis messaging and topics](docs/redis-messaging.md) · [Memory and SQLite API](packages/core/README.md)
 
 ## The hard parts Semaphile handles
 

@@ -1,0 +1,54 @@
+
+
+  Ran 5 shell commands
+
+⏺ I've confirmed strict readiness checks need CONFIG GET and INFO persistence, which least-privilege accounts typically don't have. Now checking if the computed key root is publicly exposed so operators can set up ACLs without code changes.
+
+  Ran 1 shell command
+
+⏺ Checking which Node/Bun runtimes and Redis servers are actually present locally for the required matrix.
+
+  Ran 1 shell command
+
+⏺ Node 22.21.1 and Redis 8.4.0 are available locally on macOS. Checking what the docs checker validates, since gate 2 relies on it.
+
+  Ran 2 shell commands
+
+⏺ Redis's messaging entry point imports MessagingError from @semaphile/messaging/client at runtime, meaning a Redis-only install still needs the messaging package. I'll now check how a denied notification-channel subscription is handled, since the ACL recipe relies on it.
+
+  Ran 2 shell commands
+
+⏺ I have enough evidence. Getting the timestamp, then writing the critique.
+
+  Ran 2 shell commands
+
+⏺ Write(~/src/divideby0/semaphile/.worktrees/drafts/20260923-132437-redis-messaging-release/goals/drafts/20260923-132437-redis-messaging-release/reviews/goal-001/claude-code/CRITIQUE.md)
+  ⎿  Wrote 361 lines to ../../goals/drafts/20260923-132437-redis-messaging-release/reviews/goal-001/claude-code/CRITIQUE.md
+      1 ---
+      2 agent: claude-code
+      3 model: claude-opus-5-5
+      4 reasoning_effort: high
+      5 round: 1
+      6 timestamp: 2026-09-23T13:45:46-05:00
+      7 verdict: not_ready
+      8 findings: 24
+      9 ---
+     … +351 lines
+
+⏺ I wrote the round-1 critique to reviews/goal-001/claude-code/CRITIQUE.md. My verdict is not_ready, with 24 findings: 16 plan holes and 8 questions for the owner. The four that block promotion:
+
+  - Version clash: "0.3.0" is already the HTTP proxy checkpoint. It's pushed to origin as checkpoint/0.3.0, and releases/0.3.0/ holds archives with the same file names the new candidate would produce. The owner chose 0.3.0 after a briefing that only checked npm.
+  - Lint gate can't pass: this repo configures no tools.lint, and the evie-kit lint gate returns red whenever that setting is missing.
+  - Stranded fixes: four non-proxy fixes (OTel exporter and Redis observer) sit in the excluded proxy history and aren't on main. The goal doesn't say whether they ship, and one Redis messaging telemetry test depends on one of them.
+  - Archive timing: the release archives are built before landing, but the repo's release process tags the verified commit on main. Unless the branch lands by fast-forward, that evidence is lost.
+
+  I'm waiting for a follow-up brief.
+
+✳ Wrangling… (running Stop hooks… 2/3 · 7m 10s · ↓ 39.4k tokens · thought for 4s)
+                                                                                                                                                                                                                          ✔ Update installed · Restart to update◎ /goal active (7m)
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Model: Opus 5.5  377a9b50  Ctx: 172.9k  17.0%  Session: 7m  Out: 87.9k  Total: 11.5M 
+   cwd: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260923-132437-redis-messaging-release/.evie-kit/conventions  ⎇ draft/20260923-132437-redis-messaging-release  (+0,-0) 
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 1 agent

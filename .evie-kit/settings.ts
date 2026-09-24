@@ -21,26 +21,34 @@
 // `evie-kit settings explain tools.review` shows winner/shadowed/env
 // attribution per key.
 
-import type { SettingsContext } from "@evie-kit/goals";
+import type { SettingsContext } from '@evie-kit/goals';
 
 export const settings = (ctx: SettingsContext) => ({
   // Dotenv files the runtime loads (EVA-55) — first-defined-wins,
   // ambient env outranks files, a missing file is silently fine.
   // Credentials dropped here load with no manual sourcing.
-  envFiles: [
-    ".envrc.local",
-  ],
+  envFiles: ['.envrc.local'],
   tools: {
+    lint: Object.fromEntries(
+      ['packages/', 'conformance/', 'tools/'].map((root) => [
+        root,
+        {
+          linter: 'command' as const,
+          command: ['packages/core/node_modules/.bin/oxlint'],
+          args: ['--config', '.oxlintrc.json', '--deny-warnings'],
+        },
+      ]),
+    ),
     // This project's own herdr session — never the ambient socket
     // (corrected 2026-09-22 after the first bootstrap landed seats in
     // another project's session).
     herdr: {
-      session: "semaphile",
+      session: 'semaphile',
     },
     review: {
-      "claude-code": {
-        model: "opus",
-        effort: "high",
+      'claude-code': {
+        model: 'opus',
+        effort: 'high',
       },
     },
     // Where goals promote: every project promotes somewhere different, so
@@ -50,7 +58,7 @@ export const settings = (ctx: SettingsContext) => ({
     tracker: {
       // GitHub issues on the project's own org (decided 2026-09-22);
       // ambient `gh` auth carries the token, keys render SEM-<n>.
-      github: { repo: "semaphile/semaphile", keyPrefix: "SEM" },
+      github: { repo: 'semaphile/semaphile', keyPrefix: 'SEM' },
     },
   },
   // Draft-phase git policy (EVA-62): by default drafts stay LOCAL — plain

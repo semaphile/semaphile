@@ -1,0 +1,10 @@
+{
+  "kind": "goal",
+  "index": 2,
+  "purpose": "verification",
+  "created": "2026-09-23T19:36:38.804Z",
+  "verifying": "Owner answers and goal-001 findings folded into GOAL.md; check resolution and new contradictions",
+  "advisory": [
+    "pi"
+  ]
+}

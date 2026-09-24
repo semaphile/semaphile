@@ -35,8 +35,11 @@ process.on('message', async (message: any) => {
             process.kill(process.pid, 'SIGSTOP');
           }
         };
-        if (action === 'crashTouch') pool.touchForTest();
-        else pool.release(message.lease);
+        if (action === 'crashTouch') {
+          pool.touchForTest();
+        } else {
+          pool.release(message.lease);
+        }
         throw new Error('crash fixture unexpectedly resumed');
       case 'demo': {
         const jobs = await Promise.all(

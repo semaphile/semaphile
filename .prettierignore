@@ -6,3 +6,15 @@ node_modules
 releases
 **/package-lock.json
 **/._*
+# Synced instruments, lifecycle records, and machine-local runtime state.
+.agents
+.claude
+goals
+.evie-kit/handoffs
+.evie-kit/runs
+.evie-kit/*.local.*
+.evie-kit/credentials.ts
+.evie-kit/state
+CLAUDE.md
+EVIE-KIT.md
+docs/research

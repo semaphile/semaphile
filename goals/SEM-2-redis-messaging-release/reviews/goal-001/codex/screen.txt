@@ -1,0 +1,54 @@
+    260 +Chore, or to restore proxy features to simplify integration.
+    261 +
+    262 +## Open questions and grill suggestions
+    263 +
+    264 +1. **Lint prerequisite ownership — finding 1.** The release requires
+    265 +   configured fast lint roots and valid Sonar evidence, but the tracked
+    266 +   checkout supplies neither those settings nor a Sonar properties file.
+    267 +   Should providing this configuration be a bounded prerequisite within
+    268 +   the release goal, or must the release wait for a separate tooling task?
+    269 +   Recommend including it only if an existing supported setup can be
+    270 +   supplied without tool development. The first option lets the executor
+    271 +   configure and validate the gate before extraction; the second keeps
+    272 +   the candidate blocked until that setup is delivered. Neither silently
+    273 +   waives Sonar.
+    274 +
+    275 +2. **Meaning of separate accounts — finding 4.** Should the exchange run
+    276 +   under two operating-system users, each with its own restricted Redis
+    277 +   login, or are two Redis logins under one OS user enough? Recommend
+    278 +   the former: separate homes/configurations demonstrate deployment
+    279 +   across accounts without shared SQLite files. The latter demonstrates
+    280 +   Redis permissions but does not exercise the OS-account boundary.
+    281 +   Neither implies authorization of individual message fields.
+    282 +
+    283 +Ask these separately, defining OS users and Redis ACL users before the picker.
+    284 +Do not re-ask Chore, messaging-only scope, 0.3.0, backend semantics, configurable
+    285 +client certificates or publication ownership. The remaining corrections are
+    286 +engineering and evidence work.
+    287 +
+    288 +## Wayfinder signal
+    289 +
+    290 +consider-wayfinder — The product boundary is clear, but size depends on
+    291 +unverified lint infrastructure and the deployment account boundary. Resolve
+    292 +those uncertainties and inventory the required hosts before sizing. A broader
+    293 +discovery exercise is unnecessary if infrastructure is available and the known
+    294 +shared-source correction stays small.
+    295 +
+    296 +## Promote-readiness verdict
+    297 +
+    298 +not_ready. The main blockers are an unproven lint-gate prerequisite and an
+    299 +artifact gate that does not yet require the identical portable archive set the
+    300 +maintainer will publish. Define the deployment account boundary and align
+    301 +native-free wording with the runtime contract. The telemetry dependency and
+    302 +migration fixture can be handled by the executor under a sharpened plan; they
+    303 +do not justify importing proxies or redesigning messaging. No implementation,
+    304 +live experiment or publication is required to resolve this critique.
+    305 +
+    306 +CRITIQUE COMPLETE
+
+─ Worked for 8m 01s ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+› Ask Codex to do anything
+
+  gpt-6-astra xhigh · ~/src/divideby0/semaphile/.worktrees/drafts/20260923-132437-redis-messaging-release

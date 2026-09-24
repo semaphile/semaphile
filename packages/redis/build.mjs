@@ -24,7 +24,14 @@ if (result.status !== 0) {
   throw new Error('Redis TypeScript build failed');
 }
 await copyFile(join(root, 'src/protocol.lua'), join(staging, 'protocol.lua'));
-await copyFile(join(root, 'src/control.lua'), join(staging, 'control.lua'));
+for (const file of [
+  'control.lua',
+  'messaging-records.lua',
+  'messaging-delivery.lua',
+  'messaging-actions.lua',
+]) {
+  await copyFile(join(root, 'src', file), join(staging, file));
+}
 await rm(join(root, 'dist'), { recursive: true, force: true });
 await rename(staging, join(root, 'dist'));
 console.log('Built @semaphile/redis (TypeScript and Lua; no native build or install hook)');

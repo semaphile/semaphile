@@ -1,8 +1,9 @@
 # @semaphile/messaging
 
-Durable messaging between local processes, with SQLite and kernel notifications.
-TypeScript library and `semaphile message` CLI; no resident daemon or periodic
-inbox polling. Supports Node 22.18+ and the modern Bun version verified by the
+Durable messaging between agents: local SQLite with kernel notifications, or
+optional Redis for projects and machines sharing a server.
+TypeScript library and `semaphile message` CLI. SQLite needs no resident daemon;
+neither backend periodically polls inboxes. Supports Node 22.18+ and the modern Bun version verified by the
 conformance suite. Native artifacts currently target macOS arm64 and Linux x64.
 
 This package is experimental. See the [release guide](https://github.com/semaphile/semaphile/blob/main/docs/releases.md)
@@ -192,8 +193,10 @@ process participation, not whether an agent is ready to handle a task. Claims
 expire independently of presence. At-least-once delivery permits duplicate
 external effects, so adapters should deduplicate using the stable delivery ID.
 Clock adjustments, reboot handling, power-loss durability and network filesystems
-are outside the currently verified contract. Redis messaging and topic
-subscriptions are deferred; the existing Redis limiter is separate.
+are outside the currently verified local contract. For shared messaging across
+hosts and durable subscriptions on either backend, see the
+[Redis messaging and topics guide](https://github.com/semaphile/semaphile/blob/main/docs/redis-messaging.md).
+These additions are an unreleased source increment; the existing Redis limiter remains separate.
 
 ## Development
 
@@ -263,3 +266,11 @@ from messaging format 1.0 to 1.1. See the
 for API hooks, `@semaphile/otel/messaging`, CLI `--otel`, handler propagation,
 baggage limits and the `semaphile message upgrade --store PATH` procedure.
 Stop all old clients before upgrading; ordinary opens never migrate a store.
+
+## Durable topics and agent payloads
+
+The unreleased source increment adds named subscriptions, atomic publication,
+optional inactivity expiry, and native-free question/answer/turn payload helpers.
+It also adds Redis messaging and explicit backend selectors to the CLI. See the
+[complete guide](https://github.com/semaphile/semaphile/blob/main/docs/redis-messaging.md) for examples,
+reconnect behavior, durability settings and the required offline SQLite 1.2 upgrade.
