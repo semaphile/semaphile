@@ -165,6 +165,11 @@ setup() {
   printf '%s run %s\n' "$MARK" "$RUN" >"$STATE/.sem3-fixture"
   : >"$STATE/state.tsv"
   record observed state "$STATE" "run=$RUN controller=$CONTROLLER manifest=$MANIFEST_SHA256"
+  # Compare against a root-owned copy so the controller cannot swap the
+  # listing between the hash check and the comparison.
+  cp "$STAGING/STAGED-FILES.txt" "$STATE/reviewed-files.txt"
+  actual=$(shasum -a 256 "$STATE/reviewed-files.txt" | awk '{ print $1 }')
+  [ "$actual" = "$MANIFEST_SHA256" ] || fail 'staged listing changed after it was checked'
   say "setup $RUN: groups"
   for name in $FIXTURE_GROUPS; do create_group "$name"; done
   maybe_fail groups
@@ -186,7 +191,7 @@ setup() {
   chmod -R u+rwX,go+rX,go-w "$PREFIX"
   find "$PREFIX" -perm -4000 -o -perm -2000 | grep -q . && fail 'set-id bit in staged tree'
   listing "$PREFIX" >"$STATE/installed-files.txt"
-  cmp -s "$STATE/installed-files.txt" "$STAGING/STAGED-FILES.txt" || fail 'installed tree differs from the reviewed listing'
+  cmp -s "$STATE/installed-files.txt" "$STATE/reviewed-files.txt" || fail 'installed tree differs from the reviewed listing'
   record observed tree "$PREFIX" "sha256=$(shasum -a 256 "$STATE/installed-files.txt" | awk '{ print $1 }')"
   maybe_fail tree
   say 'homes, scratch and handoff share'
@@ -358,7 +363,7 @@ teardown() {
   fi
   record removed complete "$STATE" 'teardown finished'
   export_receipts teardown
-  rm -f "$STATE/.sem3-fixture" "$STATE/state.tsv" "$STATE/installed-files.txt" "$STATE/sudoers.candidate"
+  rm -f "$STATE/.sem3-fixture" "$STATE/state.tsv" "$STATE/installed-files.txt" "$STATE/reviewed-files.txt" "$STATE/sudoers.candidate"
   rmdir "$STATE"
   if ! collisions; then
     fail 'fixture resources remain after teardown'
