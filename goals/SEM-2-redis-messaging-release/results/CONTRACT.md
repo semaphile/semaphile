@@ -1,6 +1,6 @@
 # Section 20 verification map
 
-Product source: `59127e4cd50bb6c19a6ec0f1e2e03790ea4cebf9`.
+Product source: `800c8c53b8548250da6bf4a684bf796f1e9e1a73`.
 The static audit compares section 20 byte for byte with pinned feature
 `5b565ac9bef4ff569ac0e21726947fec279323e6`. No DECIDED clause was changed.
 The table groups adjacent clauses without removing any obligation. Source
@@ -45,7 +45,7 @@ preexisting HTTP client; it is not the excluded public core policy/proxy feature
 
 The tracked product/spec/doc inventory was generated with
 `git grep -n -i -E 'proxy|http-policy' -- packages conformance tools docs SPEC.md README.md CHANGELOG.md package.json`.
-Its raw output is in the primary private receipt `sem-2-proxy-inventory.log`.
+Its raw output is in the primary private receipt `sem-2-completion-proxy-inventory.log`.
 
 | Paths | Disposition |
 | --- | --- |

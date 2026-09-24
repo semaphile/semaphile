@@ -3,13 +3,13 @@
   "producedBy": "gate",
   "state": "passed",
   "scanProjectKey": "semaphile-SEM-2-redis-messaging-release",
-  "commit": "25e315859b8e54f598d86353ebfe9df8fe309689",
-  "tree": "ffa1235820ec3235a4026dc2ea4edf5338ba31b6",
+  "commit": "800c8c53b8548250da6bf4a684bf796f1e9e1a73",
+  "tree": "683825d88c6f60c2f566745ba1a38dc04387a24c",
   "dirty": false,
   "base": "main",
   "baseCommit": "3ec254e25a56daab0e2546f75cd38804df40f44c",
   "scopeFingerprint": "a980f69a45e14a1846a9ef1e036475cc78c6a1d9f97fcc397b479099040c9eae",
-  "ceTaskId": "1a42ca18-3940-4a9a-8c54-019b61dcf427",
+  "ceTaskId": "f84514e2-79a8-4d48-96e7-d7d1900d5430",
   "issuesTotal": 71,
   "inDiffOpen": 0,
   "outsideDiffOpen": 71,
@@ -658,5 +658,5 @@
     }
   ],
   "qualityGate": "ERROR",
-  "timestamp": "2026-09-23T23:23:01.338Z"
+  "timestamp": "2026-09-23T23:54:41.295Z"
 }

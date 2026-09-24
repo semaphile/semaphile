@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "timestamp": "2026-09-23T23:23:01.340Z",
+  "timestamp": "2026-09-23T23:54:41.296Z",
   "branch": "SEM-2-redis-messaging-release",
-  "commit": "25e315859b8e54f598d86353ebfe9df8fe309689",
-  "tree": "ffa1235820ec3235a4026dc2ea4edf5338ba31b6",
+  "commit": "800c8c53b8548250da6bf4a684bf796f1e9e1a73",
+  "tree": "683825d88c6f60c2f566745ba1a38dc04387a24c",
   "dirty": false,
   "mode": "goal",
   "goal": {
@@ -124,7 +124,7 @@
     "configured": true,
     "gated": true,
     "state": "passed",
-    "reason": "zero in-diff open findings after compute task 1a42ca18-3940-4a9a-8c54-019b61dcf427 (commit 25e31585, tree ffa12358)",
+    "reason": "zero in-diff open findings after compute task f84514e2-79a8-4d48-96e7-d7d1900d5430 (commit 800c8c53, tree 683825d8)",
     "configChanged": true,
     "inScopePaths": [
       "packages/core/package-lock.json",
@@ -202,7 +202,7 @@
     "scanProjectKey": "semaphile-SEM-2-redis-messaging-release",
     "evidence": "goals/SEM-2-redis-messaging-release/results/lint/sonar-evidence.json",
     "reused": false,
-    "ceTaskId": "1a42ca18-3940-4a9a-8c54-019b61dcf427",
+    "ceTaskId": "f84514e2-79a8-4d48-96e7-d7d1900d5430",
     "scanState": "passed",
     "inDiffOpen": 0,
     "outsideDiffOpen": 71,

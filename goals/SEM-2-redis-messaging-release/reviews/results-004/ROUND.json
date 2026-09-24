@@ -1,0 +1,11 @@
+{
+  "kind": "results",
+  "index": 4,
+  "purpose": "finding",
+  "created": "2026-09-23T22:46:52.241Z",
+  "sonar": {
+    "state": "passed",
+    "detail": "0 in-diff open, 71 outside-diff open (compute task 2647e56d-9424-489e-aa8f-ea2a7e383a3f)",
+    "commit": "7cde84a645c30f9f4a53da3d30cea138862ac428"
+  }
+}

@@ -48,20 +48,21 @@ schema: 1
 | 4 | npm ci removes machine-local toolkit links; supported repair restored them but also ran unrelated credential integration checks. A link-only repair would reduce friction. | evie-kit-change-candidate | onboard repair workflow |
 | 5 | Immutable source-named archive directories made a second candidate safe: earlier bytes stayed intact while fixes received fresh identities. | one-off | docs/releases.md |
 | 6 | A compaction-ready handoff did not itself authorize an early turn end; the stop hook correctly required execution to continue. Keep milestone handoffs separate from completion claims. | convention-skill-candidate | goal and handoff executor instructions |
+| 7 | Fault-injection cases must close their clients before the next outage; leaked reconnecting clients caused two failed Linux receipts and a diagnostic detour. | convention-skill-candidate | conformance fixture conventions / docs/testing.md |
 
 ## Reviewer feedback quality
 
 <!-- reviewers:begin (computed — refresh with `evie-kit goals retrospective refresh <KEY>`) -->
-Computed by `evie-kit goals retrospective reviewers` from the reconciled merged-findings tables of results-004 (20 merged findings).
+Computed by `evie-kit goals retrospective reviewers` from the reconciled merged-findings tables of results-004, results-005 (30 merged findings).
 Coverage gaps — reconciled as prose, not counted: goal-001, goal-002, goal-003.
 
 | Engine | Rounds | Model(s) | Raised | Accepted | Rejected | Unique accepted |
 | --- | --- | --- | --- | --- | --- | --- |
-| claude-code | 1 | claude-opus-5-5 | 13 | 13 (100%) | 0 | 8 |
-| fable | 1 | claude-fable-5-1 | 10 | 9 (90%) | 1 | 2 |
-| coderabbit | 1 | — | 3 | 3 (100%) | 0 | 0 |
+| claude-code | 2 | claude-opus-5-5 | 17 | 17 (100%) | 0 | 10 |
+| fable | 2 | claude-fable-5-1 | 18 | 15 (83%) | 3 | 6 |
+| coderabbit | 2 | — | 3 | 3 (100%) | 0 | 0 |
 | codex | 1 | — | 3 | 3 (100%) | 0 | 2 |
-| sonarqube | 1 | — | 0 | 0 (—) | 0 | 0 |
+| sonarqube | 2 | — | 0 | 0 (—) | 0 | 0 |
 
 Unique accepted = accepted findings no other engine raised: the earning-its-keep signal. An engine with zero unique accepted findings across the goal returned only what the others would have caught anyway.
 Zero unique accepted this goal: coderabbit.
@@ -71,7 +72,7 @@ Zero unique accepted this goal: coderabbit.
      findings were worth acting on, whether a model ramp changed what was
      caught, and whether a subscription engine earned its keep on THIS goal. -->
 
-The independent engines contributed different checks, including focused behavioral probes and public-contributor validation. Their overlap made the recovery and history-cost problems easier to prioritize; the computed table below covers the reconciled round, with the additional AGENTS Codex review attributed explicitly.
+The independent engines contributed different checks, including focused behavioral probes and public-contributor validation. Their overlap made the recovery and history-cost problems easier to prioritize; the computed table above covers the reconciled rounds, with the additional AGENTS Codex review attributed explicitly.
 
 ## Trajectory
 

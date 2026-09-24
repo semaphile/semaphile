@@ -1,0 +1,12 @@
+{
+  "kind": "results",
+  "index": 5,
+  "purpose": "verification",
+  "created": "2026-09-23T23:27:05.102Z",
+  "verifying": "Verify the bounded recovery, subscription fencing, retention accounting, permission handling, contributor checks and evidence fixes in commits 1421359 through b928d06, including the regenerated portable candidate and four-pairing regressions.",
+  "sonar": {
+    "state": "passed",
+    "detail": "0 in-diff open, 71 outside-diff open (compute task b241f4fb-0c73-489f-a2f4-879bc34466f3)",
+    "commit": "b928d062412f9407ab4e79a1b7544ffc782449ac"
+  }
+}

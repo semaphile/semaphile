@@ -1,65 +1,72 @@
 # SEM-2 Gate evidence
 
-Receipts follow GOAL.md gate order. Package and archive source is
-`59127e4cd50bb6c19a6ec0f1e2e03790ea4cebf9`. Fixture-only commit `25e315859b8e54f598d86353ebfe9df8fe309689`
-closes each fault case's clients, avoiding interference between reconnect tests.
-It changes no package bytes. Raw command output and status records are retained at
-`/Users/openclaw/src/divideby0/semaphile/.scratch/docs/receipts/`.
-Each gate identifies its tested commit; unchanged suites retain their prior
-receipts with the source-equivalence checks described under gate 4.
+All eight gates are satisfied for the messaging-only 0.3.0 candidate.
+Final package, fixture and portable-archive source is `800c8c53b8548250da6bf4a684bf796f1e9e1a73`.
+Receipts and completion commits change only goal records. Raw output lives at
+`/Users/openclaw/src/divideby0/semaphile/.scratch/docs/receipts/`;
+`sem-2-redis-messaging-release.md` pastes the final command output.
+No quality gate was waived.
 
 ## Gate 1 — Extraction and exclusions
 
-- Command: `python3 goals/SEM-2-redis-messaging-release/results/verify-source.py`; `git diff 3ec254e..25e315859b8e54f598d86353ebfe9df8fe309689`; `git grep -n -i -E 'proxy|http-policy' -- packages conformance tools docs SPEC.md README.md CHANGELOG.md package.json`.
-- Exit code: 0 (audit and diff; inventory has expected matches).
-- Headline: 5/5 static assertions; four export maps and locks verified; all 17 shared-ancestor commits dispositioned; no proxy package/CLI/runner route.
-- Timestamp: 2026-09-23T23:22:31.461063+00:00
-- Tested commit: 25e315859b8e54f598d86353ebfe9df8fe309689 (audit script recorded with these receipts; assertions inspect that product tree).
-- Evidence: EXTRACTION.md and CONTRACT.md; private sem-2-isolated-static-audit.log and sem-2-isolated-proxy-inventory.log.
+- Command: `python3 goals/SEM-2-redis-messaging-release/results/verify-source.py`; `git diff 3ec254e..800c8c53b8548250da6bf4a684bf796f1e9e1a73`; `git grep -n -i -E 'proxy|http-policy' -- packages conformance tools docs SPEC.md README.md CHANGELOG.md package.json`.
+- Exit code: 0 (the inventory has expected, dispositioned matches).
+- Headline: 5/5 static assertions; four export maps/locks checked; all 17 shared-ancestor commits dispositioned; no proxy package, public core policy export, CLI command or runner route.
+- Timestamp: 2026-09-23T23:54:11.135041+00:00.
+- Tested commit: `800c8c53b8548250da6bf4a684bf796f1e9e1a73`.
+- Evidence: EXTRACTION.md, CONTRACT.md, private sem-2-completion-static-audit.log and sem-2-completion-proxy-inventory.log. Third-party version/resolved/integrity triples are unchanged against pinned main.
 
 ## Gate 2 — Contract, docs and exports
 
-- Command: `python3 goals/SEM-2-redis-messaging-release/results/verify-source.py`; `npm run check:docs`; installed archive command under gate 6.
+- Command: static audit above; `npm run check:docs`; exact installed-consumer commands under gate 6.
 - Exit code: 0.
-- Headline: section 20 matches the pinned feature byte for byte; 18 public Markdown files pass; all four installed exports/peers validated.
-- Timestamp: 2026-09-23T23:23:01.340Z
-- Tested commit: 25e315859b8e54f598d86353ebfe9df8fe309689 (audit and documentation subject unchanged by later receipts).
-- Evidence: CONTRACT.md maps every DECIDED clause to tests or explicit source inspection; no new TLS certificate-deployment claim. docs/redis-messaging.md discloses one OS account per host; separate-account/private-file evidence remains deferred in references/deferred-os-account-validation.md.
+- Headline: SPEC section 20 matches pinned feature byte for byte; 18 public Markdown documents pass; four installed export/peer maps verified, including negative core/http-policy and core/http-policy.js imports.
+- Timestamp: 2026-09-23T23:53:57.339274+00:00 (quality command batch start).
+- Tested commit: `800c8c53b8548250da6bf4a684bf796f1e9e1a73`.
+- Evidence: CONTRACT.md maps every DECIDED clause to tests or source inspection. Deployment/release docs disclose one OS account per host and link the separate-account debt via issue 2. TLS option forwarding is inspected; no new certificate-deployment claim is made.
 
 ## Gate 3 — Deployment and ACL boundary
 
-- Command: `node conformance/run.mjs redis`; `bun conformance/run.mjs redis` on both native hosts. The runner includes `conformance/redis/messaging-acl.mjs`.
+- Command: `node conformance/run.mjs redis` and `bun conformance/run.mjs redis` on both native hosts; includes messaging-acl.mjs.
 - Exit code: 0 for all four invocations.
-- Headline: all six ACL cases passed per pairing, within the 164/164 Redis count: independent configs/distinct restricted credentials; no local files; out-of-scope key/publish/subscribe denial; warn/strict inspection; computed keys; notification permission.
-- Timestamp: 2026-09-23T23:21:51.304453+00:00 (Linux Node start; other invocation times are in each log)
-- Tested commit: 25e315859b8e54f598d86353ebfe9df8fe309689.
-- Identity: Darwin arm64 uid 502, Node 22.21.1 and Bun 1.4.2; Linux x64 uid 1000, Node 22.23.0 and Bun 1.4.2; Redis 8.4.0 on both.
-- Evidence: private sem-2-isolated-macos/{node,bun}-redis.log and sem-2-isolated-linux/{node,bun}-redis.log. These prove a single unprivileged OS account per host, not separate homes or OS-user isolation.
+- Headline: 7/7 ACL groups per pairing within 167/167 Redis cases: independently configured restricted users exchange; no local coordination; denied outside keys/channels; warn/strict readiness; computed-key and notification permission; definitive EVAL/TIME ACCESS and restoration without reconnecting established sockets.
+- Timestamp: 2026-09-23T23:53:45.590957+00:00 (macOS Node Redis start; each log carries its own time).
+- Tested commit: `800c8c53b8548250da6bf4a684bf796f1e9e1a73`.
+- Identity: Darwin arm64 uid 502, Node 22.21.1 / Bun 1.4.2; Linux x64 uid 1000, Node 22.23.0 / Bun 1.4.2; Redis 8.4.0 on both.
+- Evidence: private sem-2-completion-{macos,linux}/{node,bun}-redis.log. Separate OS users, homes and private-file isolation remain unverified, as explicitly agreed.
 
 ## Gate 4 — Source and cross-host regressions
 
-- Command: `node conformance/run.mjs <suite>` and `bun conformance/run.mjs <suite>` for each suite below on both hosts; `PATH=$NODE22_BIN:$PATH python3 -u $PRIMARY/.scratch/run-sem2-crosshost.py`.
-- Exit code: 0 for all 20 source invocations and cross-host harness.
-- Headline: 627/627 reported scenarios per platform/runtime pairing, 2508/2508 total; cross-host 6/6. Counts sum RESULT lines; auxiliary PASS-only assertions also execute but are not added.
-- Timestamp: 2026-09-23T23:21:51.304453+00:00 (Linux Node start; other invocation times are in each log)
-- Tested commits: core `ce00f9b9c40da52f72988295d578264582e7f55a`; messaging/administration `1421359191e7932e3e8eddd2e8f37599b4a0feb8`; OTel/cross-host `59127e4cd50bb6c19a6ec0f1e2e03790ea4cebf9`; Redis `25e315859b8e54f598d86353ebfe9df8fe309689`.
-- Evidence: private sem-2-final-{macos,linux}/ core logs; sem-2-reviewed-{macos,linux}/ messaging/administration logs; sem-2-nominated-{macos,linux}/ OTel logs; sem-2-isolated-{macos,linux}/ Redis logs; sem-2-nominated-crosshost.log. Every included invocation exits 0.
-- Ancestry checks: `git diff ce00f9b..HEAD -- packages/core` and `git diff 1421359..HEAD -- packages/messaging conformance/messaging conformance/administration` both produce no changes. Core package source and its archive hash are unchanged. Redis changes after 1421359 were exercised by the newer Redis and OTel runs. After 59127e4 only fault-case cleanup changed; package, cross-host and exact-archive subjects are unchanged.
-- Superseded attempts: Linux Node runs at 1421359 and 59127e4 failed the new subscription-outage fixture because earlier clients remained open and reconnected into subsequent cases. Isolated diagnostic and per-case cleanup established the interference; 25e3158 fixes the fixture. Failed logs remain retained and are not counted green.
+- Command: `node conformance/run.mjs <suite>` and Bun equivalent for each suite below on both hosts; `PATH=$NODE22_BIN:$PATH python3 -u $PRIMARY/.scratch/run-sem2-crosshost.py`.
+- Exit code: 0 for all retained/final source invocations and the cross-host harness.
+- Headline: 630/630 reported scenarios per pairing; 2520/2520 source total; cross-host 6/6. Counts sum RESULT lines and exclude auxiliary PASS-only assertions.
+- Timestamp: 2026-09-23T23:53:12.521525+00:00 (final macOS matrix start; per-invocation times are in raw logs).
+- Tested commit: `800c8c53b8548250da6bf4a684bf796f1e9e1a73` for messaging, Redis, administration, OTel and cross-host. Core retains `ce00f9b9c40da52f72988295d578264582e7f55a` evidence.
+- Ancestry: `git diff ce00f9b..800c8c53b8548250da6bf4a684bf796f1e9e1a73 -- packages/core` is empty. Core source, native digests/binaries and every extracted package file are unchanged. The newly packed core archive has a different compressed-byte hash; the new exact set is independently tested under gate 6.
+- Evidence: private sem-2-completion-{macos,linux}/ full logs/status; sem-2-final-{macos,linux}/ core logs; sem-2-completion-linux-matrix.log; sem-2-completion-crosshost.log; sem-2-core-payload-equivalence.log (69 identical extracted core files).
 
 | Suite | macOS Node | macOS Bun | Linux Node | Linux Bun |
 | --- | ---: | ---: | ---: | ---: |
 | messaging | 110/110 | 110/110 | 110/110 | 110/110 |
-| redis | 164/164 | 164/164 | 164/164 | 164/164 |
+| redis | 167/167 | 167/167 | 167/167 | 167/167 |
 | core | 292/292 | 292/292 | 292/292 | 292/292 |
 | administration | 14/14 | 14/14 | 14/14 | 14/14 |
 | otel | 47/47 | 47/47 | 47/47 | 47/47 |
 
-Cross-host cases are all four Node/Bun sender/relay combinations, acknowledged
-AOF send across an actual Redis restart, and an existing waiter reconnecting
-across an actual restart. The harness uses the isolated final Linux source.
-Synthetic upgrade rollback/crash cases remain in the messaging suite; the real
-0.2.0 installed-CLI case is in gate 6. Historical 1050/1050 is not counted.
+Cross-host covers four runtime combinations, acknowledged AOF send across an
+actual Redis restart, and an existing waiter reconnecting across a restart.
+The shared topics timeout case freezes the wall clock; both backends pass.
+Fault coverage includes explicit uncertain-listener restart and a stale local
+subscription snapshot kept alive by a peer. Synthetic upgrade rollback/crash
+cases remain; the real archived 0.2.0 installed-CLI upgrade is under gate 6.
+Historical 1050/1050 is not counted.
+
+Superseded failed receipts are preserved: Linux Node at 1421359 and 59127e4
+exposed earlier fault clients reconnecting into later cases, fixed in 25e3158.
+The 2a78f00 Linux Node run exposed caller-timer expiry before a wall-clock
+comparison, fixed in 800c8c5. A focused old-build run reproduced the stale
+snapshot bug after a build failed from omitted CARGO_HOME; the corrected build
+and final matrix pass. None of these failed runs is counted green.
 
 ### Retained runner inventory
 
@@ -75,34 +82,43 @@ those cases. The new exact-archive fixture is additional to this inventory.
 ## Gate 5 — Quality formula
 
 - Command: `bun node_modules/@evie-kit/cli/src/evie-kit.ts lint gate`; `npm run typecheck`; `npm run lint`; `npm run lint:types`; `npm run format:check`; `npm run check:docs`.
-- Exit code: 0 for the repository checks; final formula receipt under results/lint/.
-- Headline: typecheck and fast roots packages/, conformance/, tools/ pass with no errors/warnings. Receipt requires configured=true, ok=true and deep.state=passed.
-- Timestamp: 2026-09-23T23:23:01.340Z (repository checks); formula timestamp is in lint/receipt.json.
-- Tested commit: 25e315859b8e54f598d86353ebfe9df8fe309689; product source 59127e4cd50bb6c19a6ec0f1e2e03790ea4cebf9 unchanged.
-- Evidence: lint/receipt.json, lint/sonar-evidence.json; private sem-2-isolated-quality.log and sem-2-isolated-lint.log.
-- Supported tool source: evie-kit 6f0303703e00d7b9029396fb0eda69a1f8304d97; existing oxlint command adapter, no new root package dependency.
-- Effective Sonar scope: sources packages (tracked properties and machine-local settings agree); exclusions node_modules, dist, target, test files, conformance fixtures and goal records as spelled in receipt. Four package tsconfigs; server/auth remain machine-local. Scanner 8.0.1.6346, server 26.2.0.119303.
-- Disclosure: zero in-diff open issues satisfies the configured goal formula. There are 71 outside-diff open issues and the project dashboard quality gate is ERROR. No coverage claim is made; the stale LCOV input was removed. No waiver was requested or granted. Final lint eligibility remains required at lock.
+- Exit code: 0 for the formula and each repository check.
+- Headline: typecheck passed; fast.configured=true and fast.ok=true; packages/, conformance/, tools/ have zero warnings/errors; deep.state=passed with zero in-diff findings.
+- Timestamp: 2026-09-23T23:54:41.296Z (formula); repository batch began 2026-09-23T23:53:57.339274+00:00.
+- Tested commit: `800c8c53b8548250da6bf4a684bf796f1e9e1a73`.
+- Evidence: lint/receipt.json, lint/sonar-evidence.json, private sem-2-completion-quality.log and sem-2-completion-lint.log.
+- Supported toolkit revision: 6f0303703e00d7b9029396fb0eda69a1f8304d97. Existing oxlint command adapters; no private toolkit dependency in public npm lint.
+- Effective Sonar scope: packages, matching tracked properties/local settings; four package tsconfigs and recorded exclusions for dist, dependencies, tests/conformance and goal records. Host/auth remain machine-local. Scanner 8.0.1.6346, server 26.2.0.119303.
+- Disclosure: project dashboard ERROR and 71 outside-diff issues remain. Both review scans passed with zero in-diff issues. No waiver or coverage claim. The 2910e5a scan found one catch-binding rule, fixed in 2a78f00; the earlier d9 scan was invalidated by source movement and is diagnostic. Final 800c8c5 evidence supersedes both.
+- Authorship is verified and final lint eligibility passes at the checked source; both are checked again at the receipts head before lock. Later changes remain goal-record-only.
 
 ## Gate 6 — One exact portable archive set
 
-- Command: build with `npm run build` on both native hosts; `node packages/core/assemble-native.mjs .tmp/sem2-linux-native`; copy verified Linux native pair to messaging; `npm pack --ignore-scripts --json --pack-destination $CANDIDATE_DIR` once per package; `SEMAPHILE_CANDIDATE_DIR=$CANDIDATE_DIR SEMAPHILE_020_MESSAGING_ARCHIVE=$OLD_ARCHIVE SEMAPHILE_TESTED_COMMIT=$TESTED_COMMIT node conformance/release/candidate.mjs` and Bun equivalent on both hosts.
-- Exit code: 0 for all four archive invocations.
-- Headline: 5/5 installed groups per pairing, 20/20 total; four hashes identical before/after each run; MIT/license/README/privacy/native identity audit 4/4.
-- Timestamp: 2026-09-23T23:15:22.802301+00:00 (first exact-archive run; other run times are in each log)
-- Tested commit: 59127e4cd50bb6c19a6ec0f1e2e03790ea4cebf9, both fixture and package source. Later fault cleanup does not touch this fixture or packages.
-- Durable archive directory: `/Users/openclaw/src/divideby0/semaphile/releases/candidates/redis-messaging/0.3.0/59127e4cd50bb6c19a6ec0f1e2e03790ea4cebf9/`.
-- Evidence: ARTIFACTS.json records package versions, exact paths, hashes and native source/binary identities; durable SHA256SUMS and release.json; private sem-2-nominated-archive-{macos,linux}.log and sem-2-nominated-archive-audit.log.
-- Real 0.2.0 messaging archive SHA-256: `600200f3c20612d789189be55ca0b16089cd9a1d5346f740a6932bcb79d2bb20`. Installed 0.2.0 creates a 1.1 store; installed candidate CLI explicitly upgrades to 1.2; pending content, trace, dedupe and prior receipt survive.
-- Installed copy isolation removes core, messaging native files and SQLite implementation files, then exercises Redis library and CLI. The archive set is not modified or repacked.
-- Both core/messaging archives contain real Darwin arm64 and Linux x64 binaries with matching source digest. Version and every Semaphile peer are exactly 0.3.0. No install hook compiles native code.
+- Command: `npm run build` on both native hosts; `node packages/core/assemble-native.mjs .tmp/sem2-linux-native`; copy the verified Linux pair to messaging; `npm pack --ignore-scripts --json --pack-destination $CANDIDATE_DIR` once per package; `SEMAPHILE_CANDIDATE_DIR=$CANDIDATE_DIR SEMAPHILE_020_MESSAGING_ARCHIVE=$OLD_ARCHIVE SEMAPHILE_TESTED_COMMIT=$TESTED_COMMIT node conformance/release/candidate.mjs` and Bun equivalent on both hosts.
+- Exit code: 0 for all four exact-archive runs.
+- Headline: 5/5 installed groups per pairing, 20/20 total; four hashes asserted equal before/after each run; metadata/license/README/privacy audit 4/4.
+- Timestamp: 2026-09-23T23:59:22.846728+00:00 (first exact-archive run; others carry their own times).
+- Tested commit: `800c8c53b8548250da6bf4a684bf796f1e9e1a73`, both package source and fixture.
+- Durable directory: `/Users/openclaw/src/divideby0/semaphile/releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/`.
+- Evidence: ARTIFACTS.json, durable release.json/SHA256SUMS, private sem-2-completion-archive-{macos,linux}.log and sem-2-completion-archive-audit.log; native build logs under sem-2-completion-{macos,linux}/build.log.
+- Real 0.2.0 archive SHA-256: 600200f3c20612d789189be55ca0b16089cd9a1d5346f740a6932bcb79d2bb20. Its 1.1 store upgrades explicitly to 1.2 through the installed candidate CLI; pending content, trace, dedupe and a prior receipt survive.
+- Native-free fault isolation removes core/messaging native and SQLite implementation files only from installed copies. The same four archives remain unchanged across both hosts/runtimes.
+- Both native targets have verified source/binary identities. All four versions and Semaphile peers are exactly 0.3.0; no install hook compiles native code. Historical checkpoint archives and the earlier ce00f9b/59127e4 candidates are preserved.
 
-## Gate 7 — Fresh blind review (WAIVER)
+## Gate 7 — Fresh blind review
 
-- Status: in-flight
-- Evidence: reviews/results-004/INDEX.md and primary private reviews/sem-2-codex-1.md. Verification wave and fresh Codex verification remain pending.
+- Command: `evie-kit goals review --goal SEM-2 --purpose verification --verifying '<bounded fix/evidence scope>'`; independent `codex exec --sandbox read-only` review of the last 13 commits at b928d06.
+- Exit code: 0 for all agreed engines and the separate Codex review; reconciliation passed.
+- Headline: results-004 had 20 consolidated items; results-005 has 10 minor/nit items, no blocker/major, all dispositioned. CodeRabbit had no new findings; Codex had no actionable findings; Sonar had zero in-diff findings.
+- Timestamp: 2026-09-23T23:27:05.102Z (verification wave start).
+- Reviewed commit: b928d062412f. Accepted closing corrections through `800c8c53b8548250da6bf4a684bf796f1e9e1a73` were verified by focused regressions, the full affected source matrix, quality formula and new exact archives above. Two fresh Codex reviews ran; this smaller verification set did not trigger the stop/split clause.
+- Evidence: reviews/results-005/INDEX.md, earlier results-004/INDEX.md, primary private reviews/sem-2-codex-2.md and sem-2-results-005/ raw reports. GATES was committed before both waves. The retrospective is refreshed and checked before lock.
 
-## Gate 8 — Action boundary (WAIVER)
+## Gate 8 — Action boundary
 
-- Status: not mechanically runnable
-- Evidence: final RESULT.md action record and reviewed diff; lock is not yet claimed.
+- Status: verified by the reviewed diff and execution record; no mechanical test can prove every absent action.
+- Evidence: RESULT.md and final diff. No npm publication, protected merge, proxy product, Sentinel, harness adapter or range registry was added/performed. Refused supervisor probes were not retried. Only the goal branch is pushed at lock.
+- Candidate handoff: the orchestrator lands the branch; the owner confirms final source/archive identity, optional-core install behavior and known excluded observer fixes before publication. Separate OS-account debt remains linked and unverified.
+
+The reported conformance total is 2546/2546: 2520 source scenarios, six
+cross-host cases and 20 installed groups. Static and quality checks are separate.
