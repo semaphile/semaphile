@@ -1,0 +1,30 @@
+#!/bin/sh
+# SEM-3 fixture runner, installed root-owned and read-only. sudo (macOS) or
+# setpriv (Linux container) starts it as one fixture identity. It accepts
+# exactly one argument, refuses every other identity, and execs the fixed
+# participant with an allowlisted environment. Commands use absolute paths
+# so the caller's PATH is never consulted.
+set -eu
+PREFIX=/opt/semaphile-sem3
+[ "$#" -eq 1 ] || exit 64
+cache=
+case "$1" in
+  node) runtime="$PREFIX/runtime/node/bin/node" ;;
+  bun)
+    runtime="$PREFIX/runtime/bun/bun"
+    # Keep Bun's transpiler cache out of the private homes.
+    cache=BUN_RUNTIME_TRANSPILER_CACHE_PATH=0
+    ;;
+  *) exit 64 ;;
+esac
+user=$(/usr/bin/id -un)
+uid=$(/usr/bin/id -u)
+case "$user:$uid" in
+  sem3a:3601 | sem3b:3602 | sem3c:3603) ;;
+  *) exit 77 ;;
+esac
+home="$PREFIX/home/$user"
+cd "$home"
+exec /usr/bin/env -i HOME="$home" USER="$user" LOGNAME="$user" PATH=/usr/bin:/bin LANG=C \
+  TMPDIR="$PREFIX/checkout/.tmp/participants/$user" ${cache:+"$cache"} \
+  "$runtime" "$PREFIX/checkout/conformance/accounts/participant.mjs"
