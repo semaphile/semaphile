@@ -28,6 +28,13 @@ export const settings = (ctx: SettingsContext) => ({
   // ambient env outranks files, a missing file is silently fine.
   // Credentials dropped here load with no manual sourcing.
   envFiles: ['.envrc.local'],
+  // Executor runtimes a goal may launch on (the EVA-212 fence). Codex
+  // joined 2026-09-23 so goals can run an OpenAI executor (first user:
+  // SEM-2 on gpt-6-astra); codex-cli must be at a verified row, see
+  // `evie-kit goals runtimes`.
+  execution: {
+    runtimes: { 'claude-code': {}, codex: {} },
+  },
   tools: {
     lint: Object.fromEntries(
       ['packages/', 'conformance/', 'tools/'].map((root) => [
