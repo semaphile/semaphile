@@ -17,8 +17,8 @@ review:
       soft: 2
       hard: 4
     results:
-      soft: 3
-      hard: 6
+      soft: 2
+      hard: 2
   engines:
     goal: [codex]
     results: [codex, fable, sonarqube, coderabbit]
