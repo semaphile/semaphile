@@ -189,15 +189,20 @@ for (const [name, pin] of Object.entries(DOWNLOADS[platform])) {
   };
 }
 
-// 5. Offline npm cache: exactly the pinned tarballs, copied by integrity.
+// 5. Offline npm cache: exactly the pinned tarballs, each copied with its
+// own request-cache index entry and verified against the locked integrity.
 const npmCache = join(out, 'npm-cache');
 const cacache = createRequire(join(tree, 'runtime/node/lib/node_modules/npm/package.json'))(
   'cacache',
 );
 for (const [key, entry] of thirdParty) {
+  const cacheKey = `make-fetch-happen:request-cache:${entry.resolved}`;
+  const info = await cacache.get.info(values['npm-cache'], cacheKey);
+  assert.ok(info, `${key} is not in the local npm cache; acquisition belongs to the bootstrap`);
   const data = await cacache.get.byDigest(values['npm-cache'], entry.integrity);
-  await cacache.put(npmCache, `make-fetch-happen:request-cache:${entry.resolved}`, data, {
+  await cacache.put(npmCache, cacheKey, data, {
     integrity: entry.integrity,
+    metadata: info.metadata,
   });
   await write('npm-cache.jsonl', { key, integrity: entry.integrity, bytes: data.length });
 }
@@ -210,8 +215,10 @@ let installed = 'performed inside the container';
 if (platform === 'darwin') {
   const npmHome = join(out, 'npm-home');
   await mkdir(npmHome);
-  const empty = join(npmHome, 'npmrc');
-  await writeFile(empty, '');
+  const userConfig = join(npmHome, 'user.npmrc');
+  const globalConfig = join(npmHome, 'global.npmrc');
+  await writeFile(userConfig, '');
+  await writeFile(globalConfig, '');
   run(
     join(tree, 'runtime/node/bin/node'),
     [
@@ -231,8 +238,8 @@ if (platform === 'darwin') {
       env: {
         PATH: `${join(tree, 'runtime/node/bin')}:/usr/bin:/bin`,
         HOME: npmHome,
-        npm_config_userconfig: empty,
-        npm_config_globalconfig: empty,
+        npm_config_userconfig: userConfig,
+        npm_config_globalconfig: globalConfig,
         npm_config_update_notifier: 'false',
       },
       stdio: 'inherit',
