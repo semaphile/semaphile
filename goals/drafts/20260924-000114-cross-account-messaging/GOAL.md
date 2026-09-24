@@ -2,6 +2,8 @@
 status: draft
 created: 2026-09-24T00:01:14-05:00
 type: chore
+import_issue: SEM-3
+import_issue_url: https://github.com/semaphile/semaphile/issues/3
 ---
 
 # Test Redis Messaging Across OS Accounts
