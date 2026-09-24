@@ -1,0 +1,10 @@
+{
+  "kind": "goal",
+  "index": 4,
+  "purpose": "verification",
+  "created": "2026-09-24T06:41:12.610Z",
+  "verifying": "goal-003 dependency coverage and nonblocking precision corrections",
+  "advisory": [
+    "pi-gemini"
+  ]
+}

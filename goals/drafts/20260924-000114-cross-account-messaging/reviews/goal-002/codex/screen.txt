@@ -1,0 +1,50 @@
+    126 +7. **All six deferred criteria:** Checkable. The complete pinned debt record
+    127 +   is available in `references/sem2-debt.md`; the new contract supplies identity,
+    128 +   archive, exchange, permission, runtime/receipt and topic/lifetime/readiness
+    129 +   evidence. `GOAL.md:131–135` forbids passing with an unmet criterion.
+    130 +   `GOAL.md:253–257` specifies version-scoped public documentation and an
+    131 +   orchestrator follow-up summary while preserving the locked SEM-2 history.
+    132 +
+    133 +## Sizing sanity
+    134 +
+    135 +L (8) is plausible for the stated scope (`GOAL.md:259–265`). The work is dominated
+    136 +by two provisioning paths, a cross-process harness and durable evidence, with
+    137 +owner-assisted checkpoints. The 200 instances reuse a bounded set of cases;
+    138 +they are not 200 separate implementations. Fixed candidate bytes and the
+    139 +separate product-fix decision keep the scope bounded. The plan accurately
+    140 +claims one real provisioning lifecycle, repeated fixture verification and
+    141 +labeled recovery tests, rather than an unperformed second full lifecycle.
+    142 +Execution budget remains the orchestrator's responsibility. No split is needed
+    143 +to address the issues raised in this review.
+    144 +
+    145 +## Open questions and grill suggestions
+    146 +
+    147 +None.
+    148 +
+    149 +The owner has settled the artifact target, product-fix boundary and one-goal
+    150 +execution shape. Command syntax, scoped paths, resource limits and image
+    151 +digests belong to the specified executor review checkpoint. They do not need
+    152 +another product interview at promotion review.
+    153 +
+    154 +## Wayfinder signal
+    155 +
+    156 +none — The fixed case inventory, candidate selection and complete lifecycle
+    157 +remove the earlier ambiguity. The remaining work is bounded implementation
+    158 +and verification with explicit operator checkpoints.
+    159 +
+    160 +## Promote-readiness verdict
+    161 +
+    162 +ready_to_promote — All seven first-round findings are resolved in the binding
+    163 +plan, and the required assertions are consistent with the inspected candidate
+    164 +APIs and SPEC. Host readiness, administrator procedures and actual passing
+    165 +receipts remain execution prerequisites. Promotion and launch still require
+    166 +the owner's separate instruction.
+    167 +
+    168 +CRITIQUE COMPLETE
+
+─ Worked for 4m 01s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+› Ask Codex to do anything
+
+  gpt-6-astra xhigh · ~/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging

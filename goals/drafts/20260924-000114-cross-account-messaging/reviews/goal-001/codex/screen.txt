@@ -1,0 +1,50 @@
+    214 +recovering from partial setup and allowing review-driven reruns before removal.
+    215 +This can remain one goal with planned owner checkpoints and a bounded scenario
+    216 +inventory. Estimate it after that inventory and the Redis service plan exist,
+    217 +and reserve launch budget for the two permitted reviews and teardown. An
+    218 +unbounded product-fix allowance would change that assessment.
+    219 +
+    220 +## Open questions and grill suggestions
+    221 +
+    222 +7. **If the cross-account tests expose an existing messaging bug that prevents
+    223 +   the required matrix from passing, should this Chore stop for a separate fix
+    224 +   decision, or may it include a bounded fix that preserves SPEC?**
+    225 +   `GOAL.md:59–61` requires a reproducer and scope assessment, while the stop
+    226 +   clause at `GOAL.md:110–114` expressly covers changed contracts but leaves
+    227 +   contract-preserving product fixes unclear. Suggested choices: **Stop for a
+    228 +   separate fix decision (Recommended)**, which keeps this deliverable focused
+    229 +   on fixture/conformance work and leaves the gate blocked; **Allow bounded
+    230 +   contract-preserving fixes**, which permits product edits plus affected
+    231 +   package builds, tests and reviews within a stated budget; **Go deeper —
+    232 +   explain more before I decide**. Either choice retains the agreed messaging
+    233 +   contract and prohibits claiming the failed scenario as green.
+    234 +
+    235 +The other findings can be resolved by the planner/executor as engineering
+    236 +details. They do not justify re-asking the account count, platforms, selected
+    237 +Linux host model, removal choice or messaging scope.
+    238 +
+    239 +## Wayfinder signal
+    240 +
+    241 +none — The purpose, platforms and product boundary are already narrow. The
+    242 +identified holes need a scenario table and a complete operational lifecycle,
+    243 +not a new product discovery exercise. Planned administrator pauses are
+    244 +compatible with one goal. Reconsider sizing if the fixed inventory or an
+    245 +authorized product repair exceeds the launch budget.
+    246 +
+    247 +## Promote-readiness verdict
+    248 +
+    249 +not_ready — Finalize the required cases, require execution of the nominated
+    250 +archives, join configuration isolation to the actual participant processes,
+    251 +and specify the Redis control role and complete teardown/review sequence.
+    252 +Resolve the product-fix boundary before launch. These changes make the existing
+    253 +scope verifiable without adding registry work, new cross-host guarantees or
+    254 +unrelated historical suite runs.
+    255 +
+    256 +CRITIQUE COMPLETE
+
+─ Worked for 5m 02s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+› Ask Codex to do anything
+
+  gpt-6-astra xhigh · ~/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging

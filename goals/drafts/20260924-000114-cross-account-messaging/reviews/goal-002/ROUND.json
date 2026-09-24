@@ -1,0 +1,10 @@
+{
+  "kind": "goal",
+  "index": 2,
+  "purpose": "verification",
+  "created": "2026-09-24T06:29:25.945Z",
+  "verifying": "goal-001 contract corrections and owner archive/fix decisions",
+  "advisory": [
+    "pi-gemini"
+  ]
+}

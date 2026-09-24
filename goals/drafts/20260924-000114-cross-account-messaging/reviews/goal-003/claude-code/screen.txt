@@ -1,0 +1,50 @@
+    store. Checks that only wait for a deadline and then read the state (T5, L1, L3) can fail falsely. Under the owner's new rule, such a
+    false failure would stop the goal as a "product defect".
+
+  Two items should go in with those:
+  - Readiness grant: the permission R3 adds lets that credential read any Redis setting, including passwords.
+  - Dependencies: third-party packages such as @redis/client should be pinned to the repo lockfiles' integrity values, and the contract
+    should declare which case uses which store, config file and credential.
+
+  The remaining four are smaller:
+  - Every Mac harness fix costs the owner another admin session.
+  - The executor needs a rule for telling a harness bug from a product bug.
+  - Scope item 5 still lists the old, narrow cleanup set.
+  - The L (8) size estimate is optimistic; 13 is more realistic.
+
+  I have no new questions for the owner. After these amendments I expect to return ready_to_promote. I'm waiting for the next brief.
+
+✻ Brewed for 4m 14s · done 1:33 AM
+
+❯ Follow-up goal-review round: read /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals
+  /drafts/20260924-000114-cross-account-messaging/reviews/goal-003/BRIEF.md and follow it (same contract as your previous round). Summary:
+  Verify Redis authentication, CLI config discovery, dependency integrity and expiry assertions
+
+  Searched for 2 patterns, ran 4 shell commands
+
+⏺ Verifying whether a broadcast actually triggers the presence sweep the revised L3 relies on.
+
+  Searched for 2 patterns, read 1 file, ran 2 shell commands
+
+⏺ Write(goals/drafts/20260924-000114-cross-account-messaging/reviews/goal-003/claude-code/CRITIQUE.md)
+  ⎿  Wrote 163 lines to goals/drafts/20260924-000114-cross-account-messaging/reviews/goal-003/claude-code/CRITIQUE.md
+      1 ---
+      2 agent: claude-code
+      3 model: claude-opus-5-5
+      4 reasoning_effort: high
+      5 round: 3
+      6 timestamp: 2026-09-24T01:45:00-05:00
+      7 verdict: ready_to_promote
+      8 findings: 3
+      9 ---
+     … +160 lines
+
+✶ Misting… (1m 40s · ↓ 9.5k tokens)
+  ⎿  Tip: Run /install-github-app to tag @claude right from your Github issues and PRs
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+   Model: Opus 5.5  ac2a7657  Ctx: 175.8k  18.0%  Session: 1hr 13m  Out: 114.2k  Total: 10.4M 
+   cwd: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-mes...
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 1 agent

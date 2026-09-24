@@ -1,0 +1,50 @@
+    107 +   fast tier or participant tests.
+    108 +
+    109 +6. **Review and retained evidence:** Checkable. Accepted harness changes still
+    110 +   require reviewed reinstallation and affected reruns before teardown. The
+    111 +   private evidence index retains commands, outcomes, identities and hashes;
+    112 +   the final audit reconciles removal with the reviewed code and manifest.
+    113 +   These records support review without recreating infrastructure.
+    114 +
+    115 +7. **SEM-2 debt closure:** Checkable against the six pinned criteria. The
+    116 +   dependency amendment completes the identified-installation contract without
+    117 +   adding an OTel behavioral suite. Required failures and unexplained outcomes
+    118 +   remain blockers; results remain limited to the tested candidate and retain
+    119 +   the historical cross-host boundary.
+    120 +
+    121 +## Sizing sanity
+    122 +
+    123 +L (8–13) remains plausible. The changes refine existing bootstrap, evidence and
+    124 +test assertions; they do not add a platform, package build or behavioral suite.
+    125 +Owner-assisted reinstalls and the final teardown audit remain the main scheduling
+    126 +constraints. The settled one-goal structure and orchestrator-owned budget need
+    127 +no further adjustment from this review.
+    128 +
+    129 +## Open questions and grill suggestions
+    130 +
+    131 +None.
+    132 +
+    133 +The corrections fit the existing owner decisions and narrow authority boundary.
+    134 +The concrete bootstrap review remains an execution checkpoint, not an unresolved
+    135 +product choice.
+    136 +
+    137 +## Wayfinder signal
+    138 +
+    139 +none — The remaining dependency omission is resolved, and the added observation
+    140 +and configuration requirements have clear checks within the fixed scope.
+    141 +
+    142 +## Promote-readiness verdict
+    143 +
+    144 +ready_to_promote — The current files resolve goal-003 finding 1 and introduce
+    145 +no new planning contradiction in the reviewed correction batch. All seven gates
+    146 +remain checkable. Promotion and launch still require the owner's separate
+    147 +instruction; actual platform evidence and cleanup remain execution work.
+    148 +
+    149 +CRITIQUE COMPLETE
+
+─ Worked for 2m 22s ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+› Ask Codex to do anything
+
+  gpt-6-astra xhigh · ~/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging

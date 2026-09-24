@@ -1,0 +1,9 @@
+{
+  "kind": "goal",
+  "index": 1,
+  "purpose": "finding",
+  "created": "2026-09-24T05:24:13.963Z",
+  "advisory": [
+    "pi-gemini"
+  ]
+}
