@@ -1,0 +1,13 @@
+{
+  "name": "semaphile-account-fixture",
+  "private": true,
+  "type": "module",
+  "description": "Installed-archive consumer for the SEM-3 cross-account fixture",
+  "dependencies": {
+    "@opentelemetry/api": "1.9.1",
+    "@semaphile/core": "file:../../releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/semaphile-core-0.3.0.tgz",
+    "@semaphile/messaging": "file:../../releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/semaphile-messaging-0.3.0.tgz",
+    "@semaphile/otel": "file:../../releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/semaphile-otel-0.3.0.tgz",
+    "@semaphile/redis": "file:../../releases/candidates/redis-messaging/0.3.0/800c8c53b8548250da6bf4a684bf796f1e9e1a73/semaphile-redis-0.3.0.tgz"
+  }
+}
