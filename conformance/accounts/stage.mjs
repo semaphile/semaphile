@@ -200,7 +200,8 @@ for (const [key, entry] of thirdParty) {
   const info = await cacache.get.info(values['npm-cache'], cacheKey);
   assert.ok(info, `${key} is not in the local npm cache; acquisition belongs to the bootstrap`);
   const data = await cacache.get.byDigest(values['npm-cache'], entry.integrity);
-  await cacache.put(npmCache, cacheKey, data, {
+  // npm's --cache names the parent of its content-addressed _cacache store.
+  await cacache.put(join(npmCache, '_cacache'), cacheKey, data, {
     integrity: entry.integrity,
     metadata: info.metadata,
   });
