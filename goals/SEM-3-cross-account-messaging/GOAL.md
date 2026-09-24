@@ -1,15 +1,15 @@
 ---
-status: draft
+status: promoted
 created: 2026-09-24T00:01:14-05:00
 type: chore
-import_issue: SEM-3
-import_issue_url: https://github.com/semaphile/semaphile/issues/3
 identity:
   schema: 1
   key: SEM-3
   folder: SEM-3-cross-account-messaging
   branch: "SEM-3-cross-account-messaging"
   workspace: SEM-3-cross-account-messaging
+promoted: 2026-09-24T01:47:21-05:00
+issue_url: https://github.com/semaphile/semaphile/issues/3
 ---
 
 # Test Redis Messaging Across OS Accounts
