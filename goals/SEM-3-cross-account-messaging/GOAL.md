@@ -10,6 +10,26 @@ identity:
   workspace: SEM-3-cross-account-messaging
 promoted: 2026-09-24T01:47:21-05:00
 issue_url: https://github.com/semaphile/semaphile/issues/3
+review:
+  wave: true
+  rounds:
+    goal:
+      soft: 2
+      hard: 4
+    results:
+      soft: 3
+      hard: 6
+  engines:
+    goal: [codex]
+    results: [codex, fable, sonarqube, coderabbit]
+  models:
+    claude-code: claude-opus-5-5
+    codex: gpt-6-astra
+    fable: claude-fable-5-1
+execution:
+  model: claude-opus-5-5
+  runtime: claude-code
+plan_accepted: 2026-09-24T01:51:38-05:00
 ---
 
 # Test Redis Messaging Across OS Accounts
