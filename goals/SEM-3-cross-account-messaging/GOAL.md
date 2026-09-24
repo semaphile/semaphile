@@ -1,5 +1,5 @@
 ---
-status: promoted
+status: started
 created: 2026-09-24T00:01:14-05:00
 type: chore
 identity:
@@ -30,6 +30,7 @@ execution:
   model: claude-opus-5-5
   runtime: claude-code
 plan_accepted: 2026-09-24T01:51:38-05:00
+started: 2026-09-24T01:51:48-05:00
 ---
 
 # Test Redis Messaging Across OS Accounts
