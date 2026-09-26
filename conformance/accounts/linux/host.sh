@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# SEM-3 host driver for the shared Linux x64 test host. linux/drive.sh runs
-# it over ssh; it writes no files on the host. It controls only the one
+# SEM-3 host driver on the disposable Linux x64 VM. cloud/ansible installs
+# it root-owned and runs its subcommands as root. It controls only the one
 # labelled fixture container and the pinned image, never prunes, and never
 # forces removal of anything shared.
 set -euo pipefail
@@ -9,6 +9,7 @@ export PATH=/usr/sbin:/usr/bin:/sbin:/bin
 IMAGE="redis@sha256:0a0f28c99ae50da4e0504499d2cd5b41746135c64f28ec42c88dafad93f60d41"
 LABEL=org.semaphile.fixture=sem3
 PREFIX=/opt/semaphile-sem3
+ADMIN_DIR=/run/sem3-admin
 # Reserved capacity, checked before anything is created.
 NEED_CPUS=4
 NEED_MEMORY_KIB=$((6 * 1024 * 1024))
@@ -71,7 +72,7 @@ create() {
     --hostname sem3-linux --network none --init --user 0:0 \
     --cpus 2 --memory 3g --memory-swap 3g --pids-limit 512 \
     --ulimit nofile=4096:4096 --shm-size 16m --stop-timeout 5 \
-    --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add KILL \
+    --cap-drop ALL --cap-add CHOWN --cap-add SETUID --cap-add SETGID --cap-add KILL --cap-add SETPCAP \
     --security-opt no-new-privileges --log-driver none \
     --tmpfs "$PREFIX:rw,exec,nosuid,nodev,size=1536m,mode=0755" \
     --tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m,mode=1777 \
@@ -124,17 +125,18 @@ unpack() {
     tar -xzf $PREFIX/.incoming/bundle.tgz -C $PREFIX/.incoming/x --no-same-owner
     echo '$2  $PREFIX/.incoming/x/STAGED-FILES.txt' | sha256sum -c -
     want=\$(awk '\$4 == \"./checkout/conformance/accounts/linux/container.sh\" { print \$3 }' $PREFIX/.incoming/x/STAGED-FILES.txt)
-    echo \"\$want  $PREFIX/.incoming/x/tree/checkout/conformance/accounts/linux/container.sh\" | sha256sum -c -"
+    echo \"\$want  $PREFIX/.incoming/x/tree/checkout/conformance/accounts/linux/container.sh\" | sha256sum -c -
+    mkdir -m 0700 $ADMIN_DIR
+    cp $PREFIX/.incoming/x/tree/checkout/conformance/accounts/linux/container.sh $ADMIN_DIR/container.sh
+    echo \"\$want  $ADMIN_DIR/container.sh\" | sha256sum -c -"
 }
 
+# The verified admin script runs from a root-only copy outside the prefix,
+# so teardown, which empties the prefix, can run again as a no-op.
 admin() {
   checked_run "$1"
   shift
-  local script=$PREFIX/checkout/conformance/accounts/linux/container.sh
-  if [ "${1:-}" = setup ] || [ "${1:-}" = rehearse ]; then
-    script=$PREFIX/.incoming/x/tree/checkout/conformance/accounts/linux/container.sh
-  fi
-  docker exec "$(name_of "$RUN")" /bin/sh "$script" "$@"
+  docker exec "$(name_of "$RUN")" /bin/sh "$ADMIN_DIR/container.sh" "$@"
 }
 
 controller() {

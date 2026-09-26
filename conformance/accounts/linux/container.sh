@@ -1,7 +1,10 @@
 #!/bin/sh
 # SEM-3 Linux fixture administration inside the isolated container: setup,
 # teardown, rehearsal, a read-only collision check and the tree listing.
-# Runs as container root, which holds only CHOWN, SETUID, SETGID and KILL.
+# Runs as container root, which holds only CHOWN, SETUID, SETGID, KILL and
+# SETPCAP (setpriv needs SETPCAP to clear a child's bounding set). Without
+# DAC_OVERRIDE, root cannot enter another identity's 0700 directory, so
+# teardown empties each such directory as its owner.
 # Same state-log discipline as macos/admin.sh: intended before created,
 # observed right after, and teardown deletes nothing on any mismatch.
 set -eu
@@ -45,6 +48,26 @@ listing() {
       printf 'f %s %s %s\n' "$mode" "$sum" "$path"
     done
   ) | LC_ALL=C sort -k4
+}
+
+# The image ships no procps: find a UID's live processes through /proc.
+# Zombies hold no resources and are reaped by the container's init.
+pids_of() {
+  for proc_status in /proc/[0-9]*/status; do
+    awk -v u="$1" '
+      $1 == "Uid:" && ($2 == u || $3 == u || $4 == u) { owned = 1 }
+      $1 == "State:" && $2 == "Z" { zombie = 1 }
+      END { exit !(owned && !zombie) }' "$proc_status" 2>/dev/null || continue
+    pid=${proc_status#/proc/}
+    echo "${pid%/status}"
+  done
+}
+
+empty_owned_dirs() {
+  find "$PREFIX" -mindepth 1 -type d ! -user 0 -prune -print | while IFS= read -r dir; do
+    setpriv --reuid="$(stat -c %u "$dir")" --regid="$(stat -c %g "$dir")" --clear-groups \
+      --inh-caps=-all --bounding-set=-all --no-new-privs -- find "$dir" -mindepth 1 -delete
+  done
 }
 
 record() { printf '%s\t%s\t%s\t%s\t%s\n' "$(now)" "$1" "$2" "$3" "$4" >>"$STATE/state.tsv"; }
@@ -122,8 +145,10 @@ setup() {
   actual=$(sha256sum "$INCOMING/x/STAGED-FILES.txt" | cut -d' ' -f1)
   [ "$actual" = "${MANIFEST_SHA256:-}" ] || fail "staged listing $actual is not the reviewed $MANIFEST_SHA256"
   listing "$INCOMING/x/tree" | cmp -s - "$INCOMING/x/STAGED-FILES.txt" || fail 'unpacked tree differs from the reviewed listing'
-  wide=$(find / -xdev -type d -perm -0002 -print 2>/dev/null | head -5)
-  [ -z "$wide" ] || fail "world-writable directories on the container disk: $wide"
+  # Sticky shared temporary directories are expected (participants use
+  # their private TMPDIR); a non-sticky world-writable one is refused.
+  wide=$(find / -xdev -type d -perm -0002 ! -perm -1000 -print 2>/dev/null | head -5)
+  [ -z "$wide" ] || fail "non-sticky world-writable directories on the container disk: $wide"
   if ! collisions; then
     fail 'refusing: fixture resources already exist; nothing was changed'
   fi
@@ -264,15 +289,18 @@ teardown() {
   fi
   for name in $ACCOUNTS; do
     if printf '%s\n' "$verdicts" | grep -q "^user $name [a-z]* ours$"; then
-      pkill -KILL -U "$(id_of "$name")" 2>/dev/null || true
+      for pid in $(pids_of "$(id_of "$name")"); do
+        kill -KILL "$pid" 2>/dev/null || true
+      done
     fi
   done
   for name in $ACCOUNTS; do
-    if pgrep -U "$(id_of "$name")" >/dev/null 2>&1; then
+    if [ -n "$(pids_of "$(id_of "$name")")" ]; then
       fail "processes of $name survived; nothing further deleted"
     fi
   done
   if printf '%s\n' "$verdicts" | grep -q "^prefix $PREFIX [a-z]* ours$"; then
+    empty_owned_dirs
     find "$PREFIX" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
     record removed prefix "$PREFIX" 'emptied'
   fi
