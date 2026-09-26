@@ -1,0 +1,11 @@
+# Placeholder inputs. run.sh writes the real file into the private
+# SEM3_CLOUD_DIR; never commit real values.
+project        = "example-project-id"
+project_number = "000000000000"
+run_id         = "linux-example1"
+ssh_public_key = "ssh-ed25519 AAAAexampleonly sem3ops"
+# Optional, with their reviewed defaults:
+# zone          = "us-central1-a"
+# machine_type  = "e2-standard-4"
+# disk_gb       = 20
+# max_run_hours = 8

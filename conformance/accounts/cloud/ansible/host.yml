@@ -1,0 +1,109 @@
+---
+# Host configuration for the disposable SEM-3 VM. Idempotent: a second run
+# must report no changes. The fixture's three test identities never exist
+# here; they are created inside the container by linux/container.sh.
+- name: Configure the disposable SEM-3 fixture host
+  hosts: sem3
+  become: true
+  gather_facts: true
+  vars:
+    sem3_host_dir: /opt/sem3-host
+    sem3_host_script: '{{ playbook_dir }}/../../linux/host.sh'
+  tasks:
+    - name: Refuse any host that is not the run's x86_64 Ubuntu 24.04 VM
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['architecture'] == 'x86_64'
+          - ansible_facts['distribution'] == 'Ubuntu'
+          - ansible_facts['distribution_version'] == '24.04'
+          - ansible_facts['hostname'] == inventory_hostname
+          - ansible_facts['system_vendor'] == 'Google'
+        fail_msg: This play configures only the disposable SEM-3 VM.
+
+    # A package upgrade that restarts Docker mid-run would kill the fixture.
+    - name: Stop and mask automatic package upgrades on the disposable VM
+      ansible.builtin.systemd_service:
+        name: '{{ item }}'
+        state: stopped
+        masked: true
+      loop:
+        - unattended-upgrades.service
+        - apt-daily.timer
+        - apt-daily-upgrade.timer
+
+    - name: Install Docker from the Ubuntu archive
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+        update_cache: true
+        cache_valid_time: 86400
+        lock_timeout: 600
+
+    - name: Hold the container runtime packages for the run
+      ansible.builtin.dpkg_selections:
+        name: '{{ item }}'
+        selection: hold
+      loop:
+        - docker.io
+        - containerd
+        - runc
+
+    - name: Run Docker
+      ansible.builtin.systemd_service:
+        name: docker.service
+        state: started
+        enabled: true
+
+    - name: Create the host driver directory
+      ansible.builtin.file:
+        path: '{{ sem3_host_dir }}'
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create the private transfer directory
+      ansible.builtin.file:
+        path: '{{ sem3_host_dir }}/incoming'
+        state: directory
+        owner: root
+        group: root
+        mode: '0700'
+
+    - name: Install the reviewed host driver
+      ansible.builtin.copy:
+        src: '{{ sem3_host_script }}'
+        dest: '{{ sem3_host_dir }}/host.sh'
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Read the installed host driver digest
+      ansible.builtin.stat:
+        path: '{{ sem3_host_dir }}/host.sh'
+        checksum_algorithm: sha256
+      register: sem3_host_driver
+
+    - name: Confirm the installed driver is the committed one
+      ansible.builtin.assert:
+        that:
+          - sem3_host_driver.stat.checksum == lookup('ansible.builtin.pipe', 'shasum -a 256 ' ~ (sem3_host_script | quote)).split()[0]
+
+    - name: Record the host facts the receipts need
+      ansible.builtin.command:
+        argv:
+          [
+            docker,
+            version,
+            --format,
+            "{{ '{{' }}.Server.Version{{ '}}' }} {{ '{{' }}.Server.Arch{{ '}}' }}",
+          ]
+      register: sem3_docker_version
+      changed_when: false
+
+    - name: Show the configured host
+      ansible.builtin.debug:
+        msg: >-
+          kernel={{ ansible_facts['kernel'] }} arch={{ ansible_facts['architecture'] }}
+          os={{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}
+          docker={{ sem3_docker_version.stdout }} host_sh={{ sem3_host_driver.stat.checksum }}

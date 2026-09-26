@@ -1,0 +1,22 @@
+# Terraform working data, state, saved plans and real inputs never enter Git.
+# run.sh keeps them in the caller's private SEM3_CLOUD_DIR; these rules also
+# catch anything generated here by hand. The provider lock file is tracked.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!*.tfvars.example
+*.tfvars.json
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# Generated Ansible inventory, logs and retries.
+inventory.ini
+*.retry
+ansible.log

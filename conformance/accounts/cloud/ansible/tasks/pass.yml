@@ -1,0 +1,37 @@
+---
+# One verification pass: the controller runs inside the container, then its
+# receipts are exported and fetched even when the pass failed.
+- name: Run controller pass {{ sem3_pass }}
+  ansible.builtin.command:
+    argv: ['{{ sem3_host_sh }}', controller, '{{ sem3_run_id }}', '{{ sem3_pass }}']
+  register: sem3_controller
+  changed_when: true
+  failed_when: false
+  async: 3600
+  poll: 30
+
+- name: Record the exit of pass {{ sem3_pass }}
+  ansible.builtin.set_fact:
+    sem3_pass_codes: '{{ sem3_pass_codes | default({}) | combine({sem3_pass: sem3_controller.rc}) }}'
+
+- name: Save the controller output of pass {{ sem3_pass }}
+  delegate_to: localhost
+  become: false
+  ansible.builtin.copy:
+    dest: '{{ sem3_receipts }}/controller-{{ sem3_pass }}.log'
+    mode: '0600'
+    content: "exit={{ sem3_controller.rc }}\n{{ sem3_controller.stdout }}\n{{ sem3_controller.stderr }}\n"
+
+- name: Export the receipts of pass {{ sem3_pass }}
+  ansible.builtin.shell:
+    cmd: >-
+      {{ sem3_host_sh | quote }} export_receipts {{ sem3_run_id | quote }} {{ sem3_pass | quote }}
+      > {{ (sem3_incoming ~ '/receipts-' ~ sem3_pass ~ '.tgz') | quote }}
+  changed_when: true
+
+- name: Fetch the receipts of pass {{ sem3_pass }}
+  ansible.builtin.fetch:
+    src: '{{ sem3_incoming }}/receipts-{{ sem3_pass }}.tgz'
+    dest: '{{ sem3_receipts }}/receipts-{{ sem3_pass }}.tgz'
+    flat: true
+    validate_checksum: true

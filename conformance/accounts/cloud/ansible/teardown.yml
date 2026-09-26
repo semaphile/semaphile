@@ -1,0 +1,76 @@
+---
+# In-VM cleanup before Terraform destroys the VM: the container fixture's own
+# teardown twice (the second run must be a no-op), then the labelled
+# container and any image this run introduced, then the host audit.
+- name: Tear down the SEM-3 container fixture
+  hosts: sem3
+  become: true
+  gather_facts: false
+  vars:
+    sem3_host_sh: /opt/sem3-host/host.sh
+    sem3_state: "{{ lookup('ansible.builtin.file', sem3_state_dir ~ '/linux-run.json') | from_json }}"
+  tasks:
+    - name: Refuse a host other than the recorded one
+      ansible.builtin.assert:
+        that:
+          - inventory_hostname == sem3_state.host
+          - sem3_state.container is match('^[0-9a-f]{64}$')
+
+    - name: Check whether the fixture container still exists
+      ansible.builtin.command:
+        argv:
+          [
+            docker,
+            container,
+            inspect,
+            --format,
+            "{{ '{{' }}.State.Status{{ '}}' }}",
+            '{{ sem3_state.container }}',
+          ]
+      register: sem3_container
+      changed_when: false
+      failed_when: false
+
+    - name: Run the fixture teardown twice inside the container
+      ansible.builtin.command:
+        argv: ['{{ sem3_host_sh }}', admin, '{{ sem3_state.run }}', teardown]
+      loop: [first, repeat]
+      register: sem3_admin_teardown
+      changed_when: "'no change made' not in sem3_admin_teardown.stdout"
+      when: sem3_container.rc == 0 and sem3_container.stdout == 'running'
+
+    - name: Remove the container and any image this run introduced
+      ansible.builtin.command:
+        argv:
+          - '{{ sem3_host_sh }}'
+          - teardown
+          - '{{ sem3_state.run }}'
+          - '{{ sem3_state.container }}'
+          - '{{ sem3_state.introduced }}'
+          - '{{ sem3_state.image }}'
+      register: sem3_host_teardown
+      changed_when: "'removed' in sem3_host_teardown.stdout"
+
+    - name: Audit that no fixture object remains on the host
+      ansible.builtin.command:
+        argv:
+          [
+            '{{ sem3_host_sh }}',
+            audit,
+            '{{ sem3_state.run }}',
+            '{{ sem3_state.introduced }}',
+            '{{ sem3_state.image }}',
+          ]
+      register: sem3_host_audit
+      changed_when: false
+
+    - name: Save the teardown receipts
+      delegate_to: localhost
+      become: false
+      ansible.builtin.copy:
+        dest: '{{ sem3_state_dir }}/teardown-host.log'
+        mode: '0600'
+        content: |
+          {% for result in sem3_admin_teardown.results | default([]) %}{{ result.stdout | default('') }}
+          {% endfor %}{{ sem3_host_teardown.stdout }}
+          {{ sem3_host_audit.stdout }}

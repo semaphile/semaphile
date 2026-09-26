@@ -58,9 +58,12 @@ holds the Redis administrator credential and never passes it to a participant.
   check `identity-switch` invalidates the sudo timestamp and then proves both
   the unattended switch with closed input and the refusals.
 - **Linux switching.** The container runs with every capability dropped except
-  `CHOWN`, `SETUID`, `SETGID` and `KILL`, with `no-new-privileges`. The
+  `CHOWN`, `SETUID`, `SETGID`, `KILL` and `SETPCAP`, with `no-new-privileges`.
+  `SETPCAP` is what lets `setpriv` clear a child's bounding set. The
   controller starts participants through `setpriv` with an empty bounding set,
-  and each participant reports all-zero capability sets.
+  and each participant reports all-zero capability sets. Container root has no
+  `DAC_OVERRIDE`, so teardown empties each identity's 0700 directories as that
+  identity before removing the prefix.
 - **Trusted code.** Every ancestor of the prefix, the runner, both runtimes,
   the harness and every installed package file is root-owned and not group- or
   world-writable (`trusted-ownership`). Any change to the runner or harness
@@ -177,12 +180,62 @@ controller's read-only audit confirms that no name, ID, path or grant remains.
 
 ### Linux
 
-`linux/drive.sh USER@HOST <subcommand>` runs `linux/host.sh` over ssh without
-copying it to the host. The sequence is `preflight`, `pull`, `create`,
-`load` (stdin carries the bundle; the hash is taken again inside the
-container), `unpack` (checks the listing hash and the bytes of `container.sh`
-before running it), `admin rehearse`, `admin setup`, `controller` twice,
-`export_receipts`, then after review `admin teardown`, `teardown` and `audit`.
+The Linux x64 leg runs on a disposable Google Cloud VM that Terraform creates
+and Ansible configures (`cloud/`). The three test identities exist only inside
+the container on that VM; the VM itself gets one transport account and no
+cloud credentials. `cloud/run.sh` is the only entry point. It takes the
+project, the expected project number, a private run directory outside the
+repository and a run id from the environment; it never uses the gcloud
+default project, and it clears the ambient project variables before calling
+Terraform.
+
+```sh
+export SEM3_GCP_PROJECT=<project id> SEM3_GCP_PROJECT_NUMBER=<number> \
+  SEM3_CLOUD_DIR=<private 0700 dir> SEM3_RUN_ID=<run id>
+cloud/run.sh inputs     # per-run ED25519 key and variables, in the private dir
+cloud/run.sh init       # local state in the private dir
+cloud/run.sh plan       # saved plan; refuses anything but the six creates
+cloud/run.sh apply      # applies exactly that saved plan
+cloud/run.sh known      # pins the VM's host key from its guest attributes
+cloud/run.sh inventory  # Ansible inventory over an IAP tunnel
+cloud/run.sh host       # host configuration, run twice: the second changes nothing
+cloud/run.sh replan     # must report no changes
+cloud/run.sh fixture    # the reviewed host.sh sequence and both passes
+cloud/run.sh teardown-host
+cloud/run.sh destroy    # saved destroy plan; a repeat is a no-op
+cloud/run.sh audit      # read-only: nothing named for the run remains
+```
+
+Terraform creates only these, all named `sem3-<run>` and labelled
+`semaphile-fixture=sem3`:
+
+| Resource               | Bound                                                                                                                                                                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| VPC network            | custom mode, no automatic subnets                                                                                                                                                                                                |
+| Subnet                 | one /29, IPv4 only                                                                                                                                                                                                               |
+| Firewall `iap-ssh`     | ingress TCP 22 from Google's IAP range only                                                                                                                                                                                      |
+| Firewall `egress-web`  | egress TCP 80 and 443 only                                                                                                                                                                                                       |
+| Firewall `egress-deny` | every other egress denied                                                                                                                                                                                                        |
+| VM                     | `e2-standard-4` (4 vCPU, 16 GB), pinned Ubuntu 24.04 x86_64 image, 20 GB pd-balanced boot disk deleted with the VM, ephemeral public IPv4 for egress, Shielded VM, no service account, project SSH keys blocked, serial port off |
+
+Compute Engine deletes the VM after `max_run_hours` (default 8, at most 24).
+That deadline is a backstop: the procedure destroys through Terraform and
+audits first. The plan refuses unless the project ID resolves to the expected
+project number. Terraform state, plans, real inputs, the SSH key, known hosts,
+inventory and logs stay in the private run directory; `cloud/.gitignore`
+covers the same names in case anything is generated here by hand.
+
+`cloud/ansible/host.yml` checks that the host is the run's x86_64 Ubuntu 24.04
+Google VM, masks automatic upgrades (an upgrade that restarts Docker would
+kill the fixture), installs and holds Docker from the Ubuntu archive, and
+installs `linux/host.sh` after checking its hash. `fixture.yml` then runs the
+reviewed `host.sh` sequence: `preflight`, `pull`, `create`, transfer and
+`load` (the bundle hash is checked after transfer and again inside the
+container), `unpack` (checks the listing hash and the bytes of `container.sh`,
+and installs a root-only copy of it outside the prefix), `admin rehearse`,
+`admin setup`, `size`, then two controller passes whose receipts are fetched
+immediately. `teardown.yml` runs `admin teardown` twice, removes the labelled
+container and any image the run introduced, and runs `host.sh audit`.
 
 The container is bounded as follows:
 
@@ -190,7 +243,7 @@ The container is bounded as follows:
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | Network           | `none`: no published port, no bridge, no host networking                                                                         |
 | CPU, memory, PIDs | 2 CPUs, 3 GiB memory with no swap, 512 processes, 4096 open files                                                                |
-| Capabilities      | only `CHOWN`, `SETUID`, `SETGID`, `KILL`; `no-new-privileges`; not privileged                                                    |
+| Capabilities      | only `CHOWN`, `SETUID`, `SETGID`, `KILL`, `SETPCAP`; `no-new-privileges`; not privileged                                         |
 | Writable storage  | tmpfs only: the prefix (1.5 GiB), `/tmp` (64 MiB), `/var/tmp`, `/run`, `/data` (the image's volume path, so no anonymous volume) |
 | Disk layer        | checked by `size`; over 32 MiB stops the container                                                                               |
 | Logs              | log driver `none`; Redis output is captured by the controller on tmpfs                                                           |
@@ -199,7 +252,20 @@ The container is bounded as follows:
 `preflight` refuses unless the host has at least 4 CPUs, 6 GiB of available
 memory and 2 GiB free for Docker, and no labelled fixture container, volume or
 network exists. The image is the official `redis:8.4.0` (Debian bookworm,
-glibc), pinned by its linux/amd64 manifest digest.
+glibc), pinned by its linux/amd64 manifest digest. It carries no procps, so
+`container.sh` finds and stops a fixture identity's processes through `/proc`.
+
+### Targets
+
+The same scenario, fixture contract and receipt layout apply to every target;
+only the provisioning differs. Receipts record kernel, machine and runtime
+architecture so an emulated run cannot count as native evidence.
+
+| Target             | Environment                                                                | Status                                                 |
+| ------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Linux x86_64       | disposable Google Cloud VM, Terraform and Ansible                          | required                                               |
+| native macOS arm64 | this Mac, `macos/admin.sh`                                                 | required                                               |
+| Linux aarch64      | Colima on Apple Silicon, an explicitly selected profile and Docker context | future work; Linux evidence only, never macOS evidence |
 
 ## Manifest, recovery and cleanup
 
@@ -222,7 +288,10 @@ name, ID or path exists.
 Cleanup targets are exactly: the three accounts and four groups, their homes
 and the prefix, the sudoers file, the state directories, the per-run Redis
 users and credential files (removed at the end of every controller run), and
-on Linux the fixture container and, if this fixture pulled it and nothing else
-uses it, the image. Existing accounts, runtimes, Redis installations and
-unrelated containers, images and volumes are never targets; nothing runs a
-broad prune.
+on Linux the fixture container, the image if this fixture pulled it and
+nothing else uses it, and then every cloud resource the run created: the VM
+with its boot disk and ephemeral address, the three firewall rules, the subnet
+and the network. The private run directory's key and state are deleted only
+after the audit is clean. Existing accounts, runtimes, Redis installations,
+cloud instances, clusters and networks, and unrelated containers, images and
+volumes are never targets; nothing runs a broad prune.

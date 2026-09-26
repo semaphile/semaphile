@@ -1,0 +1,155 @@
+---
+# The deliberate test run: drives the reviewed linux/host.sh sequence on the
+# configured VM. Receipts are fetched back after each pass, before any
+# teardown and well before the VM's deletion deadline.
+- name: Run the SEM-3 container fixture on the disposable host
+  hosts: sem3
+  become: true
+  gather_facts: false
+  vars:
+    sem3_host_sh: /opt/sem3-host/host.sh
+    sem3_incoming: /opt/sem3-host/incoming
+    sem3_state_file: '{{ sem3_state_dir }}/linux-run.json'
+  tasks:
+    - name: Require the run inputs
+      ansible.builtin.assert:
+        that:
+          - sem3_run_id is match('^[a-z0-9-]{6,48}$')
+          - sem3_passes | length == 2
+          - sem3_passes | select('match', '^[a-z0-9-]{6,48}$') | list | length == 2
+          - sem3_bundle_sha256 is match('^[0-9a-f]{64}$')
+          - sem3_listing_sha256 is match('^[0-9a-f]{64}$')
+          - sem3_state_dir is defined
+          - sem3_receipts is defined
+
+    - name: Preflight the host
+      ansible.builtin.command:
+        argv: ['{{ sem3_host_sh }}', preflight, '{{ sem3_run_id }}']
+      register: sem3_preflight
+      changed_when: false
+
+    - name: Pull the pinned image
+      ansible.builtin.command:
+        argv: ['{{ sem3_host_sh }}', pull]
+      register: sem3_pull
+      changed_when: "'introduced=1' in sem3_pull.stdout"
+
+    - name: Create the fixture container
+      ansible.builtin.command:
+        argv: ['{{ sem3_host_sh }}', create, '{{ sem3_run_id }}']
+      register: sem3_create
+      changed_when: true
+
+    - name: Record the run state on the controller for teardown and recovery
+      delegate_to: localhost
+      become: false
+      ansible.builtin.copy:
+        dest: '{{ sem3_state_file }}'
+        mode: '0600'
+        content: >-
+          {{ {'run': sem3_run_id,
+              'host': inventory_hostname,
+              'container': sem3_create.stdout | regex_search('container=([0-9a-f]{64})', '\1') | first,
+              'introduced': sem3_pull.stdout | regex_search('introduced=([01])', '\1') | first,
+              'image': sem3_pull.stdout | regex_search('id=(sha256:[0-9a-f]{64})', '\1') | first,
+              'preflight': sem3_preflight.stdout_lines,
+              'inspect': sem3_create.stdout_lines[-1] | from_json} | to_nice_json }}
+
+    - name: Copy the verified bundle to the VM
+      ansible.builtin.copy:
+        src: '{{ sem3_bundle }}'
+        dest: '{{ sem3_incoming }}/bundle.tgz'
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Hash the bundle after transfer
+      ansible.builtin.stat:
+        path: '{{ sem3_incoming }}/bundle.tgz'
+        checksum_algorithm: sha256
+      register: sem3_bundle_remote
+
+    - name: Confirm the transferred bundle is the reviewed one
+      ansible.builtin.assert:
+        that:
+          - sem3_bundle_remote.stat.checksum == sem3_bundle_sha256
+
+    - name: Stream the bundle into the container
+      ansible.builtin.shell:
+        cmd: "{{ sem3_host_sh | quote }} load {{ sem3_run_id | quote }} < {{ (sem3_incoming ~ '/bundle.tgz') | quote }}"
+      register: sem3_load
+      changed_when: true
+
+    - name: Confirm the bundle hash inside the container
+      ansible.builtin.assert:
+        that:
+          - sem3_load.stdout.split()[0] == sem3_bundle_sha256
+
+    - name: Unpack and check the listing and container script
+      ansible.builtin.command:
+        argv: ['{{ sem3_host_sh }}', unpack, '{{ sem3_run_id }}', '{{ sem3_listing_sha256 }}']
+      changed_when: true
+
+    - name: Rehearse collision, partial-setup, mismatch and repeated-teardown paths
+      ansible.builtin.command:
+        argv:
+          [
+            '{{ sem3_host_sh }}',
+            admin,
+            '{{ sem3_run_id }}',
+            rehearse,
+            --manifest-sha256,
+            '{{ sem3_listing_sha256 }}',
+          ]
+      register: sem3_rehearse
+      changed_when: true
+
+    - name: Set up the fixture inside the container
+      ansible.builtin.command:
+        argv:
+          [
+            '{{ sem3_host_sh }}',
+            admin,
+            '{{ sem3_run_id }}',
+            setup,
+            --manifest-sha256,
+            '{{ sem3_listing_sha256 }}',
+          ]
+      register: sem3_setup
+      changed_when: true
+
+    - name: Save the in-container rehearsal and setup logs
+      delegate_to: localhost
+      become: false
+      ansible.builtin.copy:
+        dest: '{{ sem3_receipts }}/{{ item.name }}.log'
+        mode: '0600'
+        content: "{{ item.result.stdout }}\n{{ item.result.stderr }}\n"
+      loop:
+        - { name: rehearse, result: '{{ sem3_rehearse }}' }
+        - { name: setup, result: '{{ sem3_setup }}' }
+      loop_control:
+        label: '{{ item.name }}'
+
+    - name: Check the writable layer against its growth ceiling
+      ansible.builtin.command:
+        argv: ['{{ sem3_host_sh }}', size, '{{ sem3_run_id }}']
+      changed_when: false
+
+    - name: Run each verification pass and fetch its receipts
+      ansible.builtin.include_tasks: tasks/pass.yml
+      loop: '{{ sem3_passes }}'
+      loop_control:
+        loop_var: sem3_pass
+
+    - name: Check the writable layer after both passes
+      ansible.builtin.command:
+        argv: ['{{ sem3_host_sh }}', size, '{{ sem3_run_id }}']
+      changed_when: false
+
+    - name: Fail the play if either pass was not green
+      ansible.builtin.assert:
+        that:
+          - sem3_pass_codes | default({}) | dict2items | selectattr('value', 'ne', 0) | list | length == 0
+          - sem3_pass_codes | default({}) | length == 2
+        fail_msg: 'controller exits: {{ sem3_pass_codes | default({}) }}'
