@@ -68,9 +68,12 @@ before any new consensus is reported.
 1. Establish a repeatable fixture on native macOS arm64 and Linux x64 with
    three distinct unprivileged test accounts, private homes/configurations and
    Node/Bun runtimes accessible without opening personal home directories.
-   Linux uses an isolated, resource-limited container on the existing x64
-   cloud test host. The three Linux users live inside the container; no host
-   accounts are created. The exact resource limits, storage, networking and
+   Linux uses an isolated, resource-limited container on a disposable x64
+   Google Cloud VM provisioned with Terraform and configured with Ansible.
+   The three Linux test users live inside the container; no host test
+   accounts are created. Project-specific inputs remain private and untracked.
+   The binding amendment is `references/repeatable-cloud-provisioning.md`.
+   The exact resource limits, storage, networking and
    cleanup commands must be reviewed before execution. macOS uses the reviewed administrator
    checkpoints below.
 2. Provide bounded automated identity and file-access checks. Verify allowed
@@ -88,7 +91,7 @@ before any new consensus is reported.
 5. Record reproducible provisioning, test and cleanup procedures. The owner
    chose removal after validation: delete only the dedicated Mac test accounts
    and fixture runtime installation created by this goal, and remove Linux
-   fixture containers. Remove per-run credentials and test data. Retain setup
+   fixture containers and all cloud resources created for the run. Remove per-run credentials and test data. Retain setup
    scripts and sanitized evidence, not a permanently provisioned fixture.
    The complete target list in `references/verification-contract.md`, Manifest,
    recovery and cleanup, also includes grants/groups, services, networks, volumes,
@@ -209,7 +212,7 @@ completed work or permission to activate an unreviewed administrator script.
   no privileged container, host networking, host Docker socket mount, personal
   home mount or unrelated volume. Do not publish Redis publicly or change
   unrelated workloads. A resource shortfall is a reported prerequisite, not
-  permission to claim unbounded shared-host resources.
+  permission to allocate unbounded cloud resources.
 - The Mac setup plan must provide dedicated test identities, private homes,
   shared read-only runtimes, and a narrowly scoped runner for unattended tests
   as those identities. The owner performs the reviewed administrator setup;
@@ -228,6 +231,7 @@ completed work or permission to activate an unreviewed administrator script.
 - `references/sem2-debt.md`: complete commit-pinned acceptance criteria.
 - `references/sem2-baseline.md`: candidate hashes, runtimes and exact historical reads.
 - `references/verification-contract.md`: required case inventory and lifecycle.
+- `references/repeatable-cloud-provisioning.md`: owner-directed Terraform/Ansible amendment of September 26.
 - `SPEC.md`, sections 16 and 20: existing messaging contract.
 - `conformance/redis/messaging-acl.mjs`, `messaging-topics.mjs`,
   `messaging-faults.mjs`, `messaging-participant.mjs` and `harness.mjs`.
@@ -252,8 +256,10 @@ Review-wave diff base: `main`. This goal stacks on no unmerged goal.
 The draft starts at `d585cf9b8ff5ad521673d4ffd56af6705242aadb`.
 No provisioning or executor launch follows from this unfinished draft.
 The planner owns scope; the orchestrator owns launch and landing. Promotion
-requires the owner's separate instruction. No new paid service, package
-publication or mutation of unrelated users is part of this goal.
+requires the owner's separate instruction. The owner-directed disposable cloud
+test VM is in scope; its concrete resource and cost bounds must be presented
+before provisioning. Package publication and mutation of unrelated users remain
+outside this goal.
 
 The exact private host preflight is
 `.scratch/docs/receipts/account-fixture-preflight-20260923.md` in the primary
@@ -279,8 +285,9 @@ engineering decisions resolving the review, not additional claimed owner answers
 The executor must produce concrete commands, path/account names, image digests,
 resource limits and the manifest schema before provisioning. The owner reviews
 and performs the Mac administrator steps. The orchestrator presents the bounded
-Linux bootstrap (including any required image pulls) to the owner before running
-it on the shared host. The existing design choice is not approval of an unseen
+Linux bootstrap (including Terraform's plan, Ansible setup, resource/cost bounds
+and required image pulls) to the owner before creating the disposable host.
+The existing design choice is not approval of an unseen
 privileged script. A need for broader authority returns to the owner.
 
 Update `docs/redis-messaging.md` and `docs/releases.md` only after the required

@@ -232,7 +232,8 @@ Linux has no bind mount of personal homes, the host checkout or its Docker socke
 Copy verified artifacts in and export receipts through the host driver. Container
 UIDs do not grant access to host files. Before provisioning, record reviewed CPU,
 memory, PID, storage and log limits plus enforcement/abort mechanisms for growth
-where the Docker storage driver lacks quotas. Reserve capacity on the shared host;
+where the Docker storage driver lacks quotas. Reserve capacity on the disposable
+Terraform/Ansible host specified in `repeatable-cloud-provisioning.md`;
 unavailable capacity blocks provisioning. Avoid privileged mode, host networking,
 new host accounts and broad prune commands.
 
