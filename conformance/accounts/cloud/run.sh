@@ -135,6 +135,8 @@ fixture() {
   need SEM3_LISTING_SHA256
   need SEM3_RECEIPTS
   local extra
+  mkdir -p "$SEM3_RECEIPTS" # 0700 at every level under the umask above
+  case $(cd "$SEM3_RECEIPTS" && pwd -P)/ in "$repo"/*) fail 'SEM3_RECEIPTS must be outside the repository' ;; esac
   extra=$(jq -n --arg run "$SEM3_RUN_ID" --arg bundle "$SEM3_BUNDLE" --arg bsha "$SEM3_BUNDLE_SHA256" \
     --arg lsha "$SEM3_LISTING_SHA256" --arg state "$dir" --arg receipts "$SEM3_RECEIPTS" \
     '{sem3_run_id: $run, sem3_passes: [($run + "-p1"), ($run + "-p2")], sem3_bundle: $bundle,
