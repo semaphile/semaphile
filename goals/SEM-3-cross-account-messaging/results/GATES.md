@@ -43,20 +43,20 @@ cleanup and the final read-only audit remain to run.
 - Command: `shellcheck -s bash cloud/run.sh linux/host.sh && shellcheck -s sh linux/container.sh macos/admin.sh bin/sem3-participant`, plus `sh -n` or `bash -n` on each (from `conformance/accounts`)
 - Exit code: 0
 - Headline: 5 scripts, 0 ShellCheck findings, syntax clean. Four suppressions, each justified in a comment: `SC2024` once in `macos/admin.sh` (root reads its own file), `SC2086` twice in `macos/admin.sh` (the same deliberately split option string, reason on the first) and once in `cloud/run.sh` (a fixed multi-word gcloud group)
-- Timestamp: 2026-10-03T19:24:25Z
-- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
+- Timestamp: 2026-10-03T19:35:45Z
+- Tested commit: `1cb3dcc2682b4e80082e10cac38cf0df556f00a6`
 
 - Command: `terraform init -backend=false -input=false && terraform fmt -check -recursive && terraform validate` (in `conformance/accounts/cloud/terraform`, with `TF_DATA_DIR` outside the repository and the ambient project variables unset)
 - Exit code: 0
 - Headline: Terraform 1.9.8, `hashicorp/google` 8.4.0 from the committed lock; format clean; configuration valid
-- Timestamp: 2026-10-03T19:24:25Z
-- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
+- Timestamp: 2026-10-03T19:35:45Z
+- Tested commit: `1cb3dcc2682b4e80082e10cac38cf0df556f00a6`
 
 - Command: `ansible-playbook -i inventory.example.ini --syntax-check {host,fixture,teardown}.yml && ansible-lint --offline --profile production host.yml fixture.yml teardown.yml tasks/pass.yml` (in `conformance/accounts/cloud/ansible`)
 - Exit code: 0
 - Headline: 3 playbooks syntax-clean; ansible-lint 26.3.0, production profile, 0 failures, 0 warnings in 4 files
-- Timestamp: 2026-10-03T19:24:25Z
-- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
+- Timestamp: 2026-10-03T19:35:45Z
+- Tested commit: `1cb3dcc2682b4e80082e10cac38cf0df556f00a6`
 
 ## Gate 4 — Live lifecycle, cleanup and final audit (PENDING — owner checkpoint not yet run)
 
@@ -70,26 +70,28 @@ cleanup and the final read-only audit remain to run.
 - Command: `evie-kit lint gate --goal SEM-3`
 - Exit code: 0
 - Headline: typecheck passed (`bun run typecheck`); fast tier clean — packages/ command: clean; conformance/ command: clean; tools/ command: clean; deep tier not-applicable (the change touches nothing in `sonar.sources=packages`)
-- Timestamp: 2026-10-03T19:24:20.348Z
-- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
+- Timestamp: 2026-10-03T19:35:40.572Z
+- Tested commit: `1cb3dcc2682b4e80082e10cac38cf0df556f00a6`
 
 - Command: `npm run check:docs`
 - Exit code: 0
 - Headline: 18 public Markdown documents; local links resolve; no private links or machine details
-- Timestamp: 2026-10-03T19:24:25Z
-- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
+- Timestamp: 2026-10-03T19:35:45Z
+- Tested commit: `1cb3dcc2682b4e80082e10cac38cf0df556f00a6`
 
 - Command: `prettier --check conformance/accounts`
 - Exit code: 0
 - Headline: all files use Prettier style
-- Timestamp: 2026-10-03T19:24:25Z
-- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
+- Timestamp: 2026-10-03T19:35:45Z
+- Tested commit: `1cb3dcc2682b4e80082e10cac38cf0df556f00a6`
 
 ## Gate 6 — Fresh blind review (WAIVER)
 
-- Status: in-flight.
-- Evidence: `reviews/results-005/INDEX.md` (reconciled) and the verification
-  round that follows it.
+- Status: in-flight. The final finding round, organized by
+  `references/final-review-scopes.md`, has not run.
+- Evidence: `reviews/results-005/INDEX.md` and `reviews/results-006/INDEX.md`
+  (reconciled), and the final round's coverage manifest in
+  `references/final-review/MANIFEST.md`.
 
 ## Gate 7 — Evidence mapped to every SEM-2 deferred criterion (PENDING — depends on gates 1–4)
 
