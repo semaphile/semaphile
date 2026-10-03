@@ -25,9 +25,38 @@ name_of() { echo "semaphile-sem3-$1"; }
 checked_run() { [[ $1 =~ ^[a-z0-9-]{6,48}$ ]] || fail 'bad run id'; }
 docker_root() { docker info --format '{{.DockerRootDir}}'; }
 
+# Every presence question is asked with a query whose failure stops the
+# script: an empty answer from a failed command must never read as
+# "absent" (that is how an audit passes while Docker is broken).
+containers_labelled() { docker ps -a -q --no-trunc --filter "label=$LABEL" || fail 'docker ps failed'; }
+volumes_labelled() { docker volume ls -q --filter "label=$LABEL" || fail 'docker volume ls failed'; }
+networks_labelled() { docker network ls -q --no-trunc --filter "label=$LABEL" || fail 'docker network ls failed'; }
+container_exists() {
+  local out
+  out=$(docker ps -a -q --no-trunc --filter "id=$1") || fail 'docker ps failed'
+  [ -n "$out" ]
+}
+container_named() {
+  local out
+  out=$(docker ps -a -q --no-trunc --filter "name=^/$1\$") || fail 'docker ps failed'
+  [ -n "$out" ]
+}
+# The pinned image by digest; prints its id when present.
+pinned_image_id() {
+  local rows
+  rows=$(docker image ls --digests --no-trunc --format '{{.Repository}}@{{.Digest}} {{.ID}}') ||
+    fail 'docker image ls failed'
+  printf '%s\n' "$rows" | awk -v want="$IMAGE" '$1 == want { print $2; exit }'
+}
+image_present() {
+  local ids
+  ids=$(docker image ls -q --no-trunc) || fail 'docker image ls failed'
+  printf '%s\n' "$ids" | grep -qx "$1"
+}
+
 preflight() {
   checked_run "$1"
-  local name cpus mem disk
+  local name cpus mem disk found id
   name=$(name_of "$1")
   cpus=$(nproc)
   mem=$(awk '/^MemAvailable:/ { print $2 }' /proc/meminfo)
@@ -38,29 +67,32 @@ preflight() {
   [ "$cpus" -ge "$NEED_CPUS" ] || fail "only $cpus CPUs"
   [ "$mem" -ge "$NEED_MEMORY_KIB" ] || fail "only $mem KiB memory available"
   [ "$disk" -ge "$NEED_DISK_BYTES" ] || fail "only $disk bytes free for Docker"
-  [ -z "$(docker ps -a -q --filter "label=$LABEL")" ] || fail 'a fixture container already exists'
-  [ -z "$(docker volume ls -q --filter "label=$LABEL")" ] || fail 'a fixture volume already exists'
-  [ -z "$(docker network ls -q --filter "label=$LABEL")" ] || fail 'a fixture network already exists'
-  ! docker container inspect "$name" >/dev/null 2>&1 || fail "container $name exists"
-  if docker image inspect "$IMAGE" >/dev/null 2>&1; then
-    echo "image=preexisting id=$(docker image inspect --format '{{.Id}}' "$IMAGE")"
-  else
-    echo 'image=absent'
-  fi
+  found=$(containers_labelled)
+  [ -z "$found" ] || fail 'a fixture container already exists'
+  found=$(volumes_labelled)
+  [ -z "$found" ] || fail 'a fixture volume already exists'
+  found=$(networks_labelled)
+  [ -z "$found" ] || fail 'a fixture network already exists'
+  ! container_named "$name" || fail "container $name exists"
+  id=$(pinned_image_id)
+  if [ -n "$id" ]; then echo "image=preexisting id=$id"; else echo 'image=absent'; fi
   echo 'preflight=ok'
 }
 
 pull() {
-  if docker image inspect "$IMAGE" >/dev/null 2>&1; then
-    echo "introduced=0 id=$(docker image inspect --format '{{.Id}}' "$IMAGE")"
+  local id os arch
+  id=$(pinned_image_id)
+  if [ -n "$id" ]; then
+    echo "introduced=0 id=$id"
     return
   fi
   docker pull --quiet --platform linux/amd64 "$IMAGE" >/dev/null
-  local os arch
   os=$(docker image inspect --format '{{.Os}}' "$IMAGE")
   arch=$(docker image inspect --format '{{.Architecture}}' "$IMAGE")
   [ "$os/$arch" = linux/amd64 ] || fail "pulled $os/$arch"
-  echo "introduced=1 id=$(docker image inspect --format '{{.Id}}' "$IMAGE") digests=$(docker image inspect --format '{{json .RepoDigests}}' "$IMAGE")"
+  id=$(pinned_image_id)
+  [ -n "$id" ] || fail 'the pulled image is not listed by its pinned digest'
+  echo "introduced=1 id=$id digests=$(docker image inspect --format '{{json .RepoDigests}}' "$IMAGE")"
 }
 
 create() {
@@ -139,12 +171,14 @@ admin() {
   docker exec "$(name_of "$RUN")" /bin/sh "$ADMIN_DIR/container.sh" "$@"
 }
 
+# A full pass only: no filter or skip flag can reach the controller here.
 controller() {
   checked_run "$1"
   [[ $2 =~ ^[a-z0-9-]{6,48}$ ]] || fail 'bad controller run id'
+  [ "$#" -eq 2 ] || fail 'controller takes only RUN and the pass id'
   docker exec "$(name_of "$1")" "$PREFIX/runtime/node/bin/node" \
     "$PREFIX/checkout/conformance/accounts/controller.mjs" run --run "$2" \
-    --receipts "$PREFIX/checkout/.tmp/controller/receipts-$2" "${@:3}"
+    --receipts "$PREFIX/checkout/.tmp/controller/receipts-$2"
 }
 
 export_receipts() {
@@ -153,21 +187,42 @@ export_receipts() {
   docker exec "$(name_of "$1")" tar -C "$PREFIX/checkout/.tmp/controller" -cz "receipts-$2"
 }
 
+# The run's containers, found by both labels; used when an interrupted run
+# never recorded its container id.
+find_run() {
+  checked_run "$1"
+  docker ps -a -q --no-trunc --filter "label=$LABEL" --filter "label=org.semaphile.run=$1" || fail 'docker ps failed'
+}
+
+# teardown RUN CONTAINER|- INTRODUCED: removes the run's container (by id,
+# or by its labels when none was recorded) and, when the run introduced the
+# pinned image and nothing else uses it, that image.
 teardown() {
   checked_run "$1"
-  [[ $2 =~ ^[0-9a-f]{64}$ ]] || fail 'container id required'
-  local introduced=$3 image=$4 labels
-  if docker container inspect "$2" >/dev/null 2>&1; then
-    labels=$(docker container inspect --format '{{index .Config.Labels "org.semaphile.run"}} {{index .Config.Labels "org.semaphile.fixture"}}' "$2")
-    [ "$labels" = "$1 sem3" ] || fail "container $2 is not this run's fixture ($labels); not removing"
-    docker stop --time 5 "$2" >/dev/null
-    docker rm "$2" >/dev/null
-    echo "container=removed id=$2"
+  local wanted=$2 introduced=$3 ids id labels image users
+  [[ $introduced =~ ^[01]$ ]] || fail 'introduced must be 0 or 1'
+  if [ "$wanted" = - ]; then
+    ids=$(find_run "$1")
   else
-    echo "container=absent id=$2"
+    [[ $wanted =~ ^[0-9a-f]{64}$ ]] || fail 'container id required'
+    ids=$wanted
   fi
-  if [ "$introduced" = 1 ] && docker image inspect "$image" >/dev/null 2>&1; then
-    if [ -n "$(docker ps -a -q --filter "ancestor=$image")" ]; then
+  for id in $ids; do
+    if container_exists "$id"; then
+      labels=$(docker container inspect --format '{{index .Config.Labels "org.semaphile.run"}} {{index .Config.Labels "org.semaphile.fixture"}}' "$id")
+      [ "$labels" = "$1 sem3" ] || fail "container $id is not this run's fixture ($labels); not removing"
+      docker stop --time 5 "$id" >/dev/null
+      docker rm "$id" >/dev/null
+      echo "container=removed id=$id"
+    else
+      echo "container=absent id=$id"
+    fi
+  done
+  [ -n "$ids" ] || echo 'container=none recorded or labelled'
+  image=$(pinned_image_id)
+  if [ "$introduced" = 1 ] && [ -n "$image" ]; then
+    users=$(docker ps -a -q --no-trunc --filter "ancestor=$image") || fail 'docker ps failed'
+    if [ -n "$users" ]; then
       echo "image=shared id=$image: another container uses it; owner disposition required" >&2
       exit 5
     fi
@@ -179,26 +234,30 @@ teardown() {
   else
     echo "image=left introduced=$introduced"
   fi
-  audit "$1" "$introduced" "$image"
+  audit "$1" "$introduced"
 }
 
 audit() {
   checked_run "$1"
-  local found=0
-  [ -z "$(docker ps -a -q --filter "label=$LABEL")" ] || {
+  local found=0 out
+  out=$(containers_labelled)
+  if [ -n "$out" ]; then
     echo 'audit: fixture container remains'
     found=1
-  }
-  [ -z "$(docker volume ls -q --filter "label=$LABEL")" ] || {
+  fi
+  out=$(volumes_labelled)
+  if [ -n "$out" ]; then
     echo 'audit: fixture volume remains'
     found=1
-  }
-  [ -z "$(docker network ls -q --filter "label=$LABEL")" ] || {
+  fi
+  out=$(networks_labelled)
+  if [ -n "$out" ]; then
     echo 'audit: fixture network remains'
     found=1
-  }
-  if [ "${2:-0}" = 1 ] && docker image inspect "${3:-$IMAGE}" >/dev/null 2>&1; then
-    echo 'audit: introduced image remains'
+  fi
+  out=$(pinned_image_id)
+  if [ "${2:-0}" = 1 ] && [ -n "$out" ]; then
+    echo "audit: introduced image remains ($out)"
     found=1
   fi
   echo "docker_disk_available=$(df -B1 --output=avail "$(docker_root)" | tail -1)"
@@ -211,7 +270,8 @@ command=${1:-}
 RUN=${1:-}
 case $command in
   preflight | create | inspect | size | load | export_receipts | controller | unpack | teardown | audit) "$command" "$@" ;;
+  find) find_run "$@" ;;
   pull) pull ;;
   admin) admin "$@" ;;
-  *) fail 'usage: host.sh preflight|pull|create|inspect|size|load|unpack|admin|controller|export_receipts|teardown|audit RUN ...' ;;
+  *) fail 'usage: host.sh preflight|pull|create|inspect|size|load|unpack|admin|controller|export_receipts|find|teardown|audit RUN ...' ;;
 esac

@@ -15,6 +15,9 @@ umask 022
 PREFIX=/opt/semaphile-sem3
 INCOMING=$PREFIX/.incoming
 DEFAULT_STATE=/var/lib/semaphile-sem3
+REHEARSAL_STATE=/var/lib/semaphile-sem3-rehearsal
+TAMPERED_STATE=/var/lib/semaphile-sem3-rehearsal-tampered
+SELF=$0
 ACCOUNTS='sem3a sem3b sem3c'
 FIXTURE_GROUPS='sem3a sem3b sem3c sem3ab'
 MARK='Semaphile SEM-3 fixture'
@@ -326,32 +329,42 @@ teardown() {
   say 'teardown complete; no fixture name, id or path remains'
 }
 
+# Each rehearsal step runs this script again as a fresh process, so its
+# own set -e applies, and asserts the exact exit status the step needs.
+step() {
+  want=$1
+  shift
+  rc=0
+  /bin/sh "$SELF" "$@" --state "$REHEARSAL_STATE" || rc=$?
+  [ "$rc" -eq "$want" ] || fail "rehearsal: $1 exited $rc, expected $want"
+}
+
 rehearse() {
-  real_state=$STATE
-  STATE=/var/lib/semaphile-sem3-rehearsal
-  say 'rehearsal 1: collision refusal using the image service account'
-  if (EXTRA_NAMES=redis EXTRA_IDS=999 collisions); then
-    fail 'rehearsal: collision check missed an existing account'
-  fi
+  [ "$(id -u)" -eq 0 ] || fail 'run as container root'
+  [ -n "${MANIFEST_SHA256:-}" ] || fail '--manifest-sha256 is required'
+  for path in "$REHEARSAL_STATE" "$TAMPERED_STATE"; do
+    [ ! -e "$path" ] && [ ! -L "$path" ] || fail "rehearsal path $path already exists"
+  done
+  say 'rehearsal 1: setup refuses a collision with the image service account and changes nothing'
+  step 2 setup --manifest-sha256 "$MANIFEST_SHA256" --assume-existing redis
+  [ ! -e "$REHEARSAL_STATE" ] || fail 'rehearsal: the refused setup created state'
+  if getent passwd sem3a >/dev/null; then fail 'rehearsal: the refused setup created sem3a'; fi
   say 'rehearsal 2: setup crashes after creating user sem3b, before observing it'
-  if (FAIL_AFTER=user-created:sem3b setup); then
-    fail 'rehearsal: injected failure did not stop setup'
-  fi
+  step 99 setup --manifest-sha256 "$MANIFEST_SHA256" --fail-after user-created:sem3b
   say 'rehearsal 3: teardown of a manifest whose recorded identity differs'
-  tampered=/var/lib/semaphile-sem3-rehearsal-tampered
-  rm -rf "$tampered"
-  cp -Rp "$STATE" "$tampered"
-  sed 's/entry=sem3a:x:3601:3601:/entry=sem3a:x:3601:3999:/' "$STATE/state.tsv" >"$tampered/state.tsv"
-  if (STATE=$tampered teardown); then
-    fail 'rehearsal: mismatched identity was not refused'
-  fi
-  getent passwd sem3a >/dev/null || fail 'rehearsal: refusal deleted sem3a'
-  rm -rf "$tampered"
+  cp -Rp "$REHEARSAL_STATE" "$TAMPERED_STATE"
+  sed 's/entry=sem3a:x:3601:3601:/entry=sem3a:x:3601:3999:/' "$REHEARSAL_STATE/state.tsv" >"$TAMPERED_STATE/state.tsv"
+  rc=0
+  /bin/sh "$SELF" teardown --state "$TAMPERED_STATE" || rc=$?
+  [ "$rc" -eq 4 ] || fail "rehearsal: tampered teardown exited $rc, expected 4"
+  getent passwd sem3a >/dev/null || fail 'rehearsal: the refusal deleted sem3a'
+  rm -rf "$TAMPERED_STATE"
   say 'rehearsal 4: recovery teardown reconciles the unobserved user'
-  teardown
+  step 0 teardown
   say 'rehearsal 5: repeated teardown is a verified no-op'
-  teardown
-  STATE=$real_state
+  out=$(/bin/sh "$SELF" teardown --state "$REHEARSAL_STATE") || fail 'rehearsal: repeated teardown failed'
+  printf '%s\n' "$out"
+  case $out in *'no change made'*) ;; *) fail 'rehearsal: repeated teardown was not a no-op' ;; esac
   say 'rehearsal passed; the real setup may now run'
 }
 
@@ -361,15 +374,24 @@ STATE=$DEFAULT_STATE
 EXTRA_NAMES=
 EXTRA_IDS=
 while [ "$#" -gt 0 ]; do
+  [ "$#" -ge 2 ] || fail "option $1 needs a value"
   case $1 in
     --manifest-sha256) MANIFEST_SHA256=$2 ;;
     --state) STATE=$2 ;;
     --fail-after) FAIL_AFTER=$2 ;;
     --tree) TREE=$2 ;;
+    --assume-existing)
+      EXTRA_NAMES=$2
+      EXTRA_IDS=$(id -u "$2") || fail "no such account $2"
+      ;;
     *) fail "unknown option $1" ;;
   esac
   shift 2
 done
+# Rehearsal-only options never touch the real state directory.
+if [ -n "${FAIL_AFTER:-}" ] || [ -n "$EXTRA_NAMES" ]; then
+  [ "$STATE" = "$REHEARSAL_STATE" ] || fail 'rehearsal options need the rehearsal state directory'
+fi
 case $command in
   setup) setup ;;
   teardown) teardown ;;
