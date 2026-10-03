@@ -281,6 +281,7 @@ setup() {
   chmod 0640 "$PREFIX/shared/handoff.txt"
   chmod 0755 "$PREFIX"
   record observed layout "$PREFIX" 'homes=0700 shared=0750 handoff=0640'
+  maybe_fail layout
   say 'sudoers'
   rule="$STATE/sudoers.candidate"
   {
@@ -519,7 +520,14 @@ rehearse() {
   rm -rf "$TAMPERED_STATE"
   say 'rehearsal 4: recovery teardown reconciles the unobserved user'
   step 0 teardown
-  say 'rehearsal 5: repeated teardown is a verified no-op'
+  say 'rehearsal 5: setup crashes after installing the tree and the 0700 homes'
+  # shellcheck disable=SC2086
+  step 99 setup $staging --fail-after layout
+  [ -d "$PREFIX/home/sem3a" ] || fail 'rehearsal: the crashed setup did not reach the homes'
+  say 'rehearsal 6: recovery teardown removes the partly installed tree'
+  step 0 teardown
+  [ ! -e "$PREFIX" ] || fail 'rehearsal: the recovery left the prefix behind'
+  say 'rehearsal 7: repeated teardown is a verified no-op'
   out=$(/bin/sh "$SELF" teardown --controller "$CONTROLLER" --receipts "$RECEIPTS" --state "$REHEARSAL_STATE") ||
     fail 'rehearsal: repeated teardown failed'
   printf '%s\n' "$out"

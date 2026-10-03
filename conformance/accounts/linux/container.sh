@@ -177,8 +177,10 @@ setup() {
   say 'tree'
   record intended prefix "$PREFIX" "run=$RUN"
   printf '%s run %s\n' "$MARK" "$RUN" >"$PREFIX/.sem3-fixture"
+  # Copied, not moved: the unpacked bundle must survive a rehearsal setup
+  # that crashes after this point and is torn down (rehearsal 5).
   for entry in bin runtime checkout; do
-    mv "$INCOMING/x/tree/$entry" "$PREFIX/$entry"
+    cp -a "$INCOMING/x/tree/$entry" "$PREFIX/$entry"
   done
   chown -R -h 0:0 "$PREFIX/bin" "$PREFIX/runtime" "$PREFIX/checkout"
   chmod -R u+rwX,go+rX,go-w "$PREFIX/bin" "$PREFIX/runtime" "$PREFIX/checkout"
@@ -214,6 +216,7 @@ setup() {
   chmod 0640 "$PREFIX/shared/handoff.txt"
   chown 0:3610 "$PREFIX/shared/handoff.txt"
   record observed layout "$PREFIX" 'homes=0700 shared=0750 handoff=0640'
+  maybe_fail layout
   rm -rf "$INCOMING"
   record observed complete "$RUN" 'setup finished'
   cat "$STATE/state.tsv"
@@ -307,7 +310,9 @@ teardown() {
   done
   if printf '%s\n' "$verdicts" | grep -q "^prefix $PREFIX [a-z]* ours$"; then
     empty_owned_dirs
-    find "$PREFIX" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+    # The transfer area belongs to the bundle, not to a setup run; real setup
+    # removes it when it completes, and a rehearsal needs it afterwards.
+    find "$PREFIX" -mindepth 1 -maxdepth 1 ! -name .incoming -exec rm -rf {} +
     record removed prefix "$PREFIX" 'emptied'
   fi
   for name in $ACCOUNTS; do
@@ -374,7 +379,13 @@ rehearse() {
   rm -rf "$TAMPERED_STATE"
   say 'rehearsal 4: recovery teardown reconciles the unobserved user'
   step 0 teardown
-  say 'rehearsal 5: repeated teardown is a verified no-op'
+  say 'rehearsal 5: setup crashes after installing the tree and the 0700 homes'
+  step 99 setup --manifest-sha256 "$MANIFEST_SHA256" --fail-after layout
+  [ -d "$PREFIX/home/sem3a" ] || fail 'rehearsal: the crashed setup did not reach the homes'
+  say 'rehearsal 6: recovery teardown removes the partly installed tree'
+  step 0 teardown
+  prefix_empty || fail 'rehearsal: the recovery left files in the prefix'
+  say 'rehearsal 7: repeated teardown is a verified no-op'
   out=$(/bin/sh "$SELF" teardown --state "$REHEARSAL_STATE") || fail 'rehearsal: repeated teardown failed'
   printf '%s\n' "$out"
   case $out in *'no change made'*) ;; *) fail 'rehearsal: repeated teardown was not a no-op' ;; esac
