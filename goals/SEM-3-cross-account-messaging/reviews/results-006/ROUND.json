@@ -1,0 +1,24 @@
+{
+  "kind": "results",
+  "index": 6,
+  "purpose": "verification",
+  "created": "2026-10-03T18:48:15.528Z",
+  "head": "d9ce1e4baddff90f9318d61c04dd18ca485cfa10",
+  "base": "main",
+  "baseCommit": "d585cf9b8ff5ad521673d4ffd56af6705242aadb",
+  "verifying": "C1-C6 fix batch",
+  "sonar": {
+    "state": "passed",
+    "detail": "0 in-diff open, 71 outside-diff open (compute task 838a494f-11f9-41b4-a33f-1e12041781e8)",
+    "commit": "d9ce1e4baddff90f9318d61c04dd18ca485cfa10"
+  },
+  "retries": [
+    {
+      "tool": "codex",
+      "at": "2026-10-03T19:06:00.936Z",
+      "prior": "stalled",
+      "outcome": "completed",
+      "evidence": ".retries/codex-attempt-1"
+    }
+  ]
+}

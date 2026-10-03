@@ -1,128 +1,20 @@
 {
   "schema": 1,
   "producedBy": "wave",
-  "round": "results-005",
-  "state": "failed",
+  "round": "results-006",
+  "state": "passed",
   "scanProjectKey": "semaphile-SEM-3-cross-account-messaging",
-  "commit": "498e5adae9c20dfe4d8a6fe207b5850613e15a2e",
-  "tree": "b51f4c28e07f38529bd0ddc26b6c9f79f7f6ae02",
+  "commit": "d9ce1e4baddff90f9318d61c04dd18ca485cfa10",
+  "tree": "b22bd53bc9525e25e8b67a982ec9ee6053736ed3",
   "dirty": false,
   "base": "main",
   "baseCommit": "d585cf9b8ff5ad521673d4ffd56af6705242aadb",
   "scopeFingerprint": "a980f69a45e14a1846a9ef1e036475cc78c6a1d9f97fcc397b479099040c9eae",
-  "ceTaskId": "0582c4c8-aac1-438d-a688-93b4344799f2",
-  "issuesTotal": 83,
-  "inDiffOpen": 12,
+  "ceTaskId": "838a494f-11f9-41b4-a33f-1e12041781e8",
+  "issuesTotal": 71,
+  "inDiffOpen": 0,
   "outsideDiffOpen": 71,
   "findings": [
-    {
-      "key": "1116d2c8-6eae-4214-9380-3c3f82d9514d",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 51,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "ee7bee0f-cefa-449d-b496-f662bb404dff",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 54,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "9954419b-e183-4ddb-bac8-d3e6e5929404",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 69,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "cdd30f84-592f-4201-b6a8-1562c8ed55e8",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 76,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "9a34aeab-efc4-4fca-9049-39e0e18715b3",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 78,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "0461adf4-1904-451d-9c0b-44fee4bd5f26",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 81,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "4d18bfd7-b68b-4660-ad2f-b04811368698",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 82,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "2be29f8d-0ae6-49cc-924c-ac4812c14b7d",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 83,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "5e4b28e9-8368-4355-a745-05cf4ac31d7c",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 84,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "8468ca29-3719-43ac-817f-b6974027202f",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 85,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "6a87c198-b4bf-415c-926f-4ab6ee889b3e",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 86,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
-    {
-      "key": "ee47858d-2a3c-49fa-8329-fa5c24240071",
-      "rule": "javascript:S2970",
-      "severity": "BLOCKER",
-      "file": "conformance/accounts/lib/checks.mjs",
-      "line": 87,
-      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
-      "inDiff": true
-    },
     {
       "key": "b14e89f5-9091-4b47-8b46-91b928fe71b3",
       "rule": "typescript:S3776",
@@ -757,5 +649,5 @@
     }
   ],
   "qualityGate": "OK",
-  "timestamp": "2026-10-03T00:27:11.308Z"
+  "timestamp": "2026-10-03T18:49:43.952Z"
 }
