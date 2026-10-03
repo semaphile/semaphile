@@ -16,7 +16,7 @@
 
 ✻ Brewed for 4m 14s · done 1:33 AM
 
-❯ Follow-up goal-review round: read /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals
+❯ Follow-up goal-review round: read .worktrees/drafts/20260924-000114-cross-account-messaging/goals
   /drafts/20260924-000114-cross-account-messaging/reviews/goal-003/BRIEF.md and follow it (same contract as your previous round). Summary:
   Verify Redis authentication, CLI config discovery, dependency integrity and expiry assertions
 
@@ -46,5 +46,5 @@
 ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
    Model: Opus 5.5  ac2a7657  Ctx: 175.8k  18.0%  Session: 1hr 13m  Out: 114.2k  Total: 10.4M 
-   cwd: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-mes...
+   cwd: .worktrees/drafts/20260924-000114-cross-account-mes...
   ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 1 agent

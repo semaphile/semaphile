@@ -36,7 +36,7 @@ choices separately from reasonable executor implementation details. Do not
 invent a new guarantee or a new requirement to run unrelated historical suites.
 
 Private preflight receipt, readable only for this review's grounding, is at:
-/Users/openclaw/src/divideby0/semaphile/.scratch/docs/receipts/account-fixture-preflight-20260923.md
+.scratch/docs/receipts/account-fixture-preflight-20260923.md
 Do not copy host addresses, account names, credentials or personal home paths
 from it into your critique; refer to roles and the primary-checkout receipt.
 

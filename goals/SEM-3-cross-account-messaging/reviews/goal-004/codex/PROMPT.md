@@ -13,15 +13,15 @@ a new brief arrives.
 
 ## What to read
 
-- This round's brief from the main agent: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/reviews/goal-004/BRIEF.md
-- The goal spec: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/GOAL.md
-- Its references: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/references/ (INDEX.md first)
-- Prior rounds under /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/reviews/goal-*/ — earlier critiques and
+- This round's brief from the main agent: .worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/reviews/goal-004/BRIEF.md
+- The goal spec: .worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/GOAL.md
+- Its references: .worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/references/ (INDEX.md first)
+- Prior rounds under .worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/reviews/goal-*/ — earlier critiques and
   briefs are CONTINUITY, not contamination: read them, don't repeat
   yourself, follow up on what changed. (This is not a blind review;
   results-*/ folders there are a different, blind round kind — ignore
   them.)
-- Repo code anywhere under /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging where the spec's
+- Repo code anywhere under .worktrees/drafts/20260924-000114-cross-account-messaging where the spec's
   feasibility depends on it.
 
 ## Read-only contract (hard rule)
@@ -44,7 +44,7 @@ belong in your open-questions block, not on your console.
 
 ## Your critique artifact
 
-Write your critique to: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/reviews/goal-004/codex/CRITIQUE.md
+Write your critique to: .worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cross-account-messaging/reviews/goal-004/codex/CRITIQUE.md
 
 Start the file with EXACTLY this frontmatter block (fill in the current
 ISO 8601 timestamp and your verdict):

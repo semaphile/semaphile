@@ -13,7 +13,7 @@
 ※ recap: I'm reviewing the draft goal for testing Redis messaging across separate OS accounts, and the round-1 critique is written with a
   not-ready verdict. Next, I'm waiting for a follow-up brief with your answers or spec changes. (disable recaps in /config)
 
-❯ Follow-up goal-review round: read /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals
+❯ Follow-up goal-review round: read .worktrees/drafts/20260924-000114-cross-account-messaging/goals
   /drafts/20260924-000114-cross-account-messaging/reviews/goal-002/BRIEF.md and follow it (same contract as your previous round). Summary:
   Verify fixed inventory, exact archives, identity isolation and complete cleanup
 

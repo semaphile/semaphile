@@ -18,7 +18,7 @@
 
 ✻ Cooked for 1m 46s · done 1:38 AM
 
-❯ Follow-up goal-review round: read /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals
+❯ Follow-up goal-review round: read .worktrees/drafts/20260924-000114-cross-account-messaging/goals
   /drafts/20260924-000114-cross-account-messaging/reviews/goal-004/BRIEF.md and follow it (same contract as your previous round). Summary:
   Verify full dependency lock coverage and final observation/config precision
 
@@ -46,5 +46,5 @@
 ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
    Model: Opus 5.5  ac2a7657  Ctx: 187.5k  19.0%  Session: 1hr 17m  Out: 118.1k  Total: 11.8M 
-   cwd: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-mes...
+   cwd: .worktrees/drafts/20260924-000114-cross-account-mes...
   ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 1 agent

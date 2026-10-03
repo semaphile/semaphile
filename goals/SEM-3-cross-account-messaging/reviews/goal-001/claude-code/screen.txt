@@ -1,7 +1,7 @@
 
-❯ /goal [/Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cro
+❯ /goal [.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-000114-cro
 ss-account-messaging/reviews/goal-001/claude-code/PROMPT.md]
-  ⎿  Goal set: [/Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-0001
+  ⎿  Goal set: [.worktrees/drafts/20260924-000114-cross-account-messaging/goals/drafts/20260924-0001
      14-cross-account-messaging/reviews/goal-001/claude-code/PROMPT.md]
 
 ⏺ Goal acknowledged. Reading the review prompt now.
@@ -46,5 +46,5 @@ ss-account-messaging/reviews/goal-001/claude-code/PROMPT.md]
 ❯
 ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
    Model: Opus 5.5  ac2a7657  Ctx: 95.5k  10.0%  Session: 3m  Out: 41.8k  Total: 2.1M 
-   cwd: /Users/openclaw/src/divideby0/semaphile/.worktrees/drafts/20260924-000114-cross-account-mes...
+   cwd: .worktrees/drafts/20260924-000114-cross-account-mes...
   ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 1 agent
