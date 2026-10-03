@@ -313,10 +313,20 @@ teardown() {
       record removed user "$name" 'deleted'
     fi
   done
+  # With USERGROUPS_ENAB yes (the image's login.defs), userdel also removes
+  # the user's empty private group, so each group is reconciled now: gone
+  # means removed with its user; present must still be ours.
   for name in $FIXTURE_GROUPS; do
     if printf '%s\n' "$verdicts" | grep -q "^group $name [a-z]* ours$"; then
-      groupdel "$name"
-      record removed group "$name" 'deleted'
+      entry=$(getent group "$name" | cut -d: -f1,3 || true)
+      if [ -z "$entry" ]; then
+        record removed group "$name" 'removed with its user'
+      elif [ "$entry" = "$name:$(id_of "$name")" ]; then
+        groupdel "$name"
+        record removed group "$name" 'deleted'
+      else
+        fail "group $name changed during teardown ($entry); not deleting it"
+      fi
     fi
   done
   record removed complete "$STATE" 'teardown finished'

@@ -435,10 +435,19 @@ teardown() {
       record removed user "$name" 'deleted'
     fi
   done
+  # Reconciled after the users go, as in linux/container.sh: an absent
+  # group is recorded as removed, a present one must still be ours.
   for name in $FIXTURE_GROUPS; do
     if printf '%s\n' "$verdicts" | grep -q "^group $name [a-z]* ours$"; then
-      dscl . -delete "$GROUPS_DIR/$name"
-      record removed group "$name" 'deleted'
+      if ! dscl . -read "$GROUPS_DIR/$name" >/dev/null 2>&1; then
+        record removed group "$name" 'already absent'
+      elif [ "$(attr "$GROUPS_DIR/$name" PrimaryGroupID)" = "$(id_of "$name")" ] &&
+        [ "$(attr "$GROUPS_DIR/$name" RealName)" = "$MARK group $name" ]; then
+        dscl . -delete "$GROUPS_DIR/$name"
+        record removed group "$name" 'deleted'
+      else
+        fail "group $name changed during teardown; not deleting it"
+      fi
     fi
   done
   visudo -c >/dev/null || fail 'sudoers invalid after teardown'
