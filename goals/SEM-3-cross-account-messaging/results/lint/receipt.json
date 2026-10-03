@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "timestamp": "2026-10-03T18:46:19.153Z",
+  "branch": "SEM-3-cross-account-messaging",
+  "commit": "b528b5c293749483ba02b0924f1887ff9841ab00",
+  "tree": "b4e62b5b325433d95ed23713b63a229e2334f930",
+  "dirty": false,
+  "mode": "goal",
+  "goal": {
+    "key": "SEM-3",
+    "name": "SEM-3-cross-account-messaging",
+    "base": "main",
+    "baseOrigin": "main",
+    "baseCommit": "d585cf9b8ff5ad521673d4ffd56af6705242aadb"
+  },
+  "typecheck": {
+    "command": "bun run typecheck",
+    "exitCode": 0,
+    "status": "passed",
+    "source": "default"
+  },
+  "fast": {
+    "configured": true,
+    "ok": true,
+    "roots": [
+      {
+        "root": "packages/",
+        "linter": "command",
+        "ok": true,
+        "errors": 0,
+        "warnings": 0
+      },
+      {
+        "root": "conformance/",
+        "linter": "command",
+        "ok": true,
+        "errors": 0,
+        "warnings": 0
+      },
+      {
+        "root": "tools/",
+        "linter": "command",
+        "ok": true,
+        "errors": 0,
+        "warnings": 0
+      }
+    ],
+    "changeSetLinted": [
+      "conformance/accounts/README.md",
+      "conformance/accounts/bin/sem3-participant",
+      "conformance/accounts/candidate-pins.json",
+      "conformance/accounts/cloud/.gitignore",
+      "conformance/accounts/cloud/ansible/ansible.cfg",
+      "conformance/accounts/cloud/ansible/fixture.yml",
+      "conformance/accounts/cloud/ansible/host.yml",
+      "conformance/accounts/cloud/ansible/inventory.example.ini",
+      "conformance/accounts/cloud/ansible/tasks/pass.yml",
+      "conformance/accounts/cloud/ansible/teardown.yml",
+      "conformance/accounts/cloud/run.sh",
+      "conformance/accounts/cloud/terraform/.terraform.lock.hcl",
+      "conformance/accounts/cloud/terraform/main.tf",
+      "conformance/accounts/cloud/terraform/outputs.tf",
+      "conformance/accounts/cloud/terraform/terraform.tfvars.example",
+      "conformance/accounts/cloud/terraform/variables.tf",
+      "conformance/accounts/cloud/terraform/versions.tf",
+      "conformance/accounts/controller.mjs",
+      "conformance/accounts/lib/cases.mjs",
+      "conformance/accounts/lib/checks.mjs",
+      "conformance/accounts/lib/launch.mjs",
+      "conformance/accounts/lib/layout.mjs",
+      "conformance/accounts/lib/resp.mjs",
+      "conformance/accounts/lib/service.mjs",
+      "conformance/accounts/lib/tar.mjs",
+      "conformance/accounts/linux/container.sh",
+      "conformance/accounts/linux/host.sh",
+      "conformance/accounts/macos/admin.sh",
+      "conformance/accounts/package-lock.json",
+      "conformance/accounts/package.json",
+      "conformance/accounts/participant.mjs",
+      "conformance/accounts/stage.mjs"
+    ],
+    "changeSetDeleted": [],
+    "sampleDiagnostics": []
+  },
+  "deep": {
+    "configured": true,
+    "gated": true,
+    "state": "not-applicable",
+    "reason": "the change set touches nothing in the effective Sonar scope (93 path(s): conformance/accounts/README.md, conformance/accounts/bin/sem3-participant, conformance/accounts/candidate-pins.json, conformance/accounts/cloud/.gitignore, conformance/accounts/cloud/ansible/ansible.cfg, conformance/accounts/cloud/ansible/fixture.yml, conformance/accounts/cloud/ansible/host.yml, conformance/accounts/cloud/ansible/inventory.example.ini, …); fast tier only — no deep coverage is claimed",
+    "configChanged": false,
+    "inScopePaths": [],
+    "scopeFingerprint": "a980f69a45e14a1846a9ef1e036475cc78c6a1d9f97fcc397b479099040c9eae",
+    "scope": {
+      "sources": [
+        "packages"
+      ],
+      "exclusions": [
+        "**/node_modules/**",
+        "**/*.test.*",
+        "**/dist/**",
+        "**/target/**",
+        "**/conformance/fixtures/**",
+        "goals/**"
+      ],
+      "componentPrefix": "",
+      "origin": {
+        "sources": "settings",
+        "exclusions": "settings"
+      }
+    },
+    "applicable": false
+  },
+  "status": "green",
+  "exitCode": 0,
+  "reason": "typecheck and fast tier green; the change set touches nothing in the effective Sonar scope (fast tier only — no deep coverage claimed)"
+}

@@ -1,0 +1,761 @@
+{
+  "schema": 1,
+  "producedBy": "wave",
+  "round": "results-005",
+  "state": "failed",
+  "scanProjectKey": "semaphile-SEM-3-cross-account-messaging",
+  "commit": "498e5adae9c20dfe4d8a6fe207b5850613e15a2e",
+  "tree": "b51f4c28e07f38529bd0ddc26b6c9f79f7f6ae02",
+  "dirty": false,
+  "base": "main",
+  "baseCommit": "d585cf9b8ff5ad521673d4ffd56af6705242aadb",
+  "scopeFingerprint": "a980f69a45e14a1846a9ef1e036475cc78c6a1d9f97fcc397b479099040c9eae",
+  "ceTaskId": "0582c4c8-aac1-438d-a688-93b4344799f2",
+  "issuesTotal": 83,
+  "inDiffOpen": 12,
+  "outsideDiffOpen": 71,
+  "findings": [
+    {
+      "key": "1116d2c8-6eae-4214-9380-3c3f82d9514d",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 51,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "ee7bee0f-cefa-449d-b496-f662bb404dff",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 54,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "9954419b-e183-4ddb-bac8-d3e6e5929404",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 69,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "cdd30f84-592f-4201-b6a8-1562c8ed55e8",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 76,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "9a34aeab-efc4-4fca-9049-39e0e18715b3",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 78,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "0461adf4-1904-451d-9c0b-44fee4bd5f26",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 81,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "4d18bfd7-b68b-4660-ad2f-b04811368698",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 82,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "2be29f8d-0ae6-49cc-924c-ac4812c14b7d",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 83,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "5e4b28e9-8368-4355-a745-05cf4ac31d7c",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 84,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "8468ca29-3719-43ac-817f-b6974027202f",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 85,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "6a87c198-b4bf-415c-926f-4ab6ee889b3e",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 86,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "ee47858d-2a3c-49fa-8329-fa5c24240071",
+      "rule": "javascript:S2970",
+      "severity": "BLOCKER",
+      "file": "conformance/accounts/lib/checks.mjs",
+      "line": 87,
+      "message": "Complete this assertion; 'expect' doesn't assert anything by itself.",
+      "inDiff": true
+    },
+    {
+      "key": "b14e89f5-9091-4b47-8b46-91b928fe71b3",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/messaging/src/admin.ts",
+      "line": 91,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "5ed37c19-c397-46bf-bd63-0b84797286ad",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/messaging/src/cli.ts",
+      "line": 12,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 25 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "370e1651-b2bb-4624-a78d-1b0124c271b9",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/messaging/src/inspect-worker.ts",
+      "line": 20,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "ac7c2da4-083f-462e-8f60-33726d1b6075",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/messaging/src/listener.ts",
+      "line": 121,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "b5e7c1ae-9727-415c-bd0a-f80b59c6fc0f",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/messaging/src/settings.ts",
+      "line": 59,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "d4bc2bb5-9031-4633-ae1c-addd5920edc1",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/messaging/src/settings.ts",
+      "line": 120,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 60 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "ca390ad2-67c4-482c-92a3-3f4c195da446",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/messaging/src/telemetry.ts",
+      "line": 202,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "c6d5f84e-a693-48ec-b2b0-b2aa0e2a2232",
+      "rule": "typescript:S3863",
+      "severity": "MINOR",
+      "file": "packages/messaging/src/cli-actions.ts",
+      "line": 2,
+      "message": "'./types.js' imported multiple times.",
+      "inDiff": false
+    },
+    {
+      "key": "b9ebf453-abb5-4bb6-99fd-5904dfc9bbf1",
+      "rule": "typescript:S7718",
+      "severity": "MINOR",
+      "file": "packages/messaging/src/telemetry.ts",
+      "line": 170,
+      "message": "The catch parameter `value` should be named `error_`.",
+      "inDiff": false
+    },
+    {
+      "key": "80979811-fa07-4f9c-960d-22fd0122842e",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/messaging/src/trace.ts",
+      "line": 9,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "f768dbff-6e85-4b58-bec6-28f8942d7f83",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/messaging/src/trace.ts",
+      "line": 25,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "9687b484-f953-435e-a3f6-28168a8ea3ac",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/otel/src/messaging.ts",
+      "line": 74,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "0794dd87-6647-4e11-8449-0f16497435da",
+      "rule": "typescript:S104",
+      "severity": "MAJOR",
+      "file": "packages/otel/src/collector.ts",
+      "message": "This file has 563 lines, which is greater than 300 authorized. Split it into smaller files.",
+      "inDiff": false
+    },
+    {
+      "key": "e0964a03-b478-43cf-92d7-d32ac7eea305",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/otel/src/collector.ts",
+      "line": 310,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 69 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "3fa5a246-6b72-4d8c-acc8-1a5748cbd313",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/otel/src/cli.ts",
+      "line": 7,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "3f65b77d-1185-410e-80a1-c4f6b44b7f67",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/otel/src/propagation.ts",
+      "line": 65,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "6d281f18-9c11-4163-8ab5-8f9c6438d17d",
+      "rule": "typescript:S104",
+      "severity": "MAJOR",
+      "file": "packages/core/src/client.ts",
+      "message": "This file has 359 lines, which is greater than 300 authorized. Split it into smaller files.",
+      "inDiff": false
+    },
+    {
+      "key": "a0d231d3-fc68-4bbc-8b69-70ef65ae7ce9",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/src/client.ts",
+      "line": 209,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 21 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "77a1fa97-54d8-4b05-9224-e658b1d4a621",
+      "rule": "typescript:S104",
+      "severity": "MAJOR",
+      "file": "packages/core/src/execution.ts",
+      "message": "This file has 318 lines, which is greater than 300 authorized. Split it into smaller files.",
+      "inDiff": false
+    },
+    {
+      "key": "af2f43c8-c118-4992-88a5-7342be43c839",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/src/execution.ts",
+      "line": 150,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 49 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "2e12340d-4e0c-4e25-8369-72e35f3b6d14",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/otel/src/cli.ts",
+      "line": 70,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "826fac4d-7da2-4445-a32f-5c0b9f9aa50d",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/otel/src/collector.ts",
+      "line": 79,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 51 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "a2d79daa-18c8-451e-9620-559ad086afa1",
+      "rule": "typescript:S7786",
+      "severity": "MINOR",
+      "file": "packages/otel/src/collector.ts",
+      "line": 96,
+      "message": "`new Error()` is too unspecific for a type check. Use `new TypeError()` instead.",
+      "inDiff": false
+    },
+    {
+      "key": "7c27b00a-1771-4d36-ab02-bc55306a718e",
+      "rule": "typescript:S2871",
+      "severity": "CRITICAL",
+      "file": "packages/otel/src/collector.ts",
+      "line": 376,
+      "message": "Provide a compare function that depends on \"String.localeCompare\", to reliably sort elements alphabetically.",
+      "inDiff": false
+    },
+    {
+      "key": "f13b3bdf-1c03-428d-9d71-a5f7fd3f1e31",
+      "rule": "typescript:S1121",
+      "severity": "MAJOR",
+      "file": "packages/otel/src/collector.ts",
+      "line": 424,
+      "message": "Extract the assignment of \"inFlight\" from this expression.",
+      "inDiff": false
+    },
+    {
+      "key": "01ed1f2d-1c91-473c-b98b-67ef014649d2",
+      "rule": "typescript:S4325",
+      "severity": "MINOR",
+      "file": "packages/otel/src/collector.ts",
+      "line": 568,
+      "message": "This assertion is unnecessary since it does not change the type of the expression.",
+      "inDiff": false
+    },
+    {
+      "key": "b81526cb-00f0-4914-a59a-a34ca961e714",
+      "rule": "typescript:S4325",
+      "severity": "MINOR",
+      "file": "packages/otel/src/collector.ts",
+      "line": 569,
+      "message": "This assertion is unnecessary since it does not change the type of the expression.",
+      "inDiff": false
+    },
+    {
+      "key": "fdf20fa6-ac04-4cff-8836-47656b33ffb1",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/otel/src/index.ts",
+      "line": 56,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 17 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "14aff142-e38e-46a7-a2ed-da62e351ad5f",
+      "rule": "typescript:S1121",
+      "severity": "MAJOR",
+      "file": "packages/otel/src/sdk.ts",
+      "line": 91,
+      "message": "Extract the assignment of \"stopped\" from this expression.",
+      "inDiff": false
+    },
+    {
+      "key": "7cb57947-4c9c-4567-93b6-e668175280aa",
+      "rule": "typescript:S104",
+      "severity": "MAJOR",
+      "file": "packages/redis/src/backend.ts",
+      "message": "This file has 380 lines, which is greater than 300 authorized. Split it into smaller files.",
+      "inDiff": false
+    },
+    {
+      "key": "60c16917-4073-486e-9fab-29a3b2074ef0",
+      "rule": "typescript:S3863",
+      "severity": "MINOR",
+      "file": "packages/redis/src/backend.ts",
+      "line": 1,
+      "message": "'@semaphile/core/client' imported multiple times.",
+      "inDiff": false
+    },
+    {
+      "key": "cad7a68f-ff6a-462c-8b29-ad0bf315dcad",
+      "rule": "typescript:S7786",
+      "severity": "MINOR",
+      "file": "packages/redis/src/observation.ts",
+      "line": 108,
+      "message": "`new Error()` is too unspecific for a type check. Use `new TypeError()` instead.",
+      "inDiff": false
+    },
+    {
+      "key": "fae70b23-1ca9-47ea-ac5e-4fc31c150456",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/redis/src/observation.ts",
+      "line": 130,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "ba3b9f08-e4c1-460f-a8a6-9b4f9233322f",
+      "rule": "typescript:S2871",
+      "severity": "CRITICAL",
+      "file": "packages/redis/src/observation.ts",
+      "line": 181,
+      "message": "Provide a compare function that depends on \"String.localeCompare\", to reliably sort elements alphabetically.",
+      "inDiff": false
+    },
+    {
+      "key": "f2b5b887-5275-41ce-bd20-cdb387b81829",
+      "rule": "typescript:S2004",
+      "severity": "CRITICAL",
+      "file": "packages/redis/src/observation.ts",
+      "line": 221,
+      "message": "Refactor this code to not nest functions more than 4 levels deep.",
+      "inDiff": false
+    },
+    {
+      "key": "76605194-c95d-4463-b64f-3e9463046d69",
+      "rule": "typescript:S2004",
+      "severity": "CRITICAL",
+      "file": "packages/redis/src/observation.ts",
+      "line": 229,
+      "message": "Refactor this code to not nest functions more than 4 levels deep.",
+      "inDiff": false
+    },
+    {
+      "key": "976432f8-f4a6-46d8-9ebd-dd2804c0f763",
+      "rule": "typescript:S104",
+      "severity": "MAJOR",
+      "file": "packages/redis/src/wire.ts",
+      "message": "This file has 316 lines, which is greater than 300 authorized. Split it into smaller files.",
+      "inDiff": false
+    },
+    {
+      "key": "c72eb71c-8c8e-486e-9099-f7e88af04a0c",
+      "rule": "typescript:S3863",
+      "severity": "MINOR",
+      "file": "packages/redis/src/wire.ts",
+      "line": 1,
+      "message": "'node:crypto' imported multiple times.",
+      "inDiff": false
+    },
+    {
+      "key": "c017d7d1-757a-4c6e-8a04-68a0a1699d20",
+      "rule": "typescript:S6594",
+      "severity": "MINOR",
+      "file": "packages/redis/src/wire.ts",
+      "line": 241,
+      "message": "Use the \"RegExp.exec()\" method instead.",
+      "inDiff": false
+    },
+    {
+      "key": "a49cfa22-300d-4da4-915e-e73eca3fd3a0",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/src/http.ts",
+      "line": 100,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 30 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "d1241092-ab79-447d-b6d1-92adf4f14924",
+      "rule": "typescript:S4323",
+      "severity": "MINOR",
+      "file": "packages/core/src/telemetry.ts",
+      "line": 62,
+      "message": "Replace this union type with a type alias.",
+      "inDiff": false
+    },
+    {
+      "key": "c85ce0a1-1dbb-4e4d-868e-2ae9956bcabf",
+      "rule": "typescript:S2871",
+      "severity": "CRITICAL",
+      "file": "packages/core/src/observation-worker.ts",
+      "line": 50,
+      "message": "Provide a compare function that depends on \"String.localeCompare\", to reliably sort elements alphabetically.",
+      "inDiff": false
+    },
+    {
+      "key": "893dd3b7-52e1-42b9-b11b-82d17c761e1b",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/src/index.ts",
+      "line": 78,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "ea4b208f-7e0f-4b83-981f-a4bc402fd316",
+      "rule": "typescript:S104",
+      "severity": "MAJOR",
+      "file": "packages/core/src/backend.ts",
+      "message": "This file has 464 lines, which is greater than 300 authorized. Split it into smaller files.",
+      "inDiff": false
+    },
+    {
+      "key": "d1111fcc-94d2-465e-b19b-9eb4227ed46c",
+      "rule": "rust:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/native/os/src/linux.rs",
+      "line": 126,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "eca29496-06f8-4c1d-9c6b-1dc35fbc9616",
+      "rule": "rust:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/native/os/src/macos.rs",
+      "line": 101,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "8a9875d8-fcbb-41a2-9317-bc8eb6645ff0",
+      "rule": "typescript:S7737",
+      "severity": "MINOR",
+      "file": "packages/core/src/backend.ts",
+      "line": 299,
+      "message": "Do not use an object literal as default for parameter `outcome`.",
+      "inDiff": false
+    },
+    {
+      "key": "75ce70ca-aaf7-493a-ad5a-58433faea4e2",
+      "rule": "typescript:S7737",
+      "severity": "MINOR",
+      "file": "packages/core/src/backend.ts",
+      "line": 349,
+      "message": "Do not use an object literal as default for parameter `command`.",
+      "inDiff": false
+    },
+    {
+      "key": "f423e61b-119c-4963-ab53-e5b3e0695096",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/src/coordinator.ts",
+      "line": 18,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 20 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "a60a6c4f-a231-40b8-8d37-f82f3b6aecf9",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/core/src/http-policy.ts",
+      "line": 91,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "23f3edb9-18d7-4c6c-8e81-61d5f5e1e78e",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/core/src/http-policy.ts",
+      "line": 93,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "c1028c6c-9c2b-45d4-b6c9-d30514d805aa",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/core/src/http.ts",
+      "line": 123,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "a6a8fb20-4670-4ea8-a442-73179ebbdbae",
+      "rule": "typescript:S7735",
+      "severity": "MINOR",
+      "file": "packages/core/src/http.ts",
+      "line": 129,
+      "message": "Unexpected negated condition.",
+      "inDiff": false
+    },
+    {
+      "key": "394b69c1-bc79-4b28-bcaf-303a062e3e3f",
+      "rule": "typescript:S4325",
+      "severity": "MINOR",
+      "file": "packages/core/src/http.ts",
+      "line": 266,
+      "message": "This assertion is unnecessary since it does not change the type of the expression.",
+      "inDiff": false
+    },
+    {
+      "key": "d1bff97d-2beb-4593-af8f-6716d601c185",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/core/src/index.ts",
+      "line": 103,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "075ca3ff-3db3-4b7d-8988-7730421b8ebd",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/core/src/index.ts",
+      "line": 105,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "5b62c852-efe1-4f6a-9643-f4e8194d6947",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/core/src/index.ts",
+      "line": 107,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "16751453-edaa-4866-90fa-642e58d2e0de",
+      "rule": "typescript:S6582",
+      "severity": "MAJOR",
+      "file": "packages/core/src/maintenance-state.ts",
+      "line": 61,
+      "message": "Prefer using an optional chain expression instead, as it's more concise and easier to read.",
+      "inDiff": false
+    },
+    {
+      "key": "bb2ad5dc-003e-440e-8e3e-9513b301de39",
+      "rule": "typescript:S104",
+      "severity": "MAJOR",
+      "file": "packages/core/src/memory-backend.ts",
+      "message": "This file has 400 lines, which is greater than 300 authorized. Split it into smaller files.",
+      "inDiff": false
+    },
+    {
+      "key": "d9a676c7-dc87-4d27-8e24-7e10341c5097",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/src/memory-backend.ts",
+      "line": 121,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 24 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "3f0f1f12-db94-4203-a54a-6674bb5d76a3",
+      "rule": "typescript:S7737",
+      "severity": "MINOR",
+      "file": "packages/core/src/memory-backend.ts",
+      "line": 258,
+      "message": "Do not use an object literal as default for parameter `outcome`.",
+      "inDiff": false
+    },
+    {
+      "key": "868bed3f-7a7d-4e61-8d4c-410a2f5c65d0",
+      "rule": "typescript:S3358",
+      "severity": "MAJOR",
+      "file": "packages/core/src/recovery-policy.ts",
+      "line": 202,
+      "message": "Extract this nested ternary operation into an independent statement.",
+      "inDiff": false
+    },
+    {
+      "key": "30bd1fe9-2732-4ba7-9b5d-f306583d6427",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/core/src/sqlite-admission.ts",
+      "line": 29,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 16 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "e4ddcae5-a235-478b-b3ff-4eba103df83e",
+      "rule": "typescript:S3863",
+      "severity": "MINOR",
+      "file": "packages/messaging/src/cli-actions.ts",
+      "line": 20,
+      "message": "'./types.js' imported multiple times.",
+      "inDiff": false
+    },
+    {
+      "key": "c7393294-c597-4bca-98f0-656385af5037",
+      "rule": "typescript:S7735",
+      "severity": "MINOR",
+      "file": "packages/messaging/src/pool-cli.ts",
+      "line": 48,
+      "message": "Unexpected negated condition.",
+      "inDiff": false
+    },
+    {
+      "key": "ba4913fe-83d4-42ea-b05d-42e8020fe594",
+      "rule": "typescript:S7735",
+      "severity": "MINOR",
+      "file": "packages/messaging/src/pool-cli.ts",
+      "line": 56,
+      "message": "Unexpected negated condition.",
+      "inDiff": false
+    },
+    {
+      "key": "54807577-aff7-4949-8fb6-e90c1303fe7f",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/messaging/src/pool-cli.ts",
+      "line": 88,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 23 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "35f20795-71d0-4484-9871-c1bd9793aff4",
+      "rule": "typescript:S3863",
+      "severity": "MINOR",
+      "file": "packages/redis/src/backend.ts",
+      "line": 17,
+      "message": "'@semaphile/core/client' imported multiple times.",
+      "inDiff": false
+    },
+    {
+      "key": "bb074bcb-ae85-4622-ac5d-c69e045cfe76",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/redis/src/backend.ts",
+      "line": 268,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 19 to the 15 allowed.",
+      "inDiff": false
+    },
+    {
+      "key": "7c01a4d4-a856-4299-ac76-467c0930c38f",
+      "rule": "typescript:S3863",
+      "severity": "MINOR",
+      "file": "packages/redis/src/wire.ts",
+      "line": 6,
+      "message": "'node:crypto' imported multiple times.",
+      "inDiff": false
+    },
+    {
+      "key": "e22a33b0-1b7d-4a04-8391-5d483abca12b",
+      "rule": "typescript:S3776",
+      "severity": "CRITICAL",
+      "file": "packages/redis/src/wire.ts",
+      "line": 215,
+      "message": "Refactor this function to reduce its Cognitive Complexity from 18 to the 15 allowed.",
+      "inDiff": false
+    }
+  ],
+  "qualityGate": "OK",
+  "timestamp": "2026-10-03T00:27:11.308Z"
+}
