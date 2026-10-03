@@ -4,7 +4,7 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createHash, randomBytes } from 'node:crypto';
-import { chmod, chown, mkdir, open as openFile, writeFile } from 'node:fs/promises';
+import { chmod, chown, lstat, mkdir, open as openFile, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { open as respOpen, RespError } from './resp.mjs';
@@ -76,117 +76,171 @@ export async function startRedis({ binary, directory, controllerDir, serviceUser
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { PATH: '/usr/bin:/bin' },
   });
-  const exited = once(child, 'exit');
-  let output = '';
-  await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Redis readiness deadline: ' + output)), 30000);
-    const receive = (data) => {
-      output += data;
-      void logHandle.write(data);
-      if (output.includes('Ready to accept connections')) {
-        clearTimeout(timer);
-        resolve();
-      }
-    };
-    child.stdout.on('data', receive);
-    child.stderr.on('data', receive);
-    child.once('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`Redis exited ${code}: ${output}`));
-    });
+  // Always resolves, so a spawn error is never an unhandled rejection.
+  const exited = new Promise((resolve) => {
+    child.once('exit', (code, signal) => resolve({ code, signal }));
+    child.once('error', (error) => resolve({ code: null, signal: null, error: error.code }));
   });
-  const admin = await respOpen({ host: '127.0.0.1', port });
-  const auth = await admin.command('AUTH', ADMIN, password);
-  if (auth !== 'OK') {
-    throw new Error('Administrator AUTH failed');
-  }
-  const command = async (...args) => {
-    const reply = await admin.command(...args);
-    if (reply instanceof RespError) {
-      throw reply;
+  let stopped = false;
+  const stopChild = async () => {
+    if (stopped) {
+      return exited;
     }
-    return reply;
+    stopped = true;
+    child.kill('SIGTERM');
+    const kill = setTimeout(() => child.kill('SIGKILL'), 10000);
+    try {
+      return await exited;
+    } finally {
+      clearTimeout(kill);
+      await logHandle.close().catch(() => {});
+    }
   };
-  const infoMap = async (section) =>
-    Object.fromEntries(
-      (await command('INFO', section))
-        .split('\r\n')
-        .filter((line) => line.includes(':'))
-        .map((line) => [line.slice(0, line.indexOf(':')), line.slice(line.indexOf(':') + 1)]),
-    );
-  const server = await infoMap('server');
-  // Reject any endpoint that is not the process this controller started.
-  if (
-    // setpriv execs in place, so the Redis PID is the spawned PID either way.
-    Number(server.process_id) !== child.pid ||
-    Number(server.tcp_port) !== port ||
-    server.redis_version !== REDIS_VERSION
-  ) {
-    throw new Error('Redis endpoint identity mismatch: ' + JSON.stringify(server));
-  }
-  const settings = {};
-  for (const name of [
-    'appendonly',
-    'appendfsync',
-    'no-appendfsync-on-rewrite',
-    'maxmemory-policy',
-    'bind',
-    'protected-mode',
-    'requirepass',
-    'masterauth',
-    'aclfile',
-  ]) {
-    const [, value] = await command('CONFIG', 'GET', name);
-    settings[name] = value ?? null;
-  }
-  const persistence = await infoMap('persistence');
-  log?.({ redis: 'started', port, pid: server.process_id });
-  return {
-    port,
-    host: '127.0.0.1',
-    pid: Number(server.process_id),
-    password,
-    configFile,
-    adminFile,
-    identity: {
-      version: server.redis_version,
-      runId: server.run_id,
-      executable: server.executable,
-      configFile: server.config_file,
-      processId: Number(server.process_id),
-      tcpPort: port,
-      settings,
-      persistence: {
-        aof_enabled: persistence.aof_enabled,
-        aof_last_write_status: persistence.aof_last_write_status,
-        aof_last_bgrewrite_status: persistence.aof_last_bgrewrite_status,
-      },
-    },
-    command,
-    infoMap,
-    async clientList() {
-      return (await command('CLIENT', 'LIST'))
-        .trim()
-        .split('\n')
-        .map((line) => Object.fromEntries(line.split(' ').map((pair) => pair.split('=', 2))))
-        .filter((client) => client.user !== ADMIN)
-        .map(({ id, name, user, addr, cmd, sub }) => ({ id, name, user, addr, cmd, sub }));
-    },
-    async aclUser(name) {
-      const fields = await command('ACL', 'GETUSER', name);
-      const out = {};
-      for (let index = 0; index < fields.length; index += 2) {
-        if (fields[index] !== 'passwords') {
-          out[fields[index]] = fields[index + 1];
+  // Every failure after the spawn stops the child: a controller that throws
+  // here must not leave a Redis running.
+  let admin;
+  try {
+    let output = '';
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('Redis readiness deadline: ' + output)),
+        30000,
+      );
+      const receive = (data) => {
+        output += data;
+        logHandle.write(data).catch(() => {});
+        if (output.includes('Ready to accept connections')) {
+          clearTimeout(timer);
+          resolve();
         }
+      };
+      child.stdout.on('data', receive);
+      child.stderr.on('data', receive);
+      void exited.then(({ code, error }) => {
+        clearTimeout(timer);
+        reject(new Error(`Redis exited ${error ?? code}: ${output}`));
+      });
+    });
+    admin = await respOpen({ host: '127.0.0.1', port });
+    const auth = await admin.command('AUTH', ADMIN, password);
+    if (auth !== 'OK') {
+      throw new Error('Administrator AUTH failed');
+    }
+    const command = async (...args) => {
+      const reply = await admin.command(...args);
+      if (reply instanceof RespError) {
+        throw reply;
       }
-      return out;
-    },
-    async stop() {
-      admin.close();
-      child.kill('SIGTERM');
-      await exited;
-      await logHandle.close();
-    },
-  };
+      return reply;
+    };
+    const infoMap = async (section) =>
+      Object.fromEntries(
+        (await command('INFO', section))
+          .split('\r\n')
+          .filter((line) => line.includes(':'))
+          .map((line) => [line.slice(0, line.indexOf(':')), line.slice(line.indexOf(':') + 1)]),
+      );
+    const server = await infoMap('server');
+    // Reject any endpoint that is not the process this controller started.
+    if (
+      // setpriv execs in place, so the Redis PID is the spawned PID either way.
+      Number(server.process_id) !== child.pid ||
+      Number(server.tcp_port) !== port ||
+      server.redis_version !== REDIS_VERSION
+    ) {
+      throw new Error('Redis endpoint identity mismatch: ' + JSON.stringify(server));
+    }
+    const settings = {};
+    for (const name of [
+      'appendonly',
+      'appendfsync',
+      'no-appendfsync-on-rewrite',
+      'maxmemory-policy',
+      'bind',
+      'protected-mode',
+      'requirepass',
+      'masterauth',
+      'aclfile',
+    ]) {
+      const [, value] = await command('CONFIG', 'GET', name);
+      settings[name] = value ?? null;
+    }
+    const persistence = await infoMap('persistence');
+    log?.({ redis: 'started', port, pid: server.process_id });
+    return {
+      port,
+      host: '127.0.0.1',
+      pid: Number(server.process_id),
+      password,
+      configFile,
+      adminFile,
+      identity: {
+        version: server.redis_version,
+        runId: server.run_id,
+        executable: server.executable,
+        configFile: server.config_file,
+        processId: Number(server.process_id),
+        tcpPort: port,
+        settings,
+        persistence: {
+          aof_enabled: persistence.aof_enabled,
+          aof_last_write_status: persistence.aof_last_write_status,
+          aof_last_bgrewrite_status: persistence.aof_last_bgrewrite_status,
+        },
+      },
+      command,
+      infoMap,
+      async clientList() {
+        return (await command('CLIENT', 'LIST'))
+          .trim()
+          .split('\n')
+          .map((line) => Object.fromEntries(line.split(' ').map((pair) => pair.split('=', 2))))
+          .filter((client) => client.user !== ADMIN)
+          .map(({ id, name, user, addr, cmd, sub }) => ({ id, name, user, addr, cmd, sub }));
+      },
+      async aclUser(name) {
+        const fields = await command('ACL', 'GETUSER', name);
+        const out = {};
+        for (let index = 0; index < fields.length; index += 2) {
+          if (fields[index] !== 'passwords') {
+            out[fields[index]] = fields[index + 1];
+          }
+        }
+        return out;
+      },
+      // Owner, group and mode of the service's storage, log and credential.
+      async files() {
+        const out = [];
+        for (const path of [
+          directory,
+          join(directory, 'appendonlydir'),
+          configFile,
+          join(controllerDir, 'redis.log'),
+          adminFile,
+        ]) {
+          try {
+            const info = await lstat(path);
+            out.push({
+              path,
+              uid: info.uid,
+              gid: info.gid,
+              mode: (info.mode & 0o7777).toString(8),
+              type: info.isDirectory() ? 'dir' : 'file',
+            });
+          } catch (error) {
+            out.push({ path, error: error.code });
+          }
+        }
+        return out;
+      },
+      async stop() {
+        admin.close();
+        return stopChild();
+      },
+    };
+  } catch (error) {
+    admin?.close();
+    await stopChild();
+    throw error;
+  }
 }

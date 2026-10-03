@@ -1,7 +1,7 @@
 // Starts participants as fixture identities and speaks the line protocol.
 // Barriers are request/reply pairs over the controller-owned pipes.
 import { spawn } from 'node:child_process';
-import { EventEmitter, once } from 'node:events';
+import { EventEmitter } from 'node:events';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { byRole, paths } from './layout.mjs';
@@ -37,8 +37,25 @@ export function command(mode, account, runtime, { prefix, runner, devRuntimes } 
   throw new Error('Unknown launch mode ' + mode);
 }
 
+// A promise that may be left unawaited without crashing the controller;
+// awaiting it still throws.
+const settled = (promise) => {
+  promise.catch(() => {});
+  return promise;
+};
+
 export class Participant extends EventEmitter {
-  constructor({ mode, role, runtime, prefix, runner, devRuntimes, log, stdin = 'pipe' }) {
+  constructor({
+    mode,
+    role,
+    runtime,
+    prefix,
+    runner,
+    devRuntimes,
+    log,
+    stdin = 'pipe',
+    helloMs = 30000,
+  }) {
     super();
     this.role = role;
     this.account = byRole[role];
@@ -47,6 +64,7 @@ export class Participant extends EventEmitter {
     this.next = 0;
     this.waiting = new Map();
     this.stderr = '';
+    this.done = false;
     const [file, args] = command(mode, this.account, runtime, { prefix, runner, devRuntimes });
     this.argv = [file, ...args];
     const env =
@@ -66,23 +84,45 @@ export class Participant extends EventEmitter {
       // A new session has no controlling terminal: sudo cannot prompt.
       detached: true,
     });
-    this.exited = once(this.child, 'exit').then(([code, signal]) => ({ code, signal }));
+    // Always resolves: a spawn failure is an exit with an error, never a
+    // rejection nobody is waiting for.
+    this.exited = new Promise((resolve) => {
+      this.child.once('exit', (code, signal) => resolve({ code, signal }));
+      this.child.once('error', (error) => resolve({ code: null, signal: null, error: error.code }));
+    });
+    this.child.stdin?.on('error', () => {});
     this.child.stderr.on('data', (data) => {
       this.stderr += data;
     });
     const lines = createInterface({ input: this.child.stdout });
-    this.hello = new Promise((resolve, reject) => {
-      this.once('hello', (message) => resolve(message.identity));
-      this.child.once('error', reject);
-      void this.exited.then(({ code, signal }) =>
-        reject(
-          Object.assign(new Error(`participant exited before hello (${code ?? signal})`), {
-            code: 'LAUNCH',
-            stderr: this.stderr.slice(0, 2000),
-          }),
-        ),
-      );
-    });
+    this.hello = settled(
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.child.kill('SIGKILL');
+          reject(
+            Object.assign(new Error(`participant sent no hello within ${helloMs} ms`), {
+              code: 'LAUNCH',
+            }),
+          );
+        }, helloMs);
+        this.once('hello', (message) => {
+          clearTimeout(timer);
+          resolve(message.identity);
+        });
+        void this.exited.then(({ code, signal, error }) => {
+          clearTimeout(timer);
+          reject(
+            Object.assign(
+              new Error(`participant exited before hello (${error ?? code ?? signal})`),
+              {
+                code: 'LAUNCH',
+                stderr: this.stderr.slice(0, 2000),
+              },
+            ),
+          );
+        });
+      }),
+    );
     lines.on('line', (line) => {
       let message;
       try {
@@ -105,11 +145,12 @@ export class Participant extends EventEmitter {
         waiter(message);
       }
     });
-    void this.exited.then(({ code, signal }) => {
+    void this.exited.then(({ code, signal, error }) => {
+      this.done = true;
       for (const waiter of this.waiting.values()) {
         waiter({
           ok: false,
-          error: { code: 'EXITED', message: `participant exited (${code ?? signal})` },
+          error: { code: 'EXITED', message: `participant exited (${error ?? code ?? signal})` },
         });
       }
       this.waiting.clear();
@@ -118,6 +159,9 @@ export class Participant extends EventEmitter {
 
   // Resolves to the reply; ok:false replies are returned so cases can assert them.
   request(op, args = {}, { timeoutMs = 30000 } = {}) {
+    if (this.done) {
+      return Promise.resolve({ ok: false, error: { code: 'EXITED', message: `${op} after exit` } });
+    }
     const id = ++this.next;
     return new Promise((resolve) => {
       const timer = setTimeout(() => {
@@ -157,33 +201,40 @@ export class Participant extends EventEmitter {
   }
 
   waitFor(event, predicate = () => true, timeoutMs = 30000) {
-    return new Promise((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.off(event, handler);
-        reject(
-          Object.assign(new Error(`${this.role} did not emit ${event}`), {
-            code: 'CONTROLLER_DEADLINE',
-          }),
-        );
-      }, timeoutMs);
-      const handler = (message) => {
-        if (predicate(message)) {
-          clearTimeout(timer);
+    return settled(
+      new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
           this.off(event, handler);
-          resolve(message);
-        }
-      };
-      this.on(event, handler);
-    });
+          reject(
+            Object.assign(new Error(`${this.role} did not emit ${event}`), {
+              code: 'CONTROLLER_DEADLINE',
+            }),
+          );
+        }, timeoutMs);
+        const handler = (message) => {
+          if (predicate(message)) {
+            clearTimeout(timer);
+            this.off(event, handler);
+            resolve(message);
+          }
+        };
+        this.on(event, handler);
+      }),
+    );
   }
 
-  async close(timeoutMs = 20000) {
-    this.child.stdin.end();
-    const timer = setTimeout(() => this.child.kill('SIGTERM'), timeoutMs);
+  // Closing stdin asks the participant to finish and exit. A participant
+  // that does not is sent SIGTERM (sudo relays it), then SIGKILL; under sudo
+  // the participant itself then exits on its closed stdin.
+  async close(timeoutMs = 20000, killMs = 5000) {
+    this.child.stdin?.end();
+    const term = setTimeout(() => this.child.kill('SIGTERM'), timeoutMs);
+    const kill = setTimeout(() => this.child.kill('SIGKILL'), timeoutMs + killMs);
     try {
       return await this.exited;
     } finally {
-      clearTimeout(timer);
+      clearTimeout(term);
+      clearTimeout(kill);
     }
   }
 }
