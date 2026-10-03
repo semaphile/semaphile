@@ -163,6 +163,20 @@ These gates describe the proposed completion contract for goal review.
    a sanitized matrix and repository-relative evidence references. The private
    evidence index records absolute locations without publishing personal paths. Completion follows
    AGENTS.md, including its progress marker and final handoff.
+   The final finding round covers three bounded units: privileged account setup
+   and identity switching; cloud resource lifecycle; and candidate staging,
+   messaging harness and evidence. All units use the same frozen commit and diff
+   base. A coverage manifest assigns every changed implementation, configuration,
+   and documentation file to at least one unit and identifies boundary overlaps.
+   Each unit receives fresh blind Codex review and the configured independent
+   review lanes; CodeRabbit and Sonar remain separate evidence, with scope and
+   any unsupported surface stated. The aggregate review includes an explicit
+   cross-unit audit of staging, installation, identity switching, participant
+   launch, Redis operations, interruption recovery, evidence export and teardown.
+   Every accepted finding has a disposition and verification at the final head;
+   no unit's pass substitutes for another unit or the integration audit. All
+   records reconcile into one final finding round, with raw evidence in the
+   primary checkout and a sanitized summary in goal results.
 7. The final result maps actual evidence to every criterion of SEM-2's deferred
    OS-account validation record, with all six required criteria satisfied. Any unmet criterion blocks completion;
    listing it as residual debt does not pass the gate.
@@ -232,6 +246,7 @@ completed work or permission to activate an unreviewed administrator script.
 - `references/sem2-baseline.md`: candidate hashes, runtimes and exact historical reads.
 - `references/verification-contract.md`: required case inventory and lifecycle.
 - `references/repeatable-cloud-provisioning.md`: owner-directed Terraform/Ansible amendment of September 26.
+- `references/final-review-scopes.md`: owner-accepted final finding-round units, coverage manifest, cross-unit audit and budget contract of October 3.
 - `SPEC.md`, sections 16 and 20: existing messaging contract.
 - `conformance/redis/messaging-acl.mjs`, `messaging-topics.mjs`,
   `messaging-faults.mjs`, `messaging-participant.mjs` and `harness.mjs`.

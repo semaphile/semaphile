@@ -7,3 +7,4 @@
 - `sem2-baseline.md`: candidate hashes, runtime versions and historical reads.
 - `verification-contract.md`: binding case inventory, fixture and cleanup contract.
 - `repeatable-cloud-provisioning.md`: owner-directed Terraform/Ansible amendment; supersedes the shared Linux host requirement.
+- `final-review-scopes.md`: owner-accepted final finding-round units, coverage manifest, cross-unit audit and budget contract.
