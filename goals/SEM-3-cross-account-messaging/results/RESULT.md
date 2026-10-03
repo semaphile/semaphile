@@ -134,6 +134,41 @@ planner, and the orchestrator asked that no second finding round start before
 it is decided. A full same-UID dev run after the fixes passed 100 of 100
 cases with a clean cleanup receipt. That is not gate evidence.
 
+### Review split, supplemental findings and final-round preparation (October 3)
+
+The orchestrator again withheld both activations: the post-verification fixes
+were unreviewed, and a supplemental blind review had confirmed a new major.
+
+- `640efda` applies the owner-accepted planner amendment: its paragraph is
+  appended verbatim to gate 6, its contract is
+  `references/final-review-scopes.md`, and GOAL.md names it. results-006 keeps
+  its verification purpose and does not claim to have verified anything below.
+- `53300a2` fixes C41 (major): the macOS identity check allowed only groups 12
+  and 61, but every local account also inherits nested groups (100, and on
+  this host 701 and 705–710), so every macOS identity check and case would
+  have failed closed. The inherited set is now read at run time from three
+  hidden reference accounts, refused if they disagree, recorded in `run.json`,
+  and privileged groups still fail. A targeted check against this host's
+  `id -G` output and synthetic identities passed.
+- `ba44360` fixes C42 (nit): both rehearsals now also crash a setup after the
+  tree and 0700 homes are installed and recover it. On Linux the tree is
+  copied rather than moved and teardown keeps the transfer area, so the real
+  setup still has its bundle. ShellCheck and syntax checks only; it needs root
+  or the container to run.
+- C40, a claimed Linux teardown failure on empty owner-only directories, was
+  rejected: teardown empties them as their owner first, and GNU `rm` removes
+  an empty directory it cannot read. All three are recorded in
+  `reviews/results-005/INDEX.md`.
+- The retrospective is written and committed before the final round, with
+  five learnings under `.evie-kit/learnings/`.
+- The merged-findings tables of both rounds were renumbered with plain
+  integers so the retrospective's reviewer counts can read them; no content
+  changed.
+
+The final finding round has not run. Its coverage manifest and unit prompts
+are in `references/final-review/`; the orchestrator runs it after the owner's
+reviewer-roster decision.
+
 ## Execution notes
 
 - **Re-arm without a position record.** On September 26 the goal contract
