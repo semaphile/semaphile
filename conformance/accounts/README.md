@@ -121,7 +121,15 @@ version and resolved package paths match the manifest, its PID is the process
 the controller launched (or, under sudo, that process's child), and
 when a probe connection from each participant, made with that participant's
 own credential file, appears in the server's `CLIENT LIST` under that
-participant's Redis user. Timing cases compute their deadlines from recorded
+participant's Redis user. Supplementary groups must be the account's own
+group, the handoff group for A and B only, and the groups every local account
+inherits on that host. macOS gives every local account computed and nested
+groups (`everyone`, `localaccounts`, `_lpoperator` and the host's sharepoint
+groups), so the controller reads that set at run time from three hidden
+reference accounts (`nobody`, `daemon`, `_www`), refuses if they disagree, and
+records it in `run.json`. A privileged group (wheel, staff, admin or a
+remote-access group on macOS; root, adm, sudo or staff in the container) fails
+the check even if the platform grants it to everyone. Timing cases compute their deadlines from recorded
 timestamps. T5 records both the activity deadline and the deadline that a
 wrong refresh would produce, and marks the run INVALID, never PASS, when the
 observation falls outside the window between them.
@@ -167,9 +175,13 @@ reviewed SHA-256, first with `rehearse` and then with `setup`. The rehearsal
 uses an isolated state directory: it proves the collision refusal against an
 existing account without changing it, crashes a setup after creating an
 account but before recording it, refuses teardown of a manifest whose recorded
-identity was altered, recovers the partial setup, and repeats the teardown as
-a verified no-op. It also proves that setup itself refuses a collision and
-changes nothing. Each step runs the script as a fresh process and must exit
+identity was altered, and recovers the partial setup. It then crashes a
+second setup after the tree and the 0700 homes are installed, recovers that
+too, and repeats the teardown as a verified no-op. It also proves that setup
+itself refuses a collision and changes nothing. The in-container rehearsal on
+Linux runs the same steps; its setup copies the unpacked tree rather than
+moving it, and teardown leaves the transfer area, so the real setup still has
+its bundle. Each step runs the script as a fresh process and must exit
 with the exact status the step needs.
 
 The controller then runs two verification passes with distinct run ids:
