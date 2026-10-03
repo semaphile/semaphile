@@ -25,15 +25,15 @@ deliberately).
 `sem3ab` (GID 3610) is the handoff group. Everything lives under one prefix,
 `/opt/semaphile-sem3`:
 
-| Path                                     | Owner and mode                                         | Contents                                                                |
-| ---------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `bin/sem3-participant`                   | root, 0755                                             | the runner                                                              |
-| `runtime/node`, `runtime/bun/bun`        | root, no group/other write                             | pinned official runtimes                                                |
-| `checkout/`                              | root, no group/other write                             | harness export, candidate archives, installed consumer                  |
-| `checkout/.tmp/controller`, `.tmp/redis` | controller (macOS) or root/Redis service (Linux), 0700 | Redis config, AOF, log, admin credential                                |
-| `checkout/.tmp/participants/<id>`        | the identity, 0700                                     | participant `TMPDIR`                                                    |
-| `home/<id>`                              | the identity, 0700                                     | `projects/<profile>/semaphile.json`, `.sem3/credentials/<profile>.json` |
-| `shared/handoff.txt`                     | root:`sem3ab`, 0640 in a 0750 directory                | synthetic shared file                                                   |
+| Path                                     | Owner and mode                                                                                                                     | Contents                                                                |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `bin/sem3-participant`                   | root, 0755                                                                                                                         | the runner                                                              |
+| `runtime/node`, `runtime/bun/bun`        | root, no group/other write                                                                                                         | pinned official runtimes                                                |
+| `checkout/`                              | root, no group/other write                                                                                                         | harness export, candidate archives, installed consumer                  |
+| `checkout/.tmp/controller`, `.tmp/redis` | macOS: the controller, both 0700. Linux: `controller` root 0700; `redis` root 0755 so UID 999 can reach its own 0700 run directory | Redis config, AOF, log, admin credential                                |
+| `checkout/.tmp/participants/<id>`        | the identity, 0700                                                                                                                 | participant `TMPDIR`                                                    |
+| `home/<id>`                              | the identity, 0700                                                                                                                 | `projects/<profile>/semaphile.json`, `.sem3/credentials/<profile>.json` |
+| `shared/handoff.txt`                     | root:`sem3ab`, 0640 in a 0750 directory                                                                                            | synthetic shared file                                                   |
 
 The macOS accounts have `/usr/bin/false` as their shell, no password hash
 (`Password *`, no `AuthenticationAuthority`), `IsHidden 1`, and no membership
@@ -115,9 +115,10 @@ The inventory is fixed at 100 instances per platform:
 | A1–A6  |        36 | per-identity reruns: each identity × Node and Bun                                              |
 | R1–R3  |        18 | per-identity reruns: each identity × Node and Bun                                              |
 
-A case counts only when every participant's reported PID, UID/GID,
-supplementary groups, home, working directory, platform, architecture,
-executable, runtime version and resolved package paths match the manifest, and
+A case counts only when every participant's reported UID/GID, supplementary
+groups, home, working directory, platform, architecture, executable, runtime
+version and resolved package paths match the manifest, its PID is the process
+the controller launched (or, under sudo, that process's child), and
 when a probe connection from each participant, made with that participant's
 own credential file, appears in the server's `CLIENT LIST` under that
 participant's Redis user. Timing cases compute their deadlines from recorded
@@ -167,16 +168,37 @@ uses an isolated state directory: it proves the collision refusal against an
 existing account without changing it, crashes a setup after creating an
 account but before recording it, refuses teardown of a manifest whose recorded
 identity was altered, recovers the partial setup, and repeats the teardown as
-a verified no-op. The controller then runs:
+a verified no-op. It also proves that setup itself refuses a collision and
+changes nothing. Each step runs the script as a fresh process and must exit
+with the exact status the step needs.
+
+The controller then runs two verification passes with distinct run ids:
 
 ```sh
-/opt/semaphile-sem3/runtime/node/bin/node \
-  /opt/semaphile-sem3/checkout/conformance/accounts/controller.mjs run \
-  --run <id> --receipts <private-dir> --redis-binary <redis-server 8.4.0>
+for pass in <run>-p1 <run>-p2; do
+  /opt/semaphile-sem3/runtime/node/bin/node \
+    /opt/semaphile-sem3/checkout/conformance/accounts/controller.mjs run \
+    --run "$pass" --receipts <private-dir>/"$pass" --redis-binary <redis-server 8.4.0>
+done
 ```
 
-After review, the owner runs `teardown` and then `teardown` again, and the
-controller's read-only audit confirms that no name, ID, path or grant remains.
+A pass exits 0 only when it is complete (no `--only`, `--skip-checks` or
+`--skip-cases`, all 100 cases recorded) and every check, case and cleanup step
+passed; 1 on any failure; 3 when it passed but was incomplete. `run.json` and
+`summary.json` record the flags, and `evidence` is true only for a complete
+non-dev pass. Whatever ends a pass (completion, an error, SIGINT, SIGTERM or
+SIGHUP), the controller purges every identity's credential files, deletes the
+per-run ACL users, stops its Redis and removes the administrator credential,
+and records each step in `cleanup.jsonl`.
+
+After review, the owner runs `teardown` and then `teardown` again. Teardown
+stops any controller-owned Redis left in the fixture's run directories, and
+refuses if any other process still runs inside the prefix. The read-only audit
+afterwards is `macos/admin.sh collisions` (run as root): it exits 0 only when
+no fixture account, group, ID, path, sudoers grant or process inside the
+prefix remains. Setup records the accounts, groups, memberships and sudoers
+files that existed before it ran; teardown records them again and exits 5 if
+anything outside the fixture changed.
 
 ### Linux
 
@@ -191,23 +213,38 @@ Terraform.
 
 ```sh
 export SEM3_GCP_PROJECT=<project id> SEM3_GCP_PROJECT_NUMBER=<number> \
-  SEM3_CLOUD_DIR=<private 0700 dir> SEM3_RUN_ID=<run id>
+  SEM3_CLOUD_DIR=<private 0700 dir> SEM3_RUN_ID=<run id> \
+  SEM3_STAGING=<linux staging dir> SEM3_LISTING_SHA256=<reviewed> \
+  SEM3_BUNDLE_SHA256=<reviewed> SEM3_RECEIPTS=<private receipts dir>
+cloud/run.sh validate   # terraform fmt and validate, ansible syntax checks
 cloud/run.sh inputs     # per-run ED25519 key and variables, in the private dir
 cloud/run.sh init       # local state in the private dir
 cloud/run.sh plan       # saved plan; refuses anything but the six creates
 cloud/run.sh apply      # applies exactly that saved plan
 cloud/run.sh known      # pins the VM's host key from its guest attributes
 cloud/run.sh inventory  # Ansible inventory over an IAP tunnel
-cloud/run.sh host       # host configuration, run twice: the second changes nothing
+cloud/run.sh host       # host configuration twice; fails unless the second changes nothing
 cloud/run.sh replan     # must report no changes
 cloud/run.sh fixture    # the reviewed host.sh sequence and both passes
 cloud/run.sh teardown-host
 cloud/run.sh destroy    # saved destroy plan; a repeat is a no-op
 cloud/run.sh audit      # read-only: nothing named for the run remains
+cloud/run.sh forget     # after a clean audit only: delete the key, inputs and state
 ```
 
-Terraform creates only these, all named `sem3-<run>` and labelled
-`semaphile-fixture=sem3`:
+Every query whose answer means "absent" (the gcloud listings, `terraform state
+list`, every Docker listing in `host.sh`) fails the command when the query
+itself fails, so an audit cannot pass while credentials or the API are
+broken. `plan` refuses when state already holds resources. `destroy` accepts
+any non-empty subset of the six reviewed deletes, so it also cleans up after a
+partial apply or after the deletion deadline removed the VM, and refuses any
+other action. Terraform authenticates with a fresh token from the operator's
+gcloud login and refuses an empty one, so it never falls back to other
+credentials.
+
+Terraform creates only these, all named `sem3-<run>`. The VM and its disk are
+also labelled `semaphile-fixture=sem3`; Compute Engine networks, subnets and
+firewall rules take no labels, so the audit matches every resource by name:
 
 | Resource               | Bound                                                                                                                                                                                                                            |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -217,6 +254,11 @@ Terraform creates only these, all named `sem3-<run>` and labelled
 | Firewall `egress-web`  | egress TCP 80 and 443 only                                                                                                                                                                                                       |
 | Firewall `egress-deny` | every other egress denied                                                                                                                                                                                                        |
 | VM                     | `e2-standard-4` (4 vCPU, 16 GB), pinned Ubuntu 24.04 x86_64 image, 20 GB pd-balanced boot disk deleted with the VM, ephemeral public IPv4 for egress, Shielded VM, no service account, project SSH keys blocked, serial port off |
+
+At the Cloud Billing catalog's us-central1 list prices of September 26, 2026,
+the VM, disk and external address cost about $0.14 an hour: about $1.13 if
+the VM reaches its 8-hour deadline, and at most about $3.40 at the 24-hour
+validation ceiling. The network, subnet and firewall rules cost nothing.
 
 Compute Engine deletes the VM after `max_run_hours` (default 8, at most 24).
 That deadline is a backstop: the procedure destroys through Terraform and
@@ -228,14 +270,20 @@ covers the same names in case anything is generated here by hand.
 `cloud/ansible/host.yml` checks that the host is the run's x86_64 Ubuntu 24.04
 Google VM, masks automatic upgrades (an upgrade that restarts Docker would
 kill the fixture), installs and holds Docker from the Ubuntu archive, and
-installs `linux/host.sh` after checking its hash. `fixture.yml` then runs the
+installs `linux/host.sh` from the staged tree after checking the listing's
+hash and the driver's hash recorded in that listing. `fixture.yml` records the
+run state before it creates anything, then runs the
 reviewed `host.sh` sequence: `preflight`, `pull`, `create`, transfer and
 `load` (the bundle hash is checked after transfer and again inside the
 container), `unpack` (checks the listing hash and the bytes of `container.sh`,
 and installs a root-only copy of it outside the prefix), `admin rehearse`,
 `admin setup`, `size`, then two controller passes whose receipts are fetched
-immediately. `teardown.yml` runs `admin teardown` twice, removes the labelled
-container and any image the run introduced, and runs `host.sh audit`.
+immediately; a pass that times out records exit -1 and its receipts are still
+fetched. `teardown.yml` finds the run's container by id or, when an
+interrupted run never recorded one, by its labels; runs `admin teardown` twice
+and fails unless the second reports no change; removes the container and the
+pinned image if the run introduced it and nothing else uses it; and runs
+`host.sh audit`. `host.sh controller` accepts no filter or skip flags.
 
 The container is bounded as follows:
 
@@ -280,7 +328,8 @@ reconciles only when the live resource matches the intended identity exactly.
 
 Teardown verifies every recorded resource first. It always revokes a sudoers
 grant whose recorded hash matches, and otherwise deletes nothing if any
-identity differs. When everything matches it stops fixture processes, removes
+identity differs. When everything matches it stops fixture processes (on macOS also a
+controller-owned Redis left in a run directory), removes
 the prefix, the accounts and the groups, validates sudoers, and removes its
 state directory. With no state directory it only confirms that no fixture
 name, ID or path exists.
@@ -291,7 +340,7 @@ users and credential files (removed at the end of every controller run), and
 on Linux the fixture container, the image if this fixture pulled it and
 nothing else uses it, and then every cloud resource the run created: the VM
 with its boot disk and ephemeral address, the three firewall rules, the subnet
-and the network. The private run directory's key and state are deleted only
-after the audit is clean. Existing accounts, runtimes, Redis installations,
+and the network. `cloud/run.sh forget` deletes the private run
+directory's key, inputs, plans and state, and only after `audit` is clean. Existing accounts, runtimes, Redis installations,
 cloud instances, clusters and networks, and unrelated containers, images and
 volumes are never targets; nothing runs a broad prune.
