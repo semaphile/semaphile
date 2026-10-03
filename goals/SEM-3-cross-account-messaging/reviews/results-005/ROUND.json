@@ -1,0 +1,23 @@
+{
+  "kind": "results",
+  "index": 5,
+  "purpose": "finding",
+  "created": "2026-10-03T00:25:25.067Z",
+  "head": "498e5adae9c20dfe4d8a6fe207b5850613e15a2e",
+  "base": "main",
+  "baseCommit": "d585cf9b8ff5ad521673d4ffd56af6705242aadb",
+  "advisory": [
+    "opus55-medium",
+    "opus55-xhigh",
+    "sonnet55-xhigh"
+  ],
+  "neverStarted": [
+    "codex"
+  ],
+  "short": true,
+  "sonar": {
+    "state": "failed",
+    "detail": "12 in-diff open, 71 outside-diff open (compute task 0582c4c8-aac1-438d-a688-93b4344799f2)",
+    "commit": "498e5adae9c20dfe4d8a6fe207b5850613e15a2e"
+  }
+}
