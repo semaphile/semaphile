@@ -221,7 +221,7 @@ const SELECTOR_FLAGS = new Set(['--store', '--redis-url-env', '--namespace', '--
 async function cli({ profile, args, input, timeoutMs = 30000 }) {
   const allowed =
     Array.isArray(args) &&
-    args.every((arg) => typeof arg === 'string' && !SELECTOR_FLAGS.has(arg)) &&
+    args.every((arg) => typeof arg === 'string' && !SELECTOR_FLAGS.has(arg.split('=', 1)[0])) &&
     (args[0] === 'info' || (args[0] === 'message' && CLI_COMMANDS.has(args[1])));
   if (!allowed) {
     throw Object.assign(new Error('CLI arguments outside the fixture allowlist'), {

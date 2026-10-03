@@ -38,9 +38,11 @@ export const mappedFiles = (account, prefix) =>
     credentialFile(account, profile, prefix),
   ]);
 
-export function identityProblems(identity, account, runtime, ctx) {
+// spawnedPid: the PID the controller started; the participant is that
+// process (setpriv and the runner exec in place) or, under sudo, its child.
+export function identityProblems(identity, account, runtime, ctx, spawnedPid) {
   const problems = [];
-  const expect = (label, actual, expected) => {
+  const compare = (label, actual, expected) => {
     if (actual !== expected) {
       problems.push(`${label}: ${JSON.stringify(actual)} != ${JSON.stringify(expected)}`);
     }
@@ -48,10 +50,10 @@ export function identityProblems(identity, account, runtime, ctx) {
   const layout = paths(ctx.prefix);
   if (ctx.mode !== 'dev') {
     for (const field of ['uid', 'euid']) {
-      expect(field, identity[field], account.uid);
+      compare(field, identity[field], account.uid);
     }
     for (const field of ['gid', 'egid']) {
-      expect(field, identity[field], account.gid);
+      compare(field, identity[field], account.gid);
     }
     const allowed = new Set([
       account.gid,
@@ -66,31 +68,36 @@ export function identityProblems(identity, account, runtime, ctx) {
     if (account.handoff !== identity.groups.includes(HANDOFF_GROUP.gid)) {
       problems.push('handoff group membership differs from the manifest');
     }
-    expect('user', identity.user, account.name);
+    compare('user', identity.user, account.name);
     const extra = identity.envNames.filter((name) => !RUNNER_ENV.includes(name));
     if (extra.length) {
       problems.push('environment outside the runner allowlist: ' + extra.join(','));
     }
     if (ctx.platform === 'linux') {
       for (const field of ['CapInh', 'CapPrm', 'CapEff', 'CapBnd', 'CapAmb']) {
-        expect(field, identity.capabilities?.[field], '0000000000000000');
+        compare(field, identity.capabilities?.[field], '0000000000000000');
       }
-      expect('NoNewPrivs', identity.capabilities?.NoNewPrivs, '1');
+      compare('NoNewPrivs', identity.capabilities?.NoNewPrivs, '1');
     }
   }
-  expect('home', identity.home, layout.home(account.name));
-  expect('cwd', identity.cwd, ctx.realHome?.[account.name] ?? layout.home(account.name));
-  expect('platform', identity.platform, ctx.platform);
-  expect('arch', identity.arch, RUNTIMES[ctx.platform].arch);
-  expect('runtime', identity.runtime.name, runtime);
-  expect('version', identity.runtime.version, RUNTIMES[ctx.platform][runtime]);
-  expect('execPath', identity.execPath, ctx.runtimePaths[runtime]);
+  compare('home', identity.home, layout.home(account.name));
+  compare('cwd', identity.cwd, layout.home(account.name));
+  compare('platform', identity.platform, ctx.platform);
+  compare('arch', identity.arch, RUNTIMES[ctx.platform].arch);
+  compare('runtime', identity.runtime.name, runtime);
+  compare('version', identity.runtime.version, RUNTIMES[ctx.platform][runtime]);
+  compare('execPath', identity.execPath, ctx.runtimePaths[runtime]);
   for (const [name, path] of Object.entries(identity.modules)) {
     if (typeof path !== 'string' || !path.startsWith(ctx.realModules + '/')) {
       problems.push(
         `module ${name} resolved outside the installed consumer: ${JSON.stringify(path)}`,
       );
     }
+  }
+  if (spawnedPid !== undefined && identity.pid !== spawnedPid && identity.ppid !== spawnedPid) {
+    problems.push(
+      `pid ${identity.pid} (parent ${identity.ppid}) is not the launched process ${spawnedPid}`,
+    );
   }
   if (identity.tty.controlling === true || identity.tty.stdin) {
     problems.push('participant has a terminal');
@@ -102,6 +109,8 @@ const allDenied = (results) => results.every((result) => !result.ok && DENIED.ha
 
 export async function participantChecks(ctx, runtime) {
   const layout = paths(ctx.prefix);
+  // A semaphile.json and a credential file per profile, per account.
+  const mappedCount = mappedFiles(ACCOUNTS[0].name, ctx.prefix).length;
   const records = [];
   const record = (check, account, pass, detail) =>
     records.push({ check, runtime, account: account.name, status: pass ? 'PASS' : 'FAIL', detail });
@@ -113,7 +122,13 @@ export async function participantChecks(ctx, runtime) {
     for (const account of ACCOUNTS) {
       const participant = parts[account.role];
       await participant.hello;
-      const problems = identityProblems(participant.identity, account, runtime, ctx);
+      const problems = identityProblems(
+        participant.identity,
+        account,
+        runtime,
+        ctx,
+        participant.child.pid,
+      );
       record('identity', account, problems.length === 0, {
         identity: participant.identity,
         problems,
@@ -122,7 +137,7 @@ export async function participantChecks(ctx, runtime) {
     for (const reader of ACCOUNTS) {
       const participant = parts[reader.role];
       const own = await participant.ok('read', { paths: mappedFiles(reader.name, ctx.prefix) });
-      record('own-inputs', reader, own.length === 38 && own.every((r) => r.ok), {
+      record('own-inputs', reader, own.length === mappedCount && own.every((r) => r.ok), {
         files: own.length,
         results: own,
       });
@@ -133,7 +148,7 @@ export async function participantChecks(ctx, runtime) {
           runtime,
           account: reader.name,
           owner: owner.name,
-          status: cross.length === 38 && allDenied(cross) ? 'PASS' : 'FAIL',
+          status: cross.length === mappedCount && allDenied(cross) ? 'PASS' : 'FAIL',
           detail: { files: cross.length, codes: [...new Set(cross.map((r) => r.code ?? 'READ'))] },
         });
       }
@@ -193,7 +208,7 @@ export async function participantChecks(ctx, runtime) {
   return records;
 }
 
-async function sha256(path) {
+export async function sha256(path) {
   return createHash('sha256')
     .update(await readFile(path))
     .digest('hex');
@@ -359,7 +374,8 @@ export async function switchCheck(ctx) {
   const layout = paths(ctx.prefix);
   const results = [];
   if (ctx.mode === 'sudo') {
-    results.push({ step: 'invalidate-timestamp', ...(await exec('/usr/bin/sudo', ['-K'])) });
+    const result = await exec('/usr/bin/sudo', ['-K']);
+    results.push({ step: 'invalidate-timestamp', pass: result.code === 0, ...result });
   }
   for (const account of ACCOUNTS) {
     const argv =
@@ -397,54 +413,70 @@ export async function switchCheck(ctx) {
       stderr: result.stderr,
     });
   }
+  // Each refusal names who must refuse it: sudo itself (exit 1 with a
+  // "sudo:" message) or the runner (77 for a non-fixture identity, 64 for an
+  // argument outside node|bun). A spawn error or any other exit fails.
+  const SUDO = { code: 1, stderr: /^sudo: /m };
+  const NOT_FIXTURE = { code: 77 };
+  const BAD_ARGUMENT = { code: 64 };
   const refusals =
     ctx.mode === 'sudo'
       ? [
-          ['root target', '/usr/bin/sudo', ['-n', '-u', 'root', layout.runner, 'node']],
-          ['shell', '/usr/bin/sudo', ['-n', '-u', 'sem3a', '/bin/sh', '-c', 'id']],
+          ['root target', '/usr/bin/sudo', ['-n', '-u', 'root', layout.runner, 'node'], SUDO],
+          ['shell', '/usr/bin/sudo', ['-n', '-u', 'sem3a', '/bin/sh', '-c', 'id'], SUDO],
           [
             'extra argument',
             '/usr/bin/sudo',
             ['-n', '-u', 'sem3a', layout.runner, 'node', 'extra'],
+            SUDO,
           ],
-          ['other runtime', '/usr/bin/sudo', ['-n', '-u', 'sem3a', layout.runner, 'python']],
+          ['other runtime', '/usr/bin/sudo', ['-n', '-u', 'sem3a', layout.runner, 'python'], SUDO],
           [
             'preserved environment',
             '/usr/bin/sudo',
             ['-n', '-E', '-u', 'sem3a', layout.runner, 'node'],
+            SUDO,
           ],
-          ['other program', '/usr/bin/sudo', ['-n', '-u', 'sem3a', layout.node, '-e', '1']],
-          ['runner without switch', layout.runner, ['node']],
+          ['other program', '/usr/bin/sudo', ['-n', '-u', 'sem3a', layout.node, '-e', '1'], SUDO],
+          ['runner without switch', layout.runner, ['node'], NOT_FIXTURE],
         ]
       : [
-          ['runner as root', layout.runner, ['node']],
+          ['runner as root', layout.runner, ['node'], NOT_FIXTURE],
           [
             'runner as nobody',
             '/usr/bin/setpriv',
             ['--reuid=65534', '--regid=65534', '--clear-groups', '--', layout.runner, 'node'],
+            NOT_FIXTURE,
           ],
           [
             'runner as service',
             '/usr/bin/setpriv',
             ['--reuid=999', '--regid=999', '--clear-groups', '--', layout.runner, 'node'],
+            NOT_FIXTURE,
           ],
           [
             'other runtime',
             '/usr/bin/setpriv',
             ['--reuid=3601', '--regid=3601', '--init-groups', '--', layout.runner, 'python'],
+            BAD_ARGUMENT,
           ],
         ];
-  for (const [step, file, args] of refusals) {
+  for (const [step, file, args, want] of refusals) {
     const result = await exec(file, args);
     results.push({
       step,
-      expected: 'refused before any participant starts',
-      pass: result.code !== 0 && !helloOf(result.stdout),
+      expected: `refused with exit ${want.code}${want.stderr ? ' by sudo' : ' by the runner'}`,
+      pass:
+        typeof result.code === 'number' &&
+        result.code === want.code &&
+        (!want.stderr || want.stderr.test(result.stderr)) &&
+        !helloOf(result.stdout),
       code: result.code,
+      error: result.error,
       stderr: result.stderr.split('\n')[0],
     });
   }
-  return { status: results.every((r) => r.pass !== false) ? 'PASS' : 'FAIL', results };
+  return { status: results.every((r) => r.pass === true) ? 'PASS' : 'FAIL', results };
 }
 
 export async function loginCheck() {

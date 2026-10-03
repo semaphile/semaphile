@@ -39,6 +39,16 @@ async function openAll(p, profile, roles, handle = 'main') {
   return opened;
 }
 
+// One identity's successful open, with the resolved configuration file
+// asserted and kept in the case record.
+async function openOwn(ctx, P, handle, profile) {
+  const opened = await P.ok('open', { handle, profile });
+  const expected = `${configDir(P.account.name, profile, ctx.prefix)}/semaphile.json`;
+  assert.equal(opened.file, expected, `${P.role} resolved an unexpected configuration file`);
+  ctx.observe(`config.${handle}`, opened.file);
+  return opened;
+}
+
 async function d1(ctx, c, p) {
   const S = p[c.sender],
     R = p[c.receiver];
@@ -321,11 +331,10 @@ async function t4(ctx, c, p) {
     (await p.B.ok('call', { handle: 'main', method: 'ack', args: [claimed.receipt] })).status,
     'stale',
   );
-  assert.equal(
-    (await p.B.request('sub', { sub: 's', method: 'receive' })).ok,
-    false,
-    'old handle consumed a new generation',
-  );
+  // The candidate refuses an old generation's touch with STALE; a harness
+  // failure (EXITED, a deadline) must not pass as that refusal.
+  const oldHandle = await p.B.request('sub', { sub: 's', method: 'receive' });
+  expectCode(oldHandle, 'STALE', 'old handle on a recreated subscription');
   assert.deepEqual(await p.C.ok('sub', { sub: 's2', method: 'receive' }), []);
   const history = await p.C.ok('call', { handle: 'main', method: 'history', args: [{ topic }] });
   assert.equal(history.find((item) => item.id === sent.id).deliveries[0].state, 'cancelled');
@@ -657,7 +666,7 @@ async function aclCase(ctx, c, p) {
   const P = p[role];
   const probe = async (profile, commands) => (await P.ok('acl', { profile, commands })).results;
   // The store must exist so an allowed in-store read has something to read.
-  await P.ok('open', { handle: 'store', profile: 'acl' });
+  await openOwn(ctx, P, 'store', 'acl');
   switch (c.family) {
     case 'A1': {
       const [inside, outside] = await probe('acl', [
@@ -707,7 +716,7 @@ async function aclCase(ctx, c, p) {
       );
       break;
     case 'A6': {
-      await P.ok('open', { handle: 'live', profile: 'acl-revoke' });
+      await openOwn(ctx, P, 'live', 'acl-revoke');
       const user = redisUser(P.account.name, 'acl-revoke');
       const ids = async () =>
         (await ctx.redis.clientList())
@@ -716,20 +725,27 @@ async function aclCase(ctx, c, p) {
           .toSorted();
       const before = await ids();
       assert.ok(before.length > 0, 'live client has no connections');
-      for (const command of ['eval', 'time']) {
-        await ctx.redis.command('ACL', 'SETUSER', user, '-' + command);
-        expectCode(
-          await P.request('call', { handle: 'live', method: 'info' }),
-          'ACCESS',
-          `existing operation without ${command}`,
-        );
-        expectCode(
-          await P.request('open', { handle: `fresh-${command}`, profile: 'acl-revoke' }),
-          'ACCESS',
-          `fresh startup without ${command}`,
-        );
-        await ctx.redis.command('ACL', 'SETUSER', user, '+' + command);
-        await P.ok('call', { handle: 'live', method: 'info' });
+      // The user is shared by this identity's Node and Bun reruns, so its
+      // commands are restored however this instance ends.
+      try {
+        for (const command of ['eval', 'time']) {
+          await ctx.redis.command('ACL', 'SETUSER', user, '-' + command);
+          expectCode(
+            await P.request('call', { handle: 'live', method: 'info' }),
+            'ACCESS',
+            `existing operation without ${command}`,
+          );
+          expectCode(
+            await P.request('open', { handle: `fresh-${command}`, profile: 'acl-revoke' }),
+            'ACCESS',
+            `fresh startup without ${command}`,
+          );
+          await ctx.redis.command('ACL', 'SETUSER', user, '+' + command);
+          await P.ok('call', { handle: 'live', method: 'info' });
+        }
+      } finally {
+        await ctx.redis.command('ACL', 'SETUSER', user, '+eval', '+time');
+        ctx.observe('restored', ['eval', 'time']);
       }
       const after = await ids();
       for (const id of before) {
@@ -747,7 +763,7 @@ async function readinessCase(ctx, c, p) {
   const [role] = Object.keys(c.roles);
   const P = p[role];
   if (c.family === 'R1') {
-    const opened = await P.ok('open', { handle: 'warn', profile: 'ready-warn' });
+    const opened = await openOwn(ctx, P, 'warn', 'ready-warn');
     assert.ok(
       opened.warnings.some(
         (w) =>
@@ -769,7 +785,7 @@ async function readinessCase(ctx, c, p) {
     assert.equal(settings['no-appendfsync-on-rewrite'], 'no');
     assert.equal(settings['maxmemory-policy'], 'noeviction');
     assert.equal((await ctx.redis.infoMap('persistence')).aof_last_write_status, 'ok');
-    const opened = await P.ok('open', { handle: 'strict', profile: 'ready-inspect' });
+    const opened = await openOwn(ctx, P, 'strict', 'ready-inspect');
     assert.deepEqual(
       opened.warnings.filter((w) => w.code === 'SEMAPHILE_REDIS_READINESS'),
       [],
