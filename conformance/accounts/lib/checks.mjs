@@ -30,8 +30,48 @@ const RUNNER_ENV = [
   'TMPDIR',
   'USER',
 ];
-// macOS adds these computed memberships to every local account.
-const IMPLICIT_GROUPS = { darwin: [12, 61], linux: [] };
+// Groups a fixture identity must never hold, whatever the platform grants
+// everyone: wheel, staff, admin and the macOS remote-access groups; root,
+// adm, sudo and staff inside the Debian-based Linux container.
+const PRIVILEGED_GROUPS = {
+  darwin: new Set([0, 20, 80, 204, 395, 398, 399, 400]),
+  linux: new Set([0, 4, 27, 50]),
+};
+// Hidden local accounts with no explicit memberships. Every local macOS
+// account inherits the same computed and nested groups (everyone,
+// localaccounts, _lpoperator, the host's sharepoint groups), so the set is
+// read from these at run time rather than fixed in code.
+const REFERENCE_ACCOUNTS = ['nobody', 'daemon', '_www'];
+
+export async function inheritedGroups(platform) {
+  if (platform !== 'darwin') {
+    return { groups: [], references: {} };
+  }
+  const references = {};
+  for (const name of REFERENCE_ACCOUNTS) {
+    const all = await exec('/usr/bin/id', ['-G', name]);
+    const primary = await exec('/usr/bin/id', ['-g', name]);
+    if (all.code !== 0 || primary.code !== 0) {
+      throw new Error(`id failed for reference account ${name}`);
+    }
+    const own = Number(primary.stdout.trim());
+    references[name] = all.stdout
+      .trim()
+      .split(/\s+/)
+      .map(Number)
+      .filter((gid) => gid !== own)
+      .toSorted((a, b) => a - b);
+  }
+  const [first, ...rest] = Object.values(references);
+  if (rest.some((groups) => groups.join(',') !== first.join(','))) {
+    throw new Error('reference accounts inherit different groups: ' + JSON.stringify(references));
+  }
+  const privileged = first.filter((gid) => PRIVILEGED_GROUPS.darwin.has(gid));
+  if (privileged.length) {
+    throw new Error(`every local account inherits privileged groups ${privileged.join(',')}`);
+  }
+  return { groups: first, references };
+}
 
 export const mappedFiles = (account, prefix) =>
   Object.keys(PROFILES).flatMap((profile) => [
@@ -59,10 +99,12 @@ export function identityProblems(identity, account, runtime, ctx, spawnedPid) {
     const allowed = new Set([
       account.gid,
       ...(account.handoff ? [HANDOFF_GROUP.gid] : []),
-      ...IMPLICIT_GROUPS[ctx.platform],
+      ...ctx.inheritedGroups,
     ]);
     for (const group of identity.groups) {
-      if (!allowed.has(group)) {
+      if (PRIVILEGED_GROUPS[ctx.platform].has(group)) {
+        problems.push(`privileged supplementary group ${group}`);
+      } else if (!allowed.has(group)) {
         problems.push(`unexpected supplementary group ${group}`);
       }
     }

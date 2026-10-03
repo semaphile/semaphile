@@ -35,6 +35,7 @@ import { CASES, Invalid, profileFor } from './lib/cases.mjs';
 import {
   exec,
   identityProblems,
+  inheritedGroups,
   installedCandidateCheck,
   loginCheck,
   ownershipCheck,
@@ -122,6 +123,8 @@ try {
 } catch {
   source = { commit: 'unrecorded (dev checkout)' };
 }
+// Groups every local account inherits on this host, from reference accounts.
+const inherited = await inheritedGroups(platform);
 await save('run.json', {
   run,
   namespace,
@@ -141,6 +144,7 @@ await save('run.json', {
       }),
     ),
   ),
+  inheritedGroups: inherited,
   osRelease: os.release(),
   osVersion: os.version(),
   hostname: os.hostname(),
@@ -533,6 +537,7 @@ try {
     }
   }
   ctx = {
+    inheritedGroups: inherited.groups,
     mode,
     platform,
     prefix,
