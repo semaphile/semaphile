@@ -1,23 +1,34 @@
 #!/bin/sh
 # SEM-3 macOS account fixture administration: setup, teardown, rehearsal,
-# a read-only collision check and the tree listing used to verify installs.
+# a read-only audit (collisions) and the tree listing used to verify installs.
 #
 # The owner runs a root-private copy verified against the reviewed SHA-256
 # (conformance/accounts/README.md). Setup refuses any pre-existing fixture
-# name, id or path before changing anything; every resource is recorded as
-# intended before it is created and as observed right after. Teardown
-# verifies every recorded identity first and deletes nothing if any differs.
+# name, id, path or process before changing anything; every resource is
+# recorded as intended before it is created and as observed right after.
+# Teardown verifies every recorded identity first and deletes nothing if any
+# differs.
+#
+# The controller account is untrusted here. Root never writes into, follows
+# a link inside, or widens access to anything the controller owns: receipts
+# are written as the controller, and the staged tree stays root-private
+# until its listing matches the reviewed hash.
 set -eu
 PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
-umask 022
+umask 077
 
 PREFIX=/opt/semaphile-sem3
 SUDOERS=/private/etc/sudoers.d/semaphile-sem3
 DEFAULT_STATE=/var/db/semaphile-sem3
+REHEARSAL_STATE=/var/db/semaphile-sem3-rehearsal
+TAMPERED_STATE=/var/db/semaphile-sem3-rehearsal-tampered
 ACCOUNTS='sem3a sem3b sem3c'
 FIXTURE_GROUPS='sem3a sem3b sem3c sem3ab'
 MARK='Semaphile SEM-3 fixture'
+USERS_DIR=/Users
+GROUPS_DIR=/Groups
+SELF=$0
 
 fail() {
   echo "admin: $*" >&2
@@ -64,26 +75,51 @@ attr() {
     END { print value }'
 }
 
+# Processes whose working directory or executable lies inside the prefix:
+# "PID UID PATH" per process. The fixture Redis rewrites its own argv, so
+# its run directory (Redis chdirs to it) is what identifies it.
+fixture_processes() {
+  lsof -nP -w -d cwd,txt -Fpun 2>/dev/null | P="$PREFIX/" SELF_PID=$$ awk '
+    /^p/ { pid = substr($0, 2) }
+    /^u/ { uid = substr($0, 2) }
+    /^n/ && pid != ENVIRON["SELF_PID"] && index(substr($0, 2), ENVIRON["P"]) == 1 && !seen[pid]++ {
+      print pid, uid, substr($0, 2)
+    }'
+}
+
+# Pre-existing accounts, groups, memberships and sudoers files.
+inventory() {
+  dscl . -list "$USERS_DIR" UniqueID
+  echo '--'
+  dscl . -list "$GROUPS_DIR" PrimaryGroupID
+  echo '--'
+  dscl . -list "$GROUPS_DIR" GroupMembership
+  echo '--'
+  for file in /private/etc/sudoers /private/etc/sudoers.d/*; do
+    if [ -f "$file" ]; then shasum -a 256 "$file"; fi
+  done
+}
+
 collisions() {
   found=0
   for name in $ACCOUNTS $EXTRA_NAMES; do
-    if dscl . -read "/Users/$name" >/dev/null 2>&1; then
+    if dscl . -read "$USERS_DIR/$name" >/dev/null 2>&1; then
       echo "collision: user $name exists"
       found=1
     fi
   done
   for name in $FIXTURE_GROUPS $EXTRA_NAMES; do
-    if dscl . -read "/Groups/$name" >/dev/null 2>&1; then
+    if dscl . -read "$GROUPS_DIR/$name" >/dev/null 2>&1; then
       echo "collision: group $name exists"
       found=1
     fi
   done
   for id in 3601 3602 3603 3610 $EXTRA_IDS; do
-    if [ -n "$(dscl . -search /Users UniqueID "$id")" ]; then
+    if [ -n "$(dscl . -search "$USERS_DIR" UniqueID "$id")" ]; then
       echo "collision: uid $id in use"
       found=1
     fi
-    if [ -n "$(dscl . -search /Groups PrimaryGroupID "$id")" ]; then
+    if [ -n "$(dscl . -search "$GROUPS_DIR" PrimaryGroupID "$id")" ]; then
       echo "collision: gid $id in use"
       found=1
     fi
@@ -94,6 +130,11 @@ collisions() {
       found=1
     fi
   done
+  procs=$(fixture_processes)
+  if [ -n "$procs" ]; then
+    printf 'collision: process inside the prefix: %s\n' "$procs"
+    found=1
+  fi
   return "$found"
 }
 
@@ -116,12 +157,18 @@ receipts_checks() {
   [ -d "$RECEIPTS" ] && [ ! -L "$RECEIPTS" ] || fail 'receipts directory missing'
   [ "$(stat -f %u "$RECEIPTS")" = "$CONTROLLER_UID" ] || fail 'receipts directory is not owned by the controller'
 }
+# Written AS the controller, without clobbering: a link the controller
+# planted can reach only what the controller could already write.
 export_receipts() {
-  target="$RECEIPTS/$(basename "$STATE")-$1-$(date -u +%Y%m%dT%H%M%SZ).tsv"
-  cp "$STATE/state.tsv" "$target"
-  chown "$CONTROLLER" "$target"
-  chmod 0600 "$target"
-  say "state exported to $target"
+  stem="$RECEIPTS/$(basename "$STATE")-$1-$(date -u +%Y%m%dT%H%M%SZ)"
+  for file in state.tsv inventory-before.txt inventory-after.txt; do
+    [ -f "$STATE/$file" ] || continue
+    # Root reads its own state file; only the writer runs as the controller.
+    # shellcheck disable=SC2024
+    sudo -n -u "$CONTROLLER" /bin/sh -c 'umask 077; set -C; cat >"$1"' sh "$stem-$file" <"$STATE/$file" ||
+      fail "could not export $file to the receipts directory"
+  done
+  say "state exported to $stem-*"
 }
 
 create_group() {
@@ -129,22 +176,35 @@ create_group() {
   gid=$(id_of "$name")
   record intended group "$name" "gid=$gid"
   dseditgroup -o create -n . -i "$gid" -r "$MARK group $name" "$name"
-  record observed group "$name" "gid=$(attr "/Groups/$name" PrimaryGroupID) guid=$(attr "/Groups/$name" GeneratedUID)"
+  record observed group "$name" "gid=$(attr "$GROUPS_DIR/$name" PrimaryGroupID) guid=$(attr "$GROUPS_DIR/$name" GeneratedUID)"
 }
 create_user() {
   name=$1
   uid=$(id_of "$name")
   record intended user "$name" "uid=$uid gid=$uid home=$PREFIX/home/$name"
-  dscl . -create "/Users/$name"
-  dscl . -create "/Users/$name" UniqueID "$uid"
-  dscl . -create "/Users/$name" PrimaryGroupID "$uid"
-  dscl . -create "/Users/$name" RealName "$MARK user $name"
-  dscl . -create "/Users/$name" NFSHomeDirectory "$PREFIX/home/$name"
-  dscl . -create "/Users/$name" UserShell /usr/bin/false
-  dscl . -create "/Users/$name" Password '*'
-  dscl . -create "/Users/$name" IsHidden 1
+  dscl . -create "$USERS_DIR/$name"
+  dscl . -create "$USERS_DIR/$name" UniqueID "$uid"
+  dscl . -create "$USERS_DIR/$name" PrimaryGroupID "$uid"
+  dscl . -create "$USERS_DIR/$name" RealName "$MARK user $name"
+  dscl . -create "$USERS_DIR/$name" NFSHomeDirectory "$PREFIX/home/$name"
+  dscl . -create "$USERS_DIR/$name" UserShell /usr/bin/false
+  dscl . -create "$USERS_DIR/$name" Password '*'
+  dscl . -create "$USERS_DIR/$name" IsHidden 1
   maybe_fail "user-created:$name"
-  record observed user "$name" "uid=$(attr "/Users/$name" UniqueID) gid=$(attr "/Users/$name" PrimaryGroupID) guid=$(attr "/Users/$name" GeneratedUID)"
+  record observed user "$name" "uid=$(attr "$USERS_DIR/$name" UniqueID) gid=$(attr "$USERS_DIR/$name" PrimaryGroupID) guid=$(attr "$USERS_DIR/$name" GeneratedUID)"
+}
+
+# The staging paths belong to the controller: refuse links, and never
+# dereference them except into root-private places that are checked.
+staging_checks() {
+  [ -n "${STAGING:-}" ] || fail '--staging DIR is required'
+  for path in "$STAGING" "$STAGING/tree" "$STAGING/STAGED-FILES.txt"; do
+    [ ! -L "$path" ] || fail "$path is a symbolic link"
+  done
+  [ -d "$STAGING" ] && [ -d "$STAGING/tree" ] && [ -f "$STAGING/STAGED-FILES.txt" ] ||
+    fail '--staging DIR must hold tree/ and STAGED-FILES.txt'
+  [ "$(stat -f %u "$STAGING")" = "$CONTROLLER_UID" ] || fail 'staging is not owned by the controller'
+  [ -n "${MANIFEST_SHA256:-}" ] || fail '--manifest-sha256 is required'
 }
 
 setup() {
@@ -153,23 +213,22 @@ setup() {
   receipts_checks
   [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] || fail 'native macOS arm64 only'
   grep -Eq '^[#@]includedir /private/etc/sudoers\.d$' /private/etc/sudoers || fail 'sudoers does not include sudoers.d'
-  [ -n "${STAGING:-}" ] && [ -d "$STAGING/tree" ] || fail '--staging DIR with tree/ is required'
-  [ "$(stat -f %u "$STAGING")" = "$CONTROLLER_UID" ] || fail 'staging is not owned by the controller'
-  actual=$(shasum -a 256 "$STAGING/STAGED-FILES.txt" | awk '{ print $1 }')
-  [ "$actual" = "${MANIFEST_SHA256:-}" ] || fail "staged listing $actual is not the reviewed $MANIFEST_SHA256"
+  staging_checks
   if ! collisions; then
     fail 'refusing: fixture resources already exist; nothing was changed'
   fi
   RUN="$(date -u +%Y%m%dT%H%M%SZ)-$$"
-  mkdir -m 0755 "$STATE"
+  mkdir -m 0700 "$STATE"
   printf '%s run %s\n' "$MARK" "$RUN" >"$STATE/.sem3-fixture"
   : >"$STATE/state.tsv"
   record observed state "$STATE" "run=$RUN controller=$CONTROLLER manifest=$MANIFEST_SHA256"
-  # Compare against a root-owned copy so the controller cannot swap the
-  # listing between the hash check and the comparison.
+  inventory >"$STATE/inventory-before.txt"
+  record observed inventory before "sha256=$(shasum -a 256 "$STATE/inventory-before.txt" | awk '{ print $1 }')"
+  # Hash the root-private copy, never the controller's file: whatever the
+  # controller swaps in lands in a 0700 directory and fails this check.
   cp "$STAGING/STAGED-FILES.txt" "$STATE/reviewed-files.txt"
   actual=$(shasum -a 256 "$STATE/reviewed-files.txt" | awk '{ print $1 }')
-  [ "$actual" = "$MANIFEST_SHA256" ] || fail 'staged listing changed after it was checked'
+  [ "$actual" = "$MANIFEST_SHA256" ] || fail "staged listing $actual is not the reviewed $MANIFEST_SHA256"
   say "setup $RUN: groups"
   for name in $FIXTURE_GROUPS; do create_group "$name"; done
   maybe_fail groups
@@ -186,12 +245,17 @@ setup() {
   mkdir -m 0700 "$PREFIX"
   printf '%s run %s\n' "$MARK" "$RUN" >"$PREFIX/.sem3-fixture"
   record observed prefix "$PREFIX" "run=$RUN"
+  # The prefix stays 0700 until the copy matches the reviewed listing, so
+  # nothing the copy picked up is reachable by anyone but root.
   ditto --noextattr --noqtn --norsrc --noacl "$STAGING/tree" "$PREFIX"
   chown -R -h root:wheel "$PREFIX"
-  chmod -R u+rwX,go+rX,go-w "$PREFIX"
-  find "$PREFIX" -perm -4000 -o -perm -2000 | grep -q . && fail 'set-id bit in staged tree'
+  find "$PREFIX" -mindepth 1 -maxdepth 1 ! -name .sem3-fixture -exec chmod -R u+rwX,go+rX,go-w {} +
   listing "$PREFIX" >"$STATE/installed-files.txt"
-  cmp -s "$STATE/installed-files.txt" "$STATE/reviewed-files.txt" || fail 'installed tree differs from the reviewed listing'
+  if [ -n "$(find "$PREFIX" \( -perm -4000 -o -perm -2000 \) -print)" ] ||
+    ! cmp -s "$STATE/installed-files.txt" "$STATE/reviewed-files.txt"; then
+    find "$PREFIX" -mindepth 1 -maxdepth 1 ! -name .sem3-fixture -exec rm -rf {} +
+    fail 'installed tree differs from the reviewed listing; the copy was removed'
+  fi
   record observed tree "$PREFIX" "sha256=$(shasum -a 256 "$STATE/installed-files.txt" | awk '{ print $1 }')"
   maybe_fail tree
   say 'homes, scratch and handoff share'
@@ -251,8 +315,8 @@ verify_recorded() {
     verdict=ours
     case $class in
       group | user)
-        dir=/Groups
-        [ "$class" = user ] && dir=/Users
+        dir=$GROUPS_DIR
+        [ "$class" = user ] && dir=$USERS_DIR
         if ! dscl . -read "$dir/$name" >/dev/null 2>&1; then
           verdict=absent
         else
@@ -289,7 +353,7 @@ verify_recorded() {
       member)
         dseditgroup -o checkmember -m "${name#*:}" sem3ab >/dev/null 2>&1 || verdict=absent
         ;;
-      tree | layout | complete | refused) verdict=info ;;
+      inventory | redis | tree | layout | complete | refused) verdict=info ;;
       *) verdict=mismatch ;;
     esac
     echo "$class $name $status $verdict"
@@ -300,6 +364,35 @@ verify_recorded() {
 $keys
 KEYS
   return "$mismatches"
+}
+
+# Stop every process tied to the fixture before anything is deleted:
+# fixture identities by UID, and the controller's Redis by its run
+# directory. Any other process inside the prefix stops the teardown.
+stop_fixture_processes() {
+  for name in $ACCOUNTS; do
+    if printf '%s\n' "$verdicts" | grep -q "^user $name [a-z]* ours$"; then
+      pkill -KILL -U "$(id_of "$name")" 2>/dev/null || true
+    fi
+  done
+  for name in $ACCOUNTS; do
+    if pgrep -U "$(id_of "$name")" >/dev/null 2>&1; then
+      fail "processes of $name survived; nothing further deleted"
+    fi
+  done
+  redis=$(fixture_processes | awk -v d="$PREFIX/checkout/.tmp/redis/" -v u="$CONTROLLER_UID" \
+    '$2 == u && index($3, d) == 1 { print $1 }')
+  for pid in $redis; do
+    say "stopping fixture Redis $pid left by a controller run"
+    kill -TERM "$pid" 2>/dev/null || true
+  done
+  if [ -n "$redis" ]; then
+    sleep 3
+    for pid in $redis; do kill -KILL "$pid" 2>/dev/null || true; done
+    record removed redis "pids $(printf '%s\n' "$redis" | tr '\n' ' ')" 'stopped'
+  fi
+  left=$(fixture_processes)
+  [ -z "$left" ] || fail "processes inside the prefix remain; nothing further deleted: $left"
 }
 
 teardown() {
@@ -331,29 +424,20 @@ teardown() {
     echo 'admin: identity mismatch: nothing deleted (see verdicts above)' >&2
     exit 4
   fi
-  for name in $ACCOUNTS; do
-    if printf '%s\n' "$verdicts" | grep -q "^user $name [a-z]* ours$"; then
-      pkill -KILL -U "$(id_of "$name")" 2>/dev/null || true
-    fi
-  done
-  for name in $ACCOUNTS; do
-    if pgrep -U "$(id_of "$name")" >/dev/null 2>&1; then
-      fail "processes of $name survived; nothing further deleted"
-    fi
-  done
+  stop_fixture_processes
   if printf '%s\n' "$verdicts" | grep -q "^prefix $PREFIX [a-z]* ours$"; then
     rm -rf "$PREFIX"
     record removed prefix "$PREFIX" 'deleted'
   fi
   for name in $ACCOUNTS; do
     if printf '%s\n' "$verdicts" | grep -q "^user $name [a-z]* ours$"; then
-      dscl . -delete "/Users/$name"
+      dscl . -delete "$USERS_DIR/$name"
       record removed user "$name" 'deleted'
     fi
   done
   for name in $FIXTURE_GROUPS; do
     if printf '%s\n' "$verdicts" | grep -q "^group $name [a-z]* ours$"; then
-      dscl . -delete "/Groups/$name"
+      dscl . -delete "$GROUPS_DIR/$name"
       record removed group "$name" 'deleted'
     fi
   done
@@ -361,49 +445,73 @@ teardown() {
   if sudo -l -U "$CONTROLLER" 2>/dev/null | grep -q sem3-participant; then
     fail 'controller still holds a fixture grant'
   fi
+  inventory >"$STATE/inventory-after.txt"
+  unchanged=1
+  if [ -f "$STATE/inventory-before.txt" ]; then
+    cmp -s "$STATE/inventory-before.txt" "$STATE/inventory-after.txt" || unchanged=0
+  fi
+  record observed inventory after "matches-before=$unchanged"
   record removed complete "$STATE" 'teardown finished'
   export_receipts teardown
-  rm -f "$STATE/.sem3-fixture" "$STATE/state.tsv" "$STATE/installed-files.txt" "$STATE/reviewed-files.txt" "$STATE/sudoers.candidate"
+  rm -f "$STATE/.sem3-fixture" "$STATE/state.tsv" "$STATE/installed-files.txt" "$STATE/reviewed-files.txt" \
+    "$STATE/sudoers.candidate" "$STATE/inventory-before.txt" "$STATE/inventory-after.txt"
   rmdir "$STATE"
   if ! collisions; then
     fail 'fixture resources remain after teardown'
   fi
-  say 'teardown complete; no fixture name, id or path remains'
+  if [ "$unchanged" -ne 1 ]; then
+    echo 'admin: fixture removed, but accounts, groups or sudoers differ from before setup; see the exported inventories' >&2
+    exit 5
+  fi
+  say 'teardown complete; no fixture name, id, path or process remains'
 }
 
-# Rehearsal on an isolated state directory: collision refusal, a crashed
-# partial setup, identity-mismatch refusal, recovery and a repeated no-op.
+# Each rehearsal step runs this script again as a fresh process, so its
+# own set -e applies, and asserts the exact exit status the step needs.
+step() {
+  want=$1
+  shift
+  rc=0
+  /bin/sh "$SELF" "$@" --controller "$CONTROLLER" --receipts "$RECEIPTS" --state "$REHEARSAL_STATE" || rc=$?
+  [ "$rc" -eq "$want" ] || fail "rehearsal: $1 exited $rc, expected $want"
+}
+
+# Rehearsal on an isolated state directory: setup's collision refusal, a
+# crashed partial setup, identity-mismatch refusal, recovery and a repeated
+# no-op teardown.
 rehearse() {
   require_root
   controller_checks
   receipts_checks
-  real_state=$STATE
-  STATE=/var/db/semaphile-sem3-rehearsal
-  say "rehearsal 1: collision refusal using existing account $CONTROLLER"
-  if (EXTRA_NAMES=$CONTROLLER EXTRA_IDS=$CONTROLLER_UID collisions); then
-    fail 'rehearsal: collision check missed an existing account'
-  fi
-  [ ! -e "$STATE" ] || fail 'rehearsal state already exists'
+  staging_checks
+  for path in "$REHEARSAL_STATE" "$TAMPERED_STATE"; do
+    [ ! -e "$path" ] && [ ! -L "$path" ] || fail "rehearsal path $path already exists"
+  done
+  staging="--staging $STAGING --manifest-sha256 $MANIFEST_SHA256"
+  say "rehearsal 1: setup refuses a collision with existing account $CONTROLLER and changes nothing"
+  # shellcheck disable=SC2086 # staging holds two option pairs without spaces
+  step 2 setup $staging --assume-existing "$CONTROLLER"
+  [ ! -e "$REHEARSAL_STATE" ] || fail 'rehearsal: the refused setup created state'
+  dscl . -read "$USERS_DIR/sem3a" >/dev/null 2>&1 && fail 'rehearsal: the refused setup created sem3a'
   say 'rehearsal 2: setup crashes after creating user sem3b, before observing it'
-  if (FAIL_AFTER=user-created:sem3b setup); then
-    fail 'rehearsal: injected failure did not stop setup'
-  fi
+  # shellcheck disable=SC2086
+  step 99 setup $staging --fail-after user-created:sem3b
   say 'rehearsal 3: teardown of a manifest whose recorded identity differs'
-  tampered=/var/db/semaphile-sem3-rehearsal-tampered
-  rm -rf "$tampered"
-  cp -Rp "$STATE" "$tampered"
+  cp -Rp "$REHEARSAL_STATE" "$TAMPERED_STATE"
   sed 's/uid=3601 gid=3601 guid=[^	]*/uid=3601 gid=3601 guid=00000000-0000-0000-0000-000000000000/' \
-    "$STATE/state.tsv" >"$tampered/state.tsv"
-  if (STATE=$tampered teardown); then
-    fail 'rehearsal: mismatched identity was not refused'
-  fi
-  dscl . -read /Users/sem3a >/dev/null 2>&1 || fail 'rehearsal: refusal deleted sem3a'
-  rm -rf "$tampered"
+    "$REHEARSAL_STATE/state.tsv" >"$TAMPERED_STATE/state.tsv"
+  rc=0
+  /bin/sh "$SELF" teardown --controller "$CONTROLLER" --receipts "$RECEIPTS" --state "$TAMPERED_STATE" || rc=$?
+  [ "$rc" -eq 4 ] || fail "rehearsal: tampered teardown exited $rc, expected 4"
+  dscl . -read "$USERS_DIR/sem3a" >/dev/null 2>&1 || fail 'rehearsal: the refusal deleted sem3a'
+  rm -rf "$TAMPERED_STATE"
   say 'rehearsal 4: recovery teardown reconciles the unobserved user'
-  teardown
+  step 0 teardown
   say 'rehearsal 5: repeated teardown is a verified no-op'
-  teardown
-  STATE=$real_state
+  out=$(/bin/sh "$SELF" teardown --controller "$CONTROLLER" --receipts "$RECEIPTS" --state "$REHEARSAL_STATE") ||
+    fail 'rehearsal: repeated teardown failed'
+  printf '%s\n' "$out"
+  case $out in *'no change made'*) ;; *) fail 'rehearsal: repeated teardown was not a no-op' ;; esac
   say 'rehearsal passed; the real setup may now run'
 }
 
@@ -413,6 +521,7 @@ STATE=$DEFAULT_STATE
 EXTRA_NAMES=
 EXTRA_IDS=
 while [ "$#" -gt 0 ]; do
+  [ "$#" -ge 2 ] || fail "option $1 needs a value"
   case $1 in
     --controller) CONTROLLER=$2 ;;
     --receipts) RECEIPTS=$2 ;;
@@ -420,10 +529,18 @@ while [ "$#" -gt 0 ]; do
     --manifest-sha256) MANIFEST_SHA256=$2 ;;
     --state) STATE=$2 ;;
     --fail-after) FAIL_AFTER=$2 ;;
+    --assume-existing)
+      EXTRA_NAMES=$2
+      EXTRA_IDS=$(id -u "$2") || fail "no such account $2"
+      ;;
     *) fail "unknown option $1" ;;
   esac
   shift 2
 done
+# Rehearsal-only options never touch the real state directory.
+if [ -n "${FAIL_AFTER:-}" ] || [ -n "$EXTRA_NAMES" ]; then
+  [ "$STATE" = "$REHEARSAL_STATE" ] || fail 'rehearsal options need the rehearsal state directory'
+fi
 case $command in
   setup) setup ;;
   teardown) teardown ;;
