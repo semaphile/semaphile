@@ -22,7 +22,9 @@ async function freePort() {
 }
 
 // serviceUser: undefined runs Redis as the controller; {uid,gid} uses setpriv.
-export async function startRedis({ binary, directory, controllerDir, serviceUser, log }) {
+// onSpawn receives { pid, stop } as soon as the child exists, so a caller
+// interrupted before startup finishes can still stop it.
+export async function startRedis({ binary, directory, controllerDir, serviceUser, log, onSpawn }) {
   const port = await freePort();
   const password = randomBytes(24).toString('hex');
   const digest = createHash('sha256').update(password).digest('hex');
@@ -96,6 +98,7 @@ export async function startRedis({ binary, directory, controllerDir, serviceUser
       await logHandle.close().catch(() => {});
     }
   };
+  onSpawn?.({ pid: child.pid, stop: stopChild });
   // Every failure after the spawn stops the child: a controller that throws
   // here must not leave a Redis running.
   let admin;

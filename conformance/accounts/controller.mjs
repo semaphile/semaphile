@@ -184,8 +184,20 @@ const spawnParticipant = (role, runtime, options = {}) =>
   });
 
 let redis;
+// The Redis child from the moment it spawns, before startRedis returns.
+let redisProcess;
 let ctx;
 let fatal;
+// A signal cancels the run: no new provisioning, case or check starts,
+// and cleanup waits for an in-flight provisioning step to settle first.
+let cancelled = false;
+let provisioningStarted = false;
+let mutation = null;
+const checkCancelled = () => {
+  if (cancelled) {
+    throw new Error('run cancelled by a signal');
+  }
+};
 const personalHomes = [];
 const provisioned = {};
 const users = [];
@@ -316,8 +328,12 @@ async function runCase(c) {
 // failed, so nothing is silently left behind.
 async function cleanupRun(reason) {
   currentCase = 'cleanup';
+  cancelled = true;
+  if (mutation) {
+    await withDeadline(mutation, 45000, 'in-flight provisioning').catch(() => {});
+  }
   const credentials = [];
-  if (redis) {
+  if (provisioningStarted) {
     for (const account of ACCOUNTS) {
       let participant;
       try {
@@ -360,6 +376,14 @@ async function cleanupRun(reason) {
     } catch (error) {
       aclError ??= error.message;
     }
+  } else if (redisProcess) {
+    // Interrupted before startRedis returned: its child still exists.
+    try {
+      await redisProcess.stop();
+      redisStopped = true;
+    } catch (error) {
+      aclError = error.message;
+    }
   }
   let adminCredentialRemoved = false;
   try {
@@ -370,11 +394,11 @@ async function cleanupRun(reason) {
   }
   // ACL users live only in the stopped process (no aclfile, and ACL
   // changes are not written to the AOF), so a stopped Redis holds none.
-  const aclClean = remainingUsers ? remainingUsers.length === 0 : redisStopped || !redis;
+  const aclClean = remainingUsers ? remainingUsers.length === 0 : redisStopped || !redisProcess;
   const clean =
     credentials.every((entry) => !entry.error && entry.credentialsLeft.length === 0) &&
     aclClean &&
-    (redisStopped || !redis) &&
+    (redisStopped || !redisProcess) &&
     adminCredentialRemoved;
   const result = {
     reason,
@@ -408,7 +432,11 @@ try {
     controllerDir,
     serviceUser: mode === 'setpriv' ? { uid: 999, gid: 999 } : undefined,
     log,
+    onSpawn: (child) => {
+      redisProcess = child;
+    },
   });
+  checkCancelled();
   secrets.add(redis.password);
   await write('redis.jsonl', {
     stage: 'started',
@@ -421,6 +449,7 @@ try {
 
   // Per-run restricted users and the files each identity consumes.
   for (const account of ACCOUNTS) {
+    checkCancelled();
     const home = layout.home(account.name);
     const files = [],
       directories = [];
@@ -455,14 +484,23 @@ try {
         },
       );
     }
-    const participant = spawnParticipant(account.role, 'node');
+    checkCancelled();
+    provisioningStarted = true;
+    mutation = (async () => {
+      const participant = spawnParticipant(account.role, 'node');
+      try {
+        await participant.hello;
+        const written = await participant.ok('provision', { directories, files });
+        provisioned[account.name] = new Set(files.map((file) => file.path));
+        await write('provision.jsonl', { account: account.name, written });
+      } finally {
+        await participant.close();
+      }
+    })();
     try {
-      await participant.hello;
-      const written = await participant.ok('provision', { directories, files });
-      provisioned[account.name] = new Set(files.map((file) => file.path));
-      await write('provision.jsonl', { account: account.name, written });
+      await mutation;
     } finally {
-      await participant.close();
+      mutation = null;
     }
   }
   for (const user of users) {
@@ -526,6 +564,7 @@ try {
   if (!values['skip-checks']) {
     currentCase = 'fixture-checks';
     for (const runtime of ['node', 'bun']) {
+      checkCancelled();
       let records;
       try {
         records = await participantChecks(ctx, runtime);
@@ -605,6 +644,7 @@ try {
   if (!values['skip-cases']) {
     const pattern = values.only ? new RegExp(values.only) : undefined;
     for (const c of inventory().filter((entry) => !pattern || pattern.test(entry.id))) {
+      checkCancelled();
       await runCase(c);
     }
   }
