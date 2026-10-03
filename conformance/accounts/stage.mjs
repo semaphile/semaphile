@@ -268,6 +268,13 @@ const listingScript =
 const listing = run('/bin/sh', [join(harness, listingScript[0]), ...listingScript.slice(1)], {
   maxBuffer: 1 << 28,
 });
+assert.ok(
+  listing
+    .toString()
+    .split('\n')
+    .some((line) => line.startsWith('f ')),
+  'the staged listing has no file lines; its hash tool did not run',
+);
 await writeFile(join(out, 'STAGED-FILES.txt'), listing);
 const result = {
   ...source,

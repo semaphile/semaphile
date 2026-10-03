@@ -39,8 +39,11 @@ now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 say() { printf '%s %s\n' "$(now)" "$*"; }
 
 listing() {
+  # The pipeline's status is sort's, so a missing hash tool would otherwise
+  # yield a listing with no file lines.
+  command -v sha256sum >/dev/null || fail 'sha256sum is required on PATH'
   (
-    cd "$1"
+    cd "$1" || exit 1
     find . \( -path ./home -o -path ./shared -o -path ./checkout/.tmp -o -path ./.incoming -o -path ./checkout/conformance/accounts/node_modules -o -name .sem3-fixture \) -prune \
       -o -type d -print | sed 's/^/d - - /'
     find . \( -path ./home -o -path ./shared -o -path ./checkout/.tmp -o -path ./.incoming -o -path ./checkout/conformance/accounts/node_modules \) -prune -o -type l -print |

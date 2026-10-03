@@ -49,8 +49,11 @@ say() { printf '%s %s\n' "$(now)" "$*"; }
 # ---- tree listing (also used unprivileged by the staging tool) ----------
 # One sorted line per entry: d - - PATH | l - TARGET PATH | f x|- SHA PATH
 listing() {
+  # The pipeline's status is sort's, so a missing hash tool would otherwise
+  # yield a listing with no file lines.
+  command -v shasum >/dev/null || fail 'shasum is required on PATH'
   (
-    cd "$1"
+    cd "$1" || exit 1
     find . \( -path ./home -o -path ./shared -o -path ./checkout/.tmp -o -name .sem3-fixture \) -prune \
       -o -type d -print | sed 's/^/d - - /'
     find . \( -path ./home -o -path ./shared -o -path ./checkout/.tmp \) -prune -o -type l -print |
