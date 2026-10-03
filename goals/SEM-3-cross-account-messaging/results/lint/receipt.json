@@ -1,9 +1,9 @@
 {
   "schema": 1,
-  "timestamp": "2026-10-03T18:46:19.153Z",
+  "timestamp": "2026-10-03T19:24:20.348Z",
   "branch": "SEM-3-cross-account-messaging",
-  "commit": "b528b5c293749483ba02b0924f1887ff9841ab00",
-  "tree": "b4e62b5b325433d95ed23713b63a229e2334f930",
+  "commit": "144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481",
+  "tree": "f07da83e206674c6e4c49ee4cf0d5723c9a09bbf",
   "dirty": false,
   "mode": "goal",
   "goal": {
@@ -86,7 +86,7 @@
     "configured": true,
     "gated": true,
     "state": "not-applicable",
-    "reason": "the change set touches nothing in the effective Sonar scope (93 path(s): conformance/accounts/README.md, conformance/accounts/bin/sem3-participant, conformance/accounts/candidate-pins.json, conformance/accounts/cloud/.gitignore, conformance/accounts/cloud/ansible/ansible.cfg, conformance/accounts/cloud/ansible/fixture.yml, conformance/accounts/cloud/ansible/host.yml, conformance/accounts/cloud/ansible/inventory.example.ini, …); fast tier only — no deep coverage is claimed",
+    "reason": "the change set touches nothing in the effective Sonar scope (100 path(s): conformance/accounts/README.md, conformance/accounts/bin/sem3-participant, conformance/accounts/candidate-pins.json, conformance/accounts/cloud/.gitignore, conformance/accounts/cloud/ansible/ansible.cfg, conformance/accounts/cloud/ansible/fixture.yml, conformance/accounts/cloud/ansible/host.yml, conformance/accounts/cloud/ansible/inventory.example.ini, …); fast tier only — no deep coverage is claimed",
     "configChanged": false,
     "inScopePaths": [],
     "scopeFingerprint": "a980f69a45e14a1846a9ef1e036475cc78c6a1d9f97fcc397b479099040c9eae",

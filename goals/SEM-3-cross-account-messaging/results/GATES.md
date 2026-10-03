@@ -7,10 +7,13 @@ reconstruction after the fact.
 This is an interim file. The fixture has not been provisioned on either
 platform yet: the macOS administrator step and the cloud activation are owner
 checkpoints that have not run. Gates 1–4 and 7 therefore have no run receipt
-yet, and say so. Raw output for every receipt below is in the primary
-checkout's private `.scratch/docs/receipts/sem3-cross-account/` tree.
+yet, and say so. PENDING marks a gate that has not run; no gate has been
+waived, and no user waiver exists. Gate 6 uses the WAIVER shape only because
+that is the receipts shape for a review in flight. Raw output for every
+receipt below is in the primary checkout's private
+`.scratch/docs/receipts/sem3-cross-account/` tree.
 
-## Gate 1 — Three unprivileged identities on both architectures (WAIVER)
+## Gate 1 — Three unprivileged identities on both architectures (PENDING — owner checkpoint not yet run)
 
 - Status: not yet run. It needs the owner's macOS administrator setup and the
   approved cloud activation; neither has happened.
@@ -18,12 +21,12 @@ checkout's private `.scratch/docs/receipts/sem3-cross-account/` tree.
   pass, under `.scratch/docs/receipts/sem3-cross-account/{macos,linux}/`
   (private), once provisioned.
 
-## Gate 2 — Private-home and shared-fixture access checks (WAIVER)
+## Gate 2 — Private-home and shared-fixture access checks (PENDING — owner checkpoint not yet run)
 
 - Status: not yet run, for the same reason as gate 1.
 - Evidence: `checks.jsonl` per platform and pass, once provisioned.
 
-## Gate 3 — The fixed matrix on macOS arm64 and Linux x64 (WAIVER)
+## Gate 3 — The fixed matrix on macOS arm64 and Linux x64 (PENDING — owner checkpoint not yet run)
 
 - Status: not yet run, for the same reason as gate 1. Same-UID development
   runs of the harness are not evidence for this gate and are not recorded
@@ -40,22 +43,22 @@ cleanup and the final read-only audit remain to run.
 - Command: `shellcheck -s bash cloud/run.sh linux/host.sh && shellcheck -s sh linux/container.sh macos/admin.sh bin/sem3-participant`, plus `sh -n` or `bash -n` on each (from `conformance/accounts`)
 - Exit code: 0
 - Headline: 5 scripts, 0 ShellCheck findings, syntax clean. Four suppressions, each justified in a comment: `SC2024` once in `macos/admin.sh` (root reads its own file), `SC2086` twice in `macos/admin.sh` (the same deliberately split option string, reason on the first) and once in `cloud/run.sh` (a fixed multi-word gcloud group)
-- Timestamp: 2026-10-03T18:46:40Z
-- Tested commit: `b528b5c293749483ba02b0924f1887ff9841ab00`
+- Timestamp: 2026-10-03T19:24:25Z
+- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
 
 - Command: `terraform init -backend=false -input=false && terraform fmt -check -recursive && terraform validate` (in `conformance/accounts/cloud/terraform`, with `TF_DATA_DIR` outside the repository and the ambient project variables unset)
 - Exit code: 0
 - Headline: Terraform 1.9.8, `hashicorp/google` 8.4.0 from the committed lock; format clean; configuration valid
-- Timestamp: 2026-10-03T18:46:40Z
-- Tested commit: `b528b5c293749483ba02b0924f1887ff9841ab00`
+- Timestamp: 2026-10-03T19:24:25Z
+- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
 
 - Command: `ansible-playbook -i inventory.example.ini --syntax-check {host,fixture,teardown}.yml && ansible-lint --offline --profile production host.yml fixture.yml teardown.yml tasks/pass.yml` (in `conformance/accounts/cloud/ansible`)
 - Exit code: 0
 - Headline: 3 playbooks syntax-clean; ansible-lint 26.3.0, production profile, 0 failures, 0 warnings in 4 files
-- Timestamp: 2026-10-03T18:46:40Z
-- Tested commit: `b528b5c293749483ba02b0924f1887ff9841ab00`
+- Timestamp: 2026-10-03T19:24:25Z
+- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
 
-## Gate 4 — Live lifecycle, cleanup and final audit (WAIVER)
+## Gate 4 — Live lifecycle, cleanup and final audit (PENDING — owner checkpoint not yet run)
 
 - Status: not yet run, for the same reason as gate 1.
 - Evidence: the admin scripts' exported state logs and inventories, the
@@ -67,20 +70,20 @@ cleanup and the final read-only audit remain to run.
 - Command: `evie-kit lint gate --goal SEM-3`
 - Exit code: 0
 - Headline: typecheck passed (`bun run typecheck`); fast tier clean — packages/ command: clean; conformance/ command: clean; tools/ command: clean; deep tier not-applicable (the change touches nothing in `sonar.sources=packages`)
-- Timestamp: 2026-10-03T18:46:19.153Z
-- Tested commit: `b528b5c293749483ba02b0924f1887ff9841ab00`
+- Timestamp: 2026-10-03T19:24:20.348Z
+- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
 
 - Command: `npm run check:docs`
 - Exit code: 0
 - Headline: 18 public Markdown documents; local links resolve; no private links or machine details
-- Timestamp: 2026-10-03T18:46:40Z
-- Tested commit: `b528b5c293749483ba02b0924f1887ff9841ab00`
+- Timestamp: 2026-10-03T19:24:25Z
+- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
 
 - Command: `prettier --check conformance/accounts`
 - Exit code: 0
 - Headline: all files use Prettier style
-- Timestamp: 2026-10-03T18:46:40Z
-- Tested commit: `b528b5c293749483ba02b0924f1887ff9841ab00`
+- Timestamp: 2026-10-03T19:24:25Z
+- Tested commit: `144cb6b0c6ec6f5dea5e08f977a02ca3b2dc5481`
 
 ## Gate 6 — Fresh blind review (WAIVER)
 
@@ -88,7 +91,7 @@ cleanup and the final read-only audit remain to run.
 - Evidence: `reviews/results-005/INDEX.md` (reconciled) and the verification
   round that follows it.
 
-## Gate 7 — Evidence mapped to every SEM-2 deferred criterion (WAIVER)
+## Gate 7 — Evidence mapped to every SEM-2 deferred criterion (PENDING — depends on gates 1–4)
 
 - Status: not yet run; it depends on gates 1–4.
 - Evidence: `results/RESULT.md`, at completion.
