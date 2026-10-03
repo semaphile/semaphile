@@ -77,17 +77,17 @@ differs is noted.
 
 | # | Severity | Category | Location | Finding | Raised by | Disposition |
 | --- | --- | --- | --- | --- | --- | --- |
-| M1 | major | footprint | `results/GATES.md` | No gate receipts existed at the round's head. | fable #1 | Accepted. Missing evidence, expected at an interim point; `GATES.md` is committed before the verification round. |
-| M2 | major (fable: minor) | risk | `cloud/run.sh:149` | `destroy` demanded exactly six deletes, so a partial apply or a deadline-deleted VM had no reviewed cleanup. | fable #2 | Fixed `8ceb6de`: any non-empty subset of the six reviewed deletes; any other action refuses. Stub-tested with five deletes, an unreviewed update and an empty plan. |
-| M3 | minor | footprint | `controller.mjs:119` | Receipts omitted the filter flags and the participant launch argv. | fable #3 | Fixed `3545680`, `edc02f2`: flags, `complete` and per-role argv recorded; `evidence` only for a complete pass; `host.sh controller` takes no extra flags. |
-| M4 | minor | footprint | `lib/cases.mjs:660` | ACL and readiness opens did not assert or record the resolved `semaphile.json`. | fable #4 | Fixed `37a914d` (`openOwn`). |
-| M5 | minor | risk | `lib/cases.mjs:719` | A6 restored EVAL and TIME only on the success path. | fable #5 | Fixed `37a914d`: restored in a `finally`. |
-| M6 | minor (fable: nit) | risk | `lib/launch.mjs:74` | The hello handshake had no deadline. | fable #6 | Fixed `3545680`: 30 s deadline, then SIGKILL; `close()` escalates. Tested with a live process that never greets. |
-| M7 | minor (fable: nit) | risk | `lib/checks.mjs:442` | A spawn failure counted as a refusal. | fable #7 | Fixed `37a914d`: each refusal must exit with the code of the party that must refuse (sudo 1 with a `sudo:` message, the runner 77 or 64). |
-| M8 | minor (fable: nit) | footprint | `README.md:170` | The macOS procedure ran one controller pass. | fable #8 | Fixed `b528b5c`: two passes with distinct ids. |
-| M9 | nit | footprint | `README.md:209` | No cost figure in the provisioning guide. | fable #9 | Fixed `b528b5c` and in the activation packet. |
-| M10 | minor | risk | `cloud/run.sh:34` | The mode check failed with GNU `stat`, refusing every run directory on a Linux operator host. | CodeRabbit #1 | Fixed `8ceb6de`: GNU form first, BSD fallback. |
-| M11 | n/a (Sonar: BLOCKER ×12) | tooling | `lib/checks.mjs:51-87` | S2970 read the local `expect(label, actual, expected)` helper as an incomplete test assertion. | SonarQube | False positive: the helper pushes to `problems`, which callers treat as INVALID or FAIL. Resolved in code by renaming the helper to `compare` (`37a914d`), so the issues close on the next scan; no server marking is needed. |
+| 1 | major | footprint | `results/GATES.md` | No gate receipts existed at the round's head. | fable #1 | Accepted. Missing evidence, expected at an interim point; `GATES.md` is committed before the verification round. |
+| 2 | major (fable: minor) | risk | `cloud/run.sh:149` | `destroy` demanded exactly six deletes, so a partial apply or a deadline-deleted VM had no reviewed cleanup. | fable #2 | Fixed `8ceb6de`: any non-empty subset of the six reviewed deletes; any other action refuses. Stub-tested with five deletes, an unreviewed update and an empty plan. |
+| 3 | minor | footprint | `controller.mjs:119` | Receipts omitted the filter flags and the participant launch argv. | fable #3 | Fixed `3545680`, `edc02f2`: flags, `complete` and per-role argv recorded; `evidence` only for a complete pass; `host.sh controller` takes no extra flags. |
+| 4 | minor | footprint | `lib/cases.mjs:660` | ACL and readiness opens did not assert or record the resolved `semaphile.json`. | fable #4 | Fixed `37a914d` (`openOwn`). |
+| 5 | minor | risk | `lib/cases.mjs:719` | A6 restored EVAL and TIME only on the success path. | fable #5 | Fixed `37a914d`: restored in a `finally`. |
+| 6 | minor (fable: nit) | risk | `lib/launch.mjs:74` | The hello handshake had no deadline. | fable #6 | Fixed `3545680`: 30 s deadline, then SIGKILL; `close()` escalates. Tested with a live process that never greets. |
+| 7 | minor (fable: nit) | risk | `lib/checks.mjs:442` | A spawn failure counted as a refusal. | fable #7 | Fixed `37a914d`: each refusal must exit with the code of the party that must refuse (sudo 1 with a `sudo:` message, the runner 77 or 64). |
+| 8 | minor (fable: nit) | footprint | `README.md:170` | The macOS procedure ran one controller pass. | fable #8 | Fixed `b528b5c`: two passes with distinct ids. |
+| 9 | nit | footprint | `README.md:209` | No cost figure in the provisioning guide. | fable #9 | Fixed `b528b5c` and in the activation packet. |
+| 10 | minor | risk | `cloud/run.sh:34` | The mode check failed with GNU `stat`, refusing every run directory on a Linux operator host. | CodeRabbit #1 | Fixed `8ceb6de`: GNU form first, BSD fallback. |
+| 11 | n/a (Sonar: BLOCKER ×12) | tooling | `lib/checks.mjs:51-87` | S2970 read the local `expect(label, actual, expected)` helper as an incomplete test assertion. | SonarQube | False positive: the helper pushes to `problems`, which callers treat as INVALID or FAIL. Resolved in code by renaming the helper to `compare` (`37a914d`), so the issues close on the next scan; no server marking is needed. |
 
 SonarQube's other 71 open issues are preexisting, all in `packages/*`, which
 this change does not touch. Its scan covers almost none of this change: the
@@ -111,7 +111,21 @@ That was input to these dispositions, not a substitute for them:
 | C34–C36 | Fixed (`37a914d`). |
 | C37 (duplicated state-log protocol in the two admin scripts) | Not changed: each admin script is one self-contained file the owner verifies by hash and runs as root; sharing code between them would add an import the owner must also review. |
 | C38 | `GATES.md` committed before the verification round. |
-| C39 | Same as M11. |
+| C39 | Same as #11. |
+
+### Supplemental review, reconciled before the final freeze (October 3)
+
+The orchestrator later adjudicated one more blind reviewer against this
+round's head and supplied three clusters as input. They are recorded here, by
+the executor's own judgment, because they concern code this round reviewed.
+results-006 did not verify them. Each fix was checked with targeted
+verification only.
+
+| Cluster | Severity | Executor disposition |
+| --- | --- | --- |
+| C40 | rejected | Agreed. Linux teardown empties each identity's 0700 directories as their owner before root removes the prefix, and GNU `rm` removes an empty directory it cannot read, because `rmdir` needs only write and search on the root-owned parent. |
+| C41 | major | Fixed `53300a2`. The macOS identity check allowed only groups 12 and 61, but every local account also inherits nested groups (100 and, on this host, 701 and 705–710), so every macOS case would have failed closed. The inherited set is now read at run time from three hidden reference accounts and recorded; privileged groups still fail. Verified against this host's `id -G` output for `nobody`, `daemon` and `_www`, and with synthetic identities. |
+| C42 | nit | Fixed `ba44360`. Both rehearsals now also crash a setup after the tree and 0700 homes are installed, recover it, and check the prefix is clear. ShellCheck and syntax-checked; not run, because it needs root or the container. |
 
 ## Notes for the next agent
 
@@ -193,11 +207,11 @@ cross-reference only.
 
 | # | Severity | Location | Finding | Match | Disposition |
 |---|---|---|---|---|---|
-| 1 | major | `cloud/run.sh:149-159` | `destroy` refuses anything but six deletes (C4) | shared (M2) | accepted, fixed `8ceb6de` |
+| 1 | major | `cloud/run.sh:149-159` | `destroy` refuses anything but six deletes (C4) | shared (#2) | accepted, fixed `8ceb6de` |
 | 2 | major | `cloud/run.sh:162-177` | `audit` reports clean when gcloud or terraform fails (C3) | unique | accepted, fixed `8ceb6de` |
 | 3 | major | `controller.mjs:157-539` | A controller crash leaves Redis running on macOS (C5) | unique | accepted, fixed `3545680`, `6891407` |
-| 4 | major | `results/GATES.md` | No gate receipts (C38) | shared (M1) | accepted, committed before the verification round |
-| 5 | minor | `controller.mjs:483-539` | Exit 0 does not require a complete run (C8) | shared (M3) | accepted, fixed `3545680` |
+| 4 | major | `results/GATES.md` | No gate receipts (C38) | shared (#1) | accepted, committed before the verification round |
+| 5 | minor | `controller.mjs:483-539` | Exit 0 does not require a complete run (C8) | shared (#3) | accepted, fixed `3545680` |
 | 6 | minor | `teardown.yml:34-40`, `run.sh:130` | Idempotence claimed, not asserted (C18) | unique | accepted, fixed `8ceb6de` |
 | 7 | minor | `tasks/pass.yml:4-15` | An async timeout aborts before receipts are fetched (C17) | unique | accepted, fixed `8ceb6de` |
 | 8 | minor | `cloud/run.sh:179-184` | No pre-apply validate step (C19) | unique | accepted, fixed `8ceb6de` |
@@ -218,15 +232,15 @@ cross-reference only.
 | # | Severity | Location | Finding | Match | Disposition |
 |---|---|---|---|---|---|
 | 1 | major (executor: blocker) | `macos/admin.sh:119` | Root follows controller links in receipts and staging (C1, C2) | unique | accepted, fixed `6891407` |
-| 2 | major | `cloud/run.sh:69` | `check_plan` refuses partial and post-deadline states (C4) | shared (M2) | accepted, fixed `8ceb6de` |
-| 3 | major | `results/` | No gate receipts (C38) | shared (M1) | accepted |
-| 4 | minor | `controller.mjs:48` | Receipts omit argv and flags; filtered runs exit 0 (C8, C9) | shared (M3) | accepted, fixed `3545680` |
+| 2 | major | `cloud/run.sh:69` | `check_plan` refuses partial and post-deadline states (C4) | shared (#2) | accepted, fixed `8ceb6de` |
+| 3 | major | `results/` | No gate receipts (C38) | shared (#1) | accepted |
+| 4 | minor | `controller.mjs:48` | Receipts omit argv and flags; filtered runs exit 0 (C8, C9) | shared (#3) | accepted, fixed `3545680` |
 | 5 | minor | `controller.mjs:443` | Exited participants skipped; T4 accepts any refusal (C13) | unique | accepted, fixed `3545680`, `37a914d` |
-| 6 | minor | `lib/checks.mjs:400` | sudo refusal checks accept any non-zero exit (C12) | shared (M7) | accepted, fixed `37a914d` |
+| 6 | minor | `lib/checks.mjs:400` | sudo refusal checks accept any non-zero exit (C12) | shared (#7) | accepted, fixed `37a914d` |
 | 7 | minor | `controller.mjs:157` | No try/finally; a crash leaves Redis running (C5) | unique | accepted, fixed `3545680` |
 | 8 | minor | `macos/admin.sh:150` | No pre-setup inventory (C21) | unique | accepted, fixed `6891407` |
 | 9 | minor | `cloud/ansible/host.yml:87` | Host driver installed from the working tree (C20) | unique | accepted, fixed `8ceb6de` |
-| 10 | minor | `README.md:170` | One macOS pass and no audit command (C23, C24) | shared (M8) | accepted, fixed `b528b5c` |
+| 10 | minor | `README.md:170` | One macOS pass and no audit command (C23, C24) | shared (#8) | accepted, fixed `b528b5c` |
 | 11 | nit | `README.md:118` | PID and label claims overstate the checks (C30) | unique | accepted, fixed `37a914d`, `b528b5c` |
 | 12 | nit | `cloud/run.sh:130` | Second host run not checked mechanically (C18) | unique | accepted, fixed `8ceb6de` |
 | 13 | nit | `participant.mjs:220` | `--store=x` passes the selector guard (C26) | unique | accepted, fixed `37a914d` |
@@ -249,15 +263,15 @@ cross-reference only.
 | 1 | major | `controller.mjs`, `lib/launch.mjs:74-85` | No failure-path cleanup; two failed launches crash the controller (C5, C6) | unique | accepted, fixed `3545680` |
 | 2 | major (executor: blocker) | `macos/admin.sh:114-125` | Root `export_receipts` follows planted links (C1) | unique | accepted, fixed `6891407` |
 | 3 | major | `cloud/run.sh:162-177` | `audit` is fail-open (C3) | unique | accepted, fixed `8ceb6de`, `edc02f2` |
-| 4 | major | `cloud/run.sh:68-82,149-159` | `destroy` refuses partial and post-deadline states (C4) | shared (M2) | accepted, fixed `8ceb6de` |
+| 4 | major | `cloud/run.sh:68-82,149-159` | `destroy` refuses partial and post-deadline states (C4) | shared (#2) | accepted, fixed `8ceb6de` |
 | 5 | minor | `macos/admin.sh:376-408`, `linux/container.sh:329-356` | Rehearsals run with errexit off and accept any failure (C14) | unique | accepted, fixed `6891407`, `edc02f2` |
-| 6 | minor | `controller.mjs:62-66,483-539` | Exit status cannot tell a filtered run (C8) | shared (M3) | accepted, fixed `3545680` |
+| 6 | minor | `controller.mjs:62-66,483-539` | Exit status cannot tell a filtered run (C8) | shared (#3) | accepted, fixed `3545680` |
 | 7 | minor | `participant.mjs:219-230` | `--store=…` passes the selector ban (C26) | unique | accepted, fixed `37a914d` |
 | 8 | minor | `controller.mjs:165-169` | Redis storage and log ownership not recorded (C22) | unique | accepted, fixed `3545680` |
-| 9 | minor | `results/` | No gate receipts (C38) | shared (M1) | accepted |
+| 9 | minor | `results/` | No gate receipts (C38) | shared (#1) | accepted |
 | 10 | nit | `cloud/.gitignore`, `cloud/run.sh:137-139` | Generated names not ignored; receipts dir created before the check (C27, C28) | unique | accepted, fixed `8ceb6de` |
 | 11 | nit | `linux/container.sh:196` | `.tmp/redis` mode differs from the README (C31) | unique | accepted, README corrected `b528b5c` (0755 is required for UID 999 to reach its run directory) |
-| 12 | nit | `README.md:162-180` | One macOS pass (C23) | shared (M8) | accepted, fixed `b528b5c` |
+| 12 | nit | `README.md:162-180` | One macOS pass (C23) | shared (#8) | accepted, fixed `b528b5c` |
 
 | Metric | sonnet55-xhigh |
 |---|---|
@@ -279,7 +293,7 @@ cross-reference only.
 
 No receipts existed at the round's head (`498e5ad`), so no reviewer could
 audit gate evidence, and the postures recorded were about an absent file. The
-gap itself is this round's gate finding (M1). What the receipts should have
+gap itself is this round's gate finding (#1). What the receipts should have
 stated at that head: the fast tier, typecheck, docs check, ShellCheck,
 `terraform fmt`/`validate` and the Ansible syntax and lint checks green (they
 were run, under `.scratch/docs/receipts/sem3-cross-account/cloud/`, but not

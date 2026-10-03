@@ -71,13 +71,13 @@ review belongs to the split review the planner has pending.
 
 | # | Severity | Category | Location | Finding | Raised by | Disposition |
 | --- | --- | --- | --- | --- | --- | --- |
-| V1 | major | risk | `linux/container.sh:316` | `userdel` removes each fixture user's empty private group (`USERGROUPS_ENAB yes`, confirmed in the pinned image's `login.defs`), so the following `groupdel` exits 6 and teardown, including the rehearsal's recovery teardown, stops. | codex #1 | Fixed `51ffef1`: each group is reconciled after its user goes (absent is recorded as removed with its user; present must still be ours). The macOS script gets the same reconcile. Mock-tested with `userdel` modelled to remove the group. |
-| V2 | major | risk | `controller.mjs:398` | A signal during Redis startup saw no handle, skipped the stop and wrote a clean receipt; a signal mid-provisioning could purge while the main flow kept writing. | codex #2 | Fixed `eb6943f`: the child is reported the moment it spawns and is stopped by cleanup; a signal cancels the run, cleanup waits for in-flight provisioning, and purges only if provisioning began. A dev run interrupted during readiness exits 143, stops the child and writes a clean receipt. |
-| V3 | minor | footprint | `results/GATES.md:13` | Not-yet-run gates were labelled WAIVER with no recorded waiver. | fable #1 | Fixed `7481cbe`: relabelled PENDING. Gate 6 keeps the WAIVER shape, which the receipts template prescribes for a review in flight. |
-| V4 | minor | footprint | `lib/service.mjs:212` | On Linux, container root cannot search the service's 0700 directory, so the ownership receipt recorded EACCES for two entries. | fable #2 | Fixed `809e5d9`: those entries are stat-ed as the service identity. |
-| V5 | nit | risk | `lib/checks.mjs:384` | The identity-switch check rebuilt the launch argv by hand. | fable #3 | Fixed `a365b5d`: it takes the argv from `launch.mjs`. |
-| V6 | nit | risk | `linux/container.sh:48` | A listing exits 0 with no file lines when its hash tool is missing. | fable #4 | Fixed `c6ba294`: both listings refuse a missing tool and staging refuses a listing without file lines. |
-| V7 | minor | footprint | `reviews/goal-002/pi-gemini/PROMPT.md:16` | The planner's goal-review records carry home-folder paths. | CodeRabbit #1 | Fixed `144cb6b`: repo-relative or `<home>/…`; `evie-kit names home-paths --base main` now reports none. |
+| 1 | major | risk | `linux/container.sh:316` | `userdel` removes each fixture user's empty private group (`USERGROUPS_ENAB yes`, confirmed in the pinned image's `login.defs`), so the following `groupdel` exits 6 and teardown, including the rehearsal's recovery teardown, stops. | codex #1 | Fixed `51ffef1`: each group is reconciled after its user goes (absent is recorded as removed with its user; present must still be ours). The macOS script gets the same reconcile. Mock-tested with `userdel` modelled to remove the group. |
+| 2 | major | risk | `controller.mjs:398` | A signal during Redis startup saw no handle, skipped the stop and wrote a clean receipt; a signal mid-provisioning could purge while the main flow kept writing. | codex #2 | Fixed `eb6943f`: the child is reported the moment it spawns and is stopped by cleanup; a signal cancels the run, cleanup waits for in-flight provisioning, and purges only if provisioning began. A dev run interrupted during readiness exits 143, stops the child and writes a clean receipt. |
+| 3 | minor | footprint | `results/GATES.md:13` | Not-yet-run gates were labelled WAIVER with no recorded waiver. | fable #1 | Fixed `7481cbe`: relabelled PENDING. Gate 6 keeps the WAIVER shape, which the receipts template prescribes for a review in flight. |
+| 4 | minor | footprint | `lib/service.mjs:212` | On Linux, container root cannot search the service's 0700 directory, so the ownership receipt recorded EACCES for two entries. | fable #2 | Fixed `809e5d9`: those entries are stat-ed as the service identity. |
+| 5 | nit | risk | `lib/checks.mjs:384` | The identity-switch check rebuilt the launch argv by hand. | fable #3 | Fixed `a365b5d`: it takes the argv from `launch.mjs`. |
+| 6 | nit | risk | `linux/container.sh:48` | A listing exits 0 with no file lines when its hash tool is missing. | fable #4 | Fixed `c6ba294`: both listings refuse a missing tool and staging refuses a listing without file lines. |
+| 7 | minor | footprint | `reviews/goal-002/pi-gemini/PROMPT.md:16` | The planner's goal-review records carry home-folder paths. | CodeRabbit #1 | Fixed `144cb6b`: repo-relative or `<home>/…`; `evie-kit names home-paths --base main` now reports none. |
 
 SonarQube reported 0 open issues in this goal's diff; the 12 S2970 issues from
 results-005 closed with the helper rename. Its 71 other open issues are
@@ -128,11 +128,11 @@ the receipts at `d9ce1e4`, whose tested commit was `b528b5c`.
 | 1 Identities | — | fable, codex | pending; no live run |
 | 2 Access checks | — | fable, codex | pending; no live run |
 | 3 Matrix | codex counted 100 inventory ids (not execution evidence) | fable, codex | pending; no live run |
-| 4 Static checks | fable and codex re-ran ShellCheck and `sh -n`/`bash -n`; fable re-ran `terraform fmt`/`validate` and the Ansible syntax checks | both, on ancestry (delta touched `goals/**` only); fable could not run `ansible-lint` in its environment | live lifecycle, cleanup and audit pending; codex noted V1 and V2 affect this gate |
+| 4 Static checks | fable and codex re-ran ShellCheck and `sh -n`/`bash -n`; fable re-ran `terraform fmt`/`validate` and the Ansible syntax checks | both, on ancestry (delta touched `goals/**` only); fable could not run `ansible-lint` in its environment | live lifecycle, cleanup and audit pending; codex noted #1 and #2 affect this gate |
 | 5 Lint gate | codex re-ran `npm run check:docs`; fable re-ran `prettier --check` | both, on ancestry and scope | — |
 | 6 Review | — | fable, codex | in flight |
 | 7 SEM-2 mapping | — | fable, codex | pending; depends on gates 1–4 |
 
-Fable flagged the WAIVER label on pending gates (V3). Both noted that the
+Fable flagged the WAIVER label on pending gates (#3). Both noted that the
 receipts carry no claim of a live pass. The receipts were refreshed at
 `144cb6b` after the round's fixes (`7481cbe`).
