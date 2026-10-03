@@ -1,7 +1,8 @@
 ---
 # In-VM cleanup before Terraform destroys the VM: the container fixture's own
-# teardown twice (the second run must be a no-op), then the labelled
-# container and any image this run introduced, then the host audit.
+# teardown twice (the second run must be a no-op), then the run's container
+# and any image this run introduced, then the host audit. A run interrupted
+# before its container id was recorded is found by its labels.
 - name: Tear down the SEM-3 container fixture
   hosts: sem3
   become: true
@@ -14,22 +15,32 @@
       ansible.builtin.assert:
         that:
           - inventory_hostname == sem3_state.host
-          - sem3_state.container is match('^[0-9a-f]{64}$')
+          - sem3_state.container == '-' or sem3_state.container is match('^[0-9a-f]{64}$')
+          - sem3_state.introduced in ['0', '1']
 
-    - name: Check whether the fixture container still exists
+    - name: Find the run's containers by their labels
       ansible.builtin.command:
-        argv:
-          [
-            docker,
-            container,
-            inspect,
-            --format,
-            "{{ '{{' }}.State.Status{{ '}}' }}",
-            '{{ sem3_state.container }}',
-          ]
-      register: sem3_container
+        argv: ['{{ sem3_host_sh }}', find, '{{ sem3_state.run }}']
+      register: sem3_found
+      changed_when: false
+
+    - name: Settle which container belongs to the run
+      ansible.builtin.set_fact:
+        sem3_container_id: "{{ sem3_state.container if sem3_state.container != '-' else (sem3_found.stdout_lines | first | default('-')) }}"
+
+    - name: Refuse when the labels name more than one container, or another one
+      ansible.builtin.assert:
+        that:
+          - sem3_found.stdout_lines | length <= 1
+          - sem3_found.stdout_lines | length == 0 or sem3_found.stdout_lines[0] == sem3_container_id
+
+    - name: Check whether the container is running with the verified admin script
+      ansible.builtin.command:
+        argv: [docker, exec, '{{ sem3_container_id }}', test, -f, /run/sem3-admin/container.sh]
+      register: sem3_admin_ready
       changed_when: false
       failed_when: false
+      when: sem3_container_id != '-'
 
     - name: Run the fixture teardown twice inside the container
       ansible.builtin.command:
@@ -37,7 +48,10 @@
       loop: [first, repeat]
       register: sem3_admin_teardown
       changed_when: "'no change made' not in sem3_admin_teardown.stdout"
-      when: sem3_container.rc == 0 and sem3_container.stdout == 'running'
+      failed_when: >-
+        sem3_admin_teardown.rc != 0 or
+        (item == 'repeat' and 'no change made' not in sem3_admin_teardown.stdout)
+      when: sem3_container_id != '-' and sem3_admin_ready.rc | default(1) == 0
 
     - name: Remove the container and any image this run introduced
       ansible.builtin.command:
@@ -45,22 +59,14 @@
           - '{{ sem3_host_sh }}'
           - teardown
           - '{{ sem3_state.run }}'
-          - '{{ sem3_state.container }}'
+          - '{{ sem3_container_id }}'
           - '{{ sem3_state.introduced }}'
-          - '{{ sem3_state.image }}'
       register: sem3_host_teardown
       changed_when: "'removed' in sem3_host_teardown.stdout"
 
     - name: Audit that no fixture object remains on the host
       ansible.builtin.command:
-        argv:
-          [
-            '{{ sem3_host_sh }}',
-            audit,
-            '{{ sem3_state.run }}',
-            '{{ sem3_state.introduced }}',
-            '{{ sem3_state.image }}',
-          ]
+        argv: ['{{ sem3_host_sh }}', audit, '{{ sem3_state.run }}', '{{ sem3_state.introduced }}']
       register: sem3_host_audit
       changed_when: false
 

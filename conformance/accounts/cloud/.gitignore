@@ -20,3 +20,23 @@ terraform.rc
 inventory.ini
 *.retry
 ansible.log
+# Everything else run.sh writes into its private directory, in case a
+# copy lands here: the per-run SSH key, pinned host keys, outputs, plan
+# and apply text, logs and the Linux run state.
+id_ed25519
+id_ed25519.pub
+known_hosts
+outputs.json
+run.tfvars.json
+*.tfplan.txt
+*.tfplan.actions.txt
+apply.txt
+destroy.txt
+replan.txt
+run.log
+linux-run.json
+teardown-host.log
+ansible-*.log
+tfdata/
+tfdata-validate/
+ansible-tmp/

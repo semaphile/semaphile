@@ -8,8 +8,28 @@
   gather_facts: true
   vars:
     sem3_host_dir: /opt/sem3-host
-    sem3_host_script: '{{ playbook_dir }}/../../linux/host.sh'
+    # The root driver comes from the reviewed staging tree, never the
+    # working tree, and its hash comes from the reviewed listing.
+    sem3_host_script: '{{ sem3_staging }}/tree/checkout/conformance/accounts/linux/host.sh'
+    sem3_listing: '{{ sem3_staging }}/STAGED-FILES.txt'
+    sem3_host_expected: >-
+      {{ lookup('ansible.builtin.file', sem3_listing).splitlines()
+         | select('match', '^f [x-] [0-9a-f]{64} \./checkout/conformance/accounts/linux/host\.sh$')
+         | map('split', ' ') | map(attribute=2) | first | default('') }}
   tasks:
+    - name: Require the reviewed staging inputs
+      ansible.builtin.assert:
+        that:
+          - sem3_staging is defined
+          - sem3_listing_sha256 is match('^[0-9a-f]{64}$')
+          - lookup('ansible.builtin.pipe', 'shasum -a 256 ' ~ (sem3_listing | quote)).split()[0] == sem3_listing_sha256
+          - sem3_host_expected is match('^[0-9a-f]{64}$')
+          - lookup('ansible.builtin.pipe', 'shasum -a 256 ' ~ (sem3_host_script | quote)).split()[0] == sem3_host_expected
+        fail_msg: The staged listing or host driver is not the reviewed one.
+      delegate_to: localhost
+      become: false
+      run_once: true
+
     - name: Refuse any host that is not the run's x86_64 Ubuntu 24.04 VM
       ansible.builtin.assert:
         that:
@@ -84,10 +104,10 @@
         checksum_algorithm: sha256
       register: sem3_host_driver
 
-    - name: Confirm the installed driver is the committed one
+    - name: Confirm the installed driver is the reviewed one
       ansible.builtin.assert:
         that:
-          - sem3_host_driver.stat.checksum == lookup('ansible.builtin.pipe', 'shasum -a 256 ' ~ (sem3_host_script | quote)).split()[0]
+          - sem3_host_driver.stat.checksum == sem3_host_expected
 
     - name: Record the host facts the receipts need
       ansible.builtin.command:

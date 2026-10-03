@@ -28,6 +28,22 @@
       register: sem3_preflight
       changed_when: false
 
+    # The state file exists before anything is created, so an interruption
+    # at any later step still leaves teardown.yml a recorded run. Whether
+    # the run introduces the image is decided by the preflight's view.
+    - name: Record the run state before creating anything
+      delegate_to: localhost
+      become: false
+      ansible.builtin.copy:
+        dest: '{{ sem3_state_file }}'
+        mode: '0600'
+        content: >-
+          {{ {'run': sem3_run_id,
+              'host': inventory_hostname,
+              'container': '-',
+              'introduced': '1' if 'image=absent' in sem3_preflight.stdout_lines else '0',
+              'preflight': sem3_preflight.stdout_lines} | to_nice_json }}
+
     - name: Pull the pinned image
       ansible.builtin.command:
         argv: ['{{ sem3_host_sh }}', pull]
@@ -40,20 +56,18 @@
       register: sem3_create
       changed_when: true
 
-    - name: Record the run state on the controller for teardown and recovery
+    - name: Record the container in the run state
       delegate_to: localhost
       become: false
       ansible.builtin.copy:
         dest: '{{ sem3_state_file }}'
         mode: '0600'
         content: >-
-          {{ {'run': sem3_run_id,
-              'host': inventory_hostname,
-              'container': sem3_create.stdout | regex_search('container=([0-9a-f]{64})', '\1') | first,
-              'introduced': sem3_pull.stdout | regex_search('introduced=([01])', '\1') | first,
-              'image': sem3_pull.stdout | regex_search('id=(sha256:[0-9a-f]{64})', '\1') | first,
-              'preflight': sem3_preflight.stdout_lines,
-              'inspect': sem3_create.stdout_lines[-1] | from_json} | to_nice_json }}
+          {{ (lookup('ansible.builtin.file', sem3_state_file) | from_json)
+             | combine({'container': sem3_create.stdout | regex_search('container=([0-9a-f]{64})', '\1') | first,
+                        'image': sem3_pull.stdout | regex_search('id=(sha256:[0-9a-f]{64})', '\1') | first,
+                        'inspect': sem3_create.stdout_lines[-1] | from_json})
+             | to_nice_json }}
 
     - name: Copy the verified bundle to the VM
       ansible.builtin.copy:

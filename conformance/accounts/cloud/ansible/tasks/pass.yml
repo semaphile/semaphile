@@ -12,7 +12,8 @@
 
 - name: Record the exit of pass {{ sem3_pass }}
   ansible.builtin.set_fact:
-    sem3_pass_codes: '{{ sem3_pass_codes | default({}) | combine({sem3_pass: sem3_controller.rc}) }}'
+    # An async timeout leaves no rc; record -1 and still fetch the receipts.
+    sem3_pass_codes: '{{ sem3_pass_codes | default({}) | combine({sem3_pass: sem3_controller.rc | default(-1)}) }}'
 
 - name: Save the controller output of pass {{ sem3_pass }}
   delegate_to: localhost
@@ -20,7 +21,11 @@
   ansible.builtin.copy:
     dest: '{{ sem3_receipts }}/controller-{{ sem3_pass }}.log'
     mode: '0600'
-    content: "exit={{ sem3_controller.rc }}\n{{ sem3_controller.stdout }}\n{{ sem3_controller.stderr }}\n"
+    content: |
+      exit={{ sem3_controller.rc | default(-1) }}
+      {{ sem3_controller.stdout | default('') }}
+      {{ sem3_controller.stderr | default('') }}
+      {{ sem3_controller.msg | default('') }}
 
 - name: Export the receipts of pass {{ sem3_pass }}
   ansible.builtin.shell:
