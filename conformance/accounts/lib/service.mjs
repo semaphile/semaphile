@@ -12,6 +12,49 @@ import { REDIS_VERSION } from './layout.mjs';
 
 const ADMIN = 'sem3admin';
 
+// stat(1) as another identity, for paths only that identity can reach.
+function statAs({ uid, gid }, path) {
+  return new Promise((resolve) => {
+    const child = spawn(
+      '/usr/bin/setpriv',
+      [
+        `--reuid=${uid}`,
+        `--regid=${gid}`,
+        '--clear-groups',
+        '--inh-caps=-all',
+        '--bounding-set=-all',
+        '--no-new-privs',
+        '--',
+        '/usr/bin/stat',
+        '-c',
+        '%u %g %a %F',
+        path,
+      ],
+      { stdio: ['ignore', 'pipe', 'pipe'], env: { PATH: '/usr/bin:/bin' } },
+    );
+    let stdout = '',
+      stderr = '';
+    child.stdout.on('data', (data) => (stdout += data));
+    child.stderr.on('data', (data) => (stderr += data));
+    child.once('error', (error) => resolve({ path, via: 'service', error: error.code }));
+    child.once('close', (code) => {
+      const [statUid, statGid, mode, ...type] = stdout.trim().split(' ');
+      resolve(
+        code === 0
+          ? {
+              path,
+              via: 'service',
+              uid: Number(statUid),
+              gid: Number(statGid),
+              mode,
+              type: type.join(' ') === 'directory' ? 'dir' : 'file',
+            }
+          : { path, via: 'service', error: stderr.trim().slice(0, 200) || `exit ${code}` },
+      );
+    });
+  });
+}
+
 async function freePort() {
   const server = createServer();
   server.listen(0, '127.0.0.1');
@@ -99,6 +142,7 @@ export async function startRedis({ binary, directory, controllerDir, serviceUser
     }
   };
   onSpawn?.({ pid: child.pid, stop: stopChild });
+
   // Every failure after the spawn stops the child: a controller that throws
   // here must not leave a Redis running.
   let admin;
@@ -212,15 +256,17 @@ export async function startRedis({ binary, directory, controllerDir, serviceUser
         return out;
       },
       // Owner, group and mode of the service's storage, log and credential.
+      // On Linux the service's 0700 run directory is unreadable to container
+      // root (no DAC_READ_SEARCH), so entries inside it are stat-ed as the
+      // service identity; everything else is read directly.
       async files() {
         const out = [];
-        for (const path of [
-          directory,
-          join(directory, 'appendonlydir'),
-          configFile,
-          join(controllerDir, 'redis.log'),
-          adminFile,
-        ]) {
+        const inside = [join(directory, 'appendonlydir'), configFile];
+        for (const path of [directory, ...inside, join(controllerDir, 'redis.log'), adminFile]) {
+          if (serviceUser && inside.includes(path)) {
+            out.push(await statAs(serviceUser, path));
+            continue;
+          }
           try {
             const info = await lstat(path);
             out.push({
