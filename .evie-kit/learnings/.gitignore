@@ -1,0 +1,3 @@
+# The index regeneration lock, and a writer's temp file a crash can leave (EVA-264).
+*.lock
+*.tmp

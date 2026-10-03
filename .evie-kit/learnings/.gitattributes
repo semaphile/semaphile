@@ -1,0 +1,3 @@
+# Concurrent goals each add a line to the generated index; the union
+# driver keeps both instead of conflicting (EVA-264).
+INDEX.md merge=union
