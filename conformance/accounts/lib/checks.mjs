@@ -17,6 +17,7 @@ import {
   paths,
 } from './layout.mjs';
 import { tarEntries } from './tar.mjs';
+import { command as launchCommand } from './launch.mjs';
 
 const DENIED = new Set(['EACCES', 'EPERM']);
 // Bun's transpiler cache is disabled so no runtime cache lands in homes.
@@ -378,24 +379,9 @@ export async function switchCheck(ctx) {
     results.push({ step: 'invalidate-timestamp', pass: result.code === 0, ...result });
   }
   for (const account of ACCOUNTS) {
-    const argv =
-      ctx.mode === 'sudo'
-        ? ['/usr/bin/sudo', ['-n', '-u', account.name, layout.runner, 'node']]
-        : [
-            '/usr/bin/setpriv',
-            [
-              `--reuid=${account.uid}`,
-              `--regid=${account.gid}`,
-              '--init-groups',
-              '--inh-caps=-all',
-              '--bounding-set=-all',
-              '--no-new-privs',
-              '--reset-env',
-              '--',
-              layout.runner,
-              'node',
-            ],
-          ];
+    // The exact command participants are launched with, so the proof and
+    // the cases cannot drift apart.
+    const argv = launchCommand(ctx.mode, account, 'node', { prefix: ctx.prefix });
     const result = await exec(...argv);
     const identity = helloOf(result.stdout);
     results.push({
